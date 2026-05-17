@@ -4,8 +4,15 @@ import { initReactI18next } from "react-i18next";
 import bn from "./bn.json";
 import en from "./en.json";
 
-export { formatIndianNumber, formatMoney, toBengaliNumerals, toLatinNumerals } from "./format";
-export type { SupportedLocale } from "./format";
+export {
+  formatDhakaDate,
+  formatIndianNumber,
+  formatMoney,
+  formatRelativeDhakaDate,
+  toBengaliNumerals,
+  toLatinNumerals
+} from "./format";
+export type { DateInput, SupportedLocale } from "./format";
 
 export const resources = {
   bn: { translation: bn },

@@ -1,4 +1,5 @@
 import { Plus } from "lucide-react-native";
+import { Link, type Href } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { ScrollView, View } from "react-native";
 
@@ -44,9 +45,11 @@ export default function HomeScreen() {
           <Money amountPaisa={0} />
         </View>
 
-        <Button accessibilityLabel={t("groups.create.title")}>
-          {`+ ${t("groups.create.title")}`}
-        </Button>
+        <Link href={"/phone" as Href} asChild>
+          <Button accessibilityLabel={t("groups.create.title")}>
+            {`+ ${t("groups.create.title")}`}
+          </Button>
+        </Link>
 
         <View style={{ alignItems: "center", flexDirection: "row", gap: spacing.sm }}>
           <Plus color={lightColors.brandPrimary} size={18} />

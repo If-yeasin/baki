@@ -21,6 +21,7 @@ import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 import "@/lib/i18n";
+import { SyncStatusIndicator } from "@/components/SyncStatusIndicator";
 import { queryClient } from "@/lib/query-client";
 
 void SplashScreen.preventAutoHideAsync();
@@ -60,12 +61,14 @@ export default function RootLayout() {
             headerShadowVisible: false,
             headerStyle: { backgroundColor: "#faf6ef" },
             headerTintColor: "#0d1b1e",
+            headerRight: () => <SyncStatusIndicator />,
             headerTitleStyle: {
               fontFamily: "HindSiliguri_600SemiBold"
             }
           }}
         >
           <Stack.Screen name="index" options={{ title: "বাকি" }} />
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         </Stack>
       </QueryClientProvider>
     </GestureHandlerRootView>
