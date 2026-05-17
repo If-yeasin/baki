@@ -1,0 +1,26 @@
+{
+  "name": "@baki/db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest --run --passWithNoTests",
+    "migrate": "supabase db push",
+    "migrate:local": "supabase db reset",
+    "gen:types": "supabase gen types typescript --local > src/types.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.105.4",
+    "dotenv": "^17.2.3"
+  },
+  "devDependencies": {
+    "@baki/config": "workspace:*",
+    "supabase": "^2.75.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.6"
+  }
+}

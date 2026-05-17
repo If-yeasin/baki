@@ -1,0 +1,13 @@
+{
+  "name": "@baki/config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./eslint/base": "./eslint/base.mjs",
+    "./prettier/base": "./prettier/base.mjs",
+    "./tsconfig/base": "./tsconfig/base.json",
+    "./tsconfig/expo": "./tsconfig/expo.json",
+    "./tsconfig/package": "./tsconfig/package.json"
+  }
+}

@@ -1,0 +1,4 @@
+{
+  "extends": "@baki/config/tsconfig/package",
+  "include": ["src/**/*.ts"]
+}

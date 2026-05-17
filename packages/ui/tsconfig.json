@@ -1,0 +1,7 @@
+{
+  "extends": "@baki/config/tsconfig/package",
+  "compilerOptions": {
+    "types": ["react", "react-native"]
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
+}

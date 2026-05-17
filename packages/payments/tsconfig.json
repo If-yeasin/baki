@@ -1,0 +1,7 @@
+{
+  "extends": "@baki/config/tsconfig/package",
+  "compilerOptions": {
+    "types": ["vitest/globals"]
+  },
+  "include": ["src/**/*.ts"]
+}
