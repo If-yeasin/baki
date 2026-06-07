@@ -11,7 +11,8 @@ import {
 
 import { Button } from "./Button";
 import { Text } from "./Text";
-import { lightColors, radii, spacing } from "./theme/tokens";
+import { radii, spacing } from "./theme/tokens";
+import { useTheme } from "./theme/useTheme";
 
 export type SheetSnapPoint = DimensionValue;
 
@@ -48,6 +49,8 @@ export function Sheet({
   visible,
   ...props
 }: SheetProps) {
+  const { colors } = useTheme();
+
   return (
     <Modal
       animationType={animationType}
@@ -59,7 +62,8 @@ export function Sheet({
       <View
         style={[
           {
-            backgroundColor: "rgba(13, 27, 30, 0.32)",
+            // Slightly heavier scrim in dark so the surface step is legible.
+            backgroundColor: "rgba(0, 0, 0, 0.52)",
             flex: 1,
             justifyContent: "flex-end"
           },
@@ -76,8 +80,8 @@ export function Sheet({
           accessibilityViewIsModal
           style={[
             {
-              backgroundColor: lightColors.bgSurface,
-              borderColor: lightColors.borderSubtle,
+              backgroundColor: colors.bgSurface,
+              borderColor: colors.borderSubtle,
               borderTopLeftRadius: radii.xl,
               borderTopRightRadius: radii.xl,
               borderWidth: 1,

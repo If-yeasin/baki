@@ -1,0 +1,24 @@
+# CI: skipped — depends on the bKash native app and is not deterministic in the cloud simulator.
+appId: com.baki.app
+name: Settle via bKash deep link
+tags:
+  - ci-skip
+  - settlement
+# Pre-condition: balances tab shows at least one outstanding row.
+# Note: requires bKash app installed on the device; skip in CI.
+---
+- launchApp:
+    clearState: false
+# Prefer stable testID over fragile Bengali text — group-card-{index} is set in (tabs)/index.tsx.
+- tapOn:
+    id: "group-card-0"
+# tab-balances is wired via tabBarButtonTestID on (tabs)/_layout.tsx.
+- tapOn:
+    id: "tab-balances"
+- tapOn:
+    id: "settle-row-0"
+# Requires testID="settle-bkash-0" on the first bKash row.
+- tapOn:
+    id: "settle-bkash-0"
+- assertVisible:
+    text: "নিষ্পত্তি|সেটেলমেন্ট"

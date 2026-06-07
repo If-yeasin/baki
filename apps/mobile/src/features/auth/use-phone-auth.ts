@@ -1,8 +1,10 @@
 import { useMutation } from "@tanstack/react-query";
 
-import { supabase } from "@/lib/supabase";
+import { Sentry } from "@/lib/sentry";
+import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
 import { normalizeBdPhone } from "./phone";
+import { persistUserId } from "./use-session";
 
 type RequestOtpInput = {
   phone: string;
@@ -21,6 +23,10 @@ type UpsertProfileInput = {
 export function useRequestOtp() {
   return useMutation({
     mutationFn: async ({ phone }: RequestOtpInput) => {
+      if (!isSupabaseConfigured) {
+        throw new Error("auth.error.otp_failed");
+      }
+
       const normalizedPhone = normalizeBdPhone(phone);
       const { error } = await supabase.auth.signInWithOtp({ phone: normalizedPhone });
 
@@ -36,6 +42,10 @@ export function useRequestOtp() {
 export function useVerifyOtp() {
   return useMutation({
     mutationFn: async ({ otp, phone }: VerifyOtpInput) => {
+      if (!isSupabaseConfigured) {
+        throw new Error("auth.error.otp_expired");
+      }
+
       const normalizedPhone = normalizeBdPhone(phone);
       const { data, error } = await supabase.auth.verifyOtp({
         phone: normalizedPhone,
@@ -47,6 +57,10 @@ export function useVerifyOtp() {
         throw error;
       }
 
+      if (data.user?.id) {
+        persistUserId(data.user.id);
+      }
+
       return data;
     }
   });
@@ -55,6 +69,10 @@ export function useVerifyOtp() {
 export function useUpsertProfile() {
   return useMutation({
     mutationFn: async ({ displayName, phone }: UpsertProfileInput) => {
+      if (!isSupabaseConfigured) {
+        throw new Error("auth.error.notSignedIn");
+      }
+
       const {
         data: { user },
         error: userError
@@ -78,9 +96,11 @@ export function useUpsertProfile() {
       });
 
       if (error) {
+        Sentry.captureException(error, { tags: { feature: "auth.profile.upsert" } });
         throw error;
       }
 
+      persistUserId(user.id);
       return { userId: user.id };
     }
   });

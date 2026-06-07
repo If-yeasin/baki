@@ -1,0 +1,16 @@
+appId: com.baki.app
+name: Create a new khata
+tags:
+  - groups
+# Pre-condition: user is already signed in. Sign-in is handled by a separate
+# orchestration flow (phone OTP cannot be automated reliably in CI).
+---
+- launchApp:
+    clearState: false
+- tapOn: "+ নতুন খাতা"
+- tapOn:
+    id: "group-name-input"
+- inputText: "সাজেক ট্রিপ"
+- tapOn: "ট্রিপ"
+- tapOn: "খাতা তৈরি করো"
+- assertVisible: "সাজেক ট্রিপ"

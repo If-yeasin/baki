@@ -17,16 +17,21 @@ import {
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
+import { Component, type ReactNode, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { Text as RNText, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
-import "@/lib/i18n";
+import { ThemeProvider, darkColors, useTheme } from "@baki/ui";
+
+import { i18n } from "@/lib/i18n";
 import { SyncStatusIndicator } from "@/components/SyncStatusIndicator";
 import { queryClient } from "@/lib/query-client";
+import { Sentry } from "@/lib/sentry";
 
 void SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
+function RootLayout() {
   const [hindLoaded] = useHindSiliguriFonts({
     HindSiliguri_400Regular,
     HindSiliguri_500Medium,
@@ -53,24 +58,83 @@ export default function RootLayout() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <QueryClientProvider client={queryClient}>
-        <Stack
-          screenOptions={{
-            contentStyle: { backgroundColor: "#faf6ef" },
-            headerShadowVisible: false,
-            headerStyle: { backgroundColor: "#faf6ef" },
-            headerTintColor: "#0d1b1e",
-            headerRight: () => <SyncStatusIndicator />,
-            headerTitleStyle: {
-              fontFamily: "HindSiliguri_600SemiBold"
-            }
+    <GestureHandlerRootView style={{ backgroundColor: darkColors.bgCanvas, flex: 1 }}>
+      <RootErrorBoundary>
+        {/* Splitwise-inspired dark surface is the default look for Baki. */}
+        <ThemeProvider override="dark">
+          <QueryClientProvider client={queryClient}>
+            <RootStack />
+          </QueryClientProvider>
+        </ThemeProvider>
+      </RootErrorBoundary>
+    </GestureHandlerRootView>
+  );
+}
+
+export default Sentry.wrap(RootLayout);
+
+class RootErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error) {
+    console.error("[RootErrorBoundary]", error);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <View
+          accessibilityRole="alert"
+          style={{
+            alignItems: "center",
+            backgroundColor: darkColors.bgCanvas,
+            flex: 1,
+            justifyContent: "center",
+            padding: 24
           }}
         >
-          <Stack.Screen name="index" options={{ title: "বাকি" }} />
-          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-        </Stack>
-      </QueryClientProvider>
-    </GestureHandlerRootView>
+          <RNText style={{ color: darkColors.inkPrimary, textAlign: "center" }}>
+            {i18n.t("common.error.generic")}
+          </RNText>
+        </View>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function RootStack() {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+
+  return (
+    <Stack
+      screenOptions={{
+        contentStyle: { backgroundColor: colors.bgCanvas },
+        headerShadowVisible: false,
+        headerStyle: { backgroundColor: colors.bgCanvas },
+        headerTintColor: colors.inkPrimary,
+        headerRight: () => <SyncStatusIndicator />,
+        headerTitleStyle: {
+          fontFamily: "HindSiliguri_600SemiBold"
+        }
+      }}
+    >
+      <Stack.Screen name="index" options={{ headerShown: false }} />
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="groups/create" options={{ title: t("groups.create.title") }} />
+      <Stack.Screen name="groups/join" options={{ title: t("groups.join.title") }} />
+      <Stack.Screen
+        name="group/[id]/index"
+        options={{ title: t("groups.detail.fallback_title") }}
+      />
+      <Stack.Screen name="group/[id]/add-expense" options={{ title: t("expense.add.title") }} />
+      <Stack.Screen name="group/[id]/settle" options={{ title: t("settle.title") }} />
+    </Stack>
   );
 }

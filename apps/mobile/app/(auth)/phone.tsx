@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { ScrollView, View } from "react-native";
 import { z } from "zod";
 
-import { Button, Card, PhoneInput, Text, lightColors, spacing } from "@baki/ui";
+import { Button, Card, PhoneInput, Text, spacing, useTheme } from "@baki/ui";
 
 import { bdPhoneSchema, displayBdPhone } from "@/features/auth/phone";
 import { useRequestOtp } from "@/features/auth/use-phone-auth";
@@ -20,6 +20,7 @@ export default function PhoneScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const requestOtp = useRequestOtp();
+  const { colors } = useTheme();
   const {
     control,
     formState: { errors },
@@ -37,7 +38,7 @@ export default function PhoneScreen() {
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
-      style={{ backgroundColor: lightColors.bgCanvas, flex: 1 }}
+      style={{ backgroundColor: colors.bgCanvas, flex: 1 }}
       contentContainerStyle={{ gap: spacing.lg, padding: spacing.xl }}
     >
       <Stack.Screen options={{ title: t("auth.phone.title") }} />

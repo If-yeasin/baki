@@ -1,7 +1,8 @@
 import { View, type ViewStyle } from "react-native";
 
 import { Text } from "./Text";
-import { lightColors, radii } from "./theme/tokens";
+import { radii } from "./theme/tokens";
+import { useTheme } from "./theme/useTheme";
 
 type AvatarSize = "sm" | "md" | "lg";
 
@@ -27,20 +28,23 @@ function initials(name: string): string {
 }
 
 export function Avatar({ name, size = "md" }: AvatarProps) {
+  const { colors, scheme } = useTheme();
+  const initialsColor = scheme === "dark" ? colors.bgCanvas : colors.bgSurface;
+
   return (
     <View
       accessibilityLabel={name}
       style={[
         {
           alignItems: "center",
-          backgroundColor: lightColors.brandPrimary,
+          backgroundColor: colors.brandPrimary,
           borderRadius: radii.pill,
           justifyContent: "center"
         },
         sizeStyle[size]
       ]}
     >
-      <Text style={{ color: lightColors.bgSurface }} variant="label">
+      <Text style={{ color: initialsColor }} variant="label">
         {initials(name)}
       </Text>
     </View>

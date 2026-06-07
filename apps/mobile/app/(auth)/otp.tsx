@@ -4,7 +4,7 @@ import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { ScrollView, View } from "react-native";
 
-import { Button, Card, Input, Text, lightColors, spacing } from "@baki/ui";
+import { Button, Card, Input, Text, spacing, useTheme } from "@baki/ui";
 
 import { displayBdPhone, otpSchema } from "@/features/auth/phone";
 import { useVerifyOtp } from "@/features/auth/use-phone-auth";
@@ -15,6 +15,7 @@ export default function OtpScreen() {
   const params = useLocalSearchParams<{ phone?: string }>();
   const phone = params.phone ?? "";
   const verifyOtp = useVerifyOtp();
+  const { colors } = useTheme();
   const {
     control,
     formState: { errors },
@@ -32,7 +33,7 @@ export default function OtpScreen() {
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
-      style={{ backgroundColor: lightColors.bgCanvas, flex: 1 }}
+      style={{ backgroundColor: colors.bgCanvas, flex: 1 }}
       contentContainerStyle={{ gap: spacing.lg, padding: spacing.xl }}
     >
       <Stack.Screen options={{ title: t("auth.otp.title") }} />

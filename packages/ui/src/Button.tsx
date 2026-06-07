@@ -1,7 +1,8 @@
 import { Pressable, type PressableProps, type StyleProp, type ViewStyle } from "react-native";
 
 import { Text } from "./Text";
-import { lightColors, radii, spacing } from "./theme/tokens";
+import { radii, spacing } from "./theme/tokens";
+import { useTheme, type ThemeColors } from "./theme/useTheme";
 
 type ButtonVariant = "primary" | "secondary" | "ghost" | "destructive";
 type ButtonSize = "sm" | "md" | "lg";
@@ -14,17 +15,31 @@ export type ButtonProps = PressableProps & {
 };
 
 const sizeStyle: Record<ButtonSize, ViewStyle> = {
-  sm: { minHeight: 44, paddingHorizontal: spacing.lg },
-  md: { minHeight: 48, paddingHorizontal: spacing.xl },
-  lg: { minHeight: 54, paddingHorizontal: spacing["2xl"] }
+  sm: { minHeight: 44, paddingHorizontal: spacing.lg, paddingVertical: spacing.xs },
+  md: { minHeight: 48, paddingHorizontal: spacing.xl, paddingVertical: spacing.sm },
+  lg: { minHeight: 54, paddingHorizontal: spacing["2xl"], paddingVertical: spacing.md }
 };
 
-const variantStyle: Record<ButtonVariant, ViewStyle> = {
-  destructive: { backgroundColor: lightColors.negative },
-  ghost: { backgroundColor: "transparent" },
-  primary: { backgroundColor: lightColors.brandPrimary },
-  secondary: { backgroundColor: lightColors.bgSubtle }
+type VariantStyle = {
+  backgroundColor: string;
+  borderColor: string;
+  borderWidth: number;
 };
+
+function stylesForVariant(colors: ThemeColors, variant: ButtonVariant): VariantStyle {
+  switch (variant) {
+    case "destructive":
+      return { backgroundColor: colors.negative, borderColor: colors.negative, borderWidth: 0 };
+    case "ghost":
+      return { backgroundColor: "transparent", borderColor: "transparent", borderWidth: 0 };
+    case "secondary":
+      // Outlined chip-style surface — works on canvas without competing with brand.
+      return { backgroundColor: colors.bgSurface, borderColor: colors.borderStrong, borderWidth: 1 };
+    case "primary":
+    default:
+      return { backgroundColor: colors.brandPrimary, borderColor: colors.brandPrimary, borderWidth: 0 };
+  }
+}
 
 export function Button({
   accessibilityLabel,
@@ -35,7 +50,12 @@ export function Button({
   variant = "primary",
   ...props
 }: ButtonProps) {
-  const textTone = variant === "secondary" || variant === "ghost" ? "primary" : undefined;
+  const { colors } = useTheme();
+  const variantStyle = stylesForVariant(colors, variant);
+  // Filled brand/destructive surfaces get the on-brand text token. Secondary and
+  // ghost ride the primary ink so they read on both dark canvas and surface.
+  const usesOnBrandText = variant === "primary" || variant === "destructive";
+  const textTone = usesOnBrandText ? "onBrand" : "primary";
 
   return (
     <Pressable
@@ -46,17 +66,23 @@ export function Button({
         {
           alignItems: "center",
           borderRadius: radii.md,
+          flexShrink: 1,
           justifyContent: "center",
           opacity: disabled ? 0.48 : 1,
           transform: [{ scale: pressed ? 0.97 : 1 }]
         },
         sizeStyle[size],
-        variantStyle[variant],
+        variantStyle,
         style
       ]}
       {...props}
     >
-      <Text tone={textTone} variant="bodyStrong">
+      <Text
+        numberOfLines={2}
+        style={{ textAlign: "center" }}
+        tone={textTone}
+        variant="bodyStrong"
+      >
         {children}
       </Text>
     </Pressable>

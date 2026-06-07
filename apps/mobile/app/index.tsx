@@ -1,63 +1,37 @@
-import { Plus } from "lucide-react-native";
-import { Link, type Href } from "expo-router";
+import { Redirect } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { ScrollView, View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 
-import { Avatar, Button, Card, Money, Text, lightColors, spacing } from "@baki/ui";
+import { Text, spacing, useTheme } from "@baki/ui";
 
-export default function HomeScreen() {
+import { useSession } from "@/features/auth/use-session";
+
+export default function RootGate() {
   const { t } = useTranslation();
+  const { isLoading, userId } = useSession();
+  const { colors } = useTheme();
 
-  return (
-    <ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      style={{ backgroundColor: lightColors.bgCanvas, flex: 1 }}
-      contentContainerStyle={{ gap: spacing.lg, padding: spacing.xl }}
-    >
-      <View style={{ gap: spacing.sm }}>
-        <Text variant="display">{t("home.title")}</Text>
-        <Text tone="secondary">{t("home.subtitle")}</Text>
+  if (isLoading) {
+    return (
+      <View
+        accessibilityRole="progressbar"
+        style={{
+          alignItems: "center",
+          backgroundColor: colors.bgCanvas,
+          flex: 1,
+          gap: spacing.md,
+          justifyContent: "center"
+        }}
+      >
+        <ActivityIndicator color={colors.brandPrimary} size="large" />
+        <Text tone="secondary">{t("common.loading")}</Text>
       </View>
+    );
+  }
 
-      <Card style={{ gap: spacing.lg }}>
-        <View style={{ alignItems: "center", flexDirection: "row", gap: spacing.md }}>
-          <Avatar name="Baki" />
-          <View style={{ flex: 1 }}>
-            <Text variant="h3">{t("home.empty.title")}</Text>
-            <Text tone="secondary" variant="caption">
-              {t("home.empty.body")}
-            </Text>
-          </View>
-        </View>
+  if (userId) {
+    return <Redirect href="/(tabs)" />;
+  }
 
-        <View
-          accessibilityLabel={t("balance.all_settled")}
-          style={{
-            alignItems: "center",
-            backgroundColor: lightColors.bgSubtle,
-            borderRadius: 10,
-            flexDirection: "row",
-            justifyContent: "space-between",
-            padding: spacing.lg
-          }}
-        >
-          <Text tone="secondary">{t("balance.all_settled")}</Text>
-          <Money amountPaisa={0} />
-        </View>
-
-        <Link href={"/phone" as Href} asChild>
-          <Button accessibilityLabel={t("groups.create.title")}>
-            {`+ ${t("groups.create.title")}`}
-          </Button>
-        </Link>
-
-        <View style={{ alignItems: "center", flexDirection: "row", gap: spacing.sm }}>
-          <Plus color={lightColors.brandPrimary} size={18} />
-          <Text tone="secondary" variant="caption">
-            {t("expense.add.title")}
-          </Text>
-        </View>
-      </Card>
-    </ScrollView>
-  );
+  return <Redirect href="/(auth)/phone" />;
 }

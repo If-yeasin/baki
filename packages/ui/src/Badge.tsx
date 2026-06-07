@@ -1,7 +1,8 @@
 import { View, type StyleProp, type TextStyle, type ViewStyle } from "react-native";
 
 import { Text } from "./Text";
-import { lightColors, radii, spacing } from "./theme/tokens";
+import { radii, spacing } from "./theme/tokens";
+import { useTheme, type ThemeColors } from "./theme/useTheme";
 
 type BadgeSize = "sm" | "md";
 type BadgeVariant = "brand" | "gold" | "info" | "negative" | "neutral" | "positive" | "warning";
@@ -15,15 +16,27 @@ export type BadgeProps = {
   variant?: BadgeVariant;
 };
 
-const badgePalette: Record<BadgeVariant, { backgroundColor: string; color: string }> = {
-  brand: { backgroundColor: lightColors.brandPrimary, color: lightColors.bgSurface },
-  gold: { backgroundColor: "#fff7dc", color: lightColors.accentGold },
-  info: { backgroundColor: "#e0f2fe", color: lightColors.info },
-  negative: { backgroundColor: "#fee2e2", color: lightColors.negative },
-  neutral: { backgroundColor: lightColors.bgSubtle, color: lightColors.inkSecondary },
-  positive: { backgroundColor: "#dcfce7", color: lightColors.positive },
-  warning: { backgroundColor: "#ffedd5", color: lightColors.warning }
-};
+type BadgePalette = { backgroundColor: string; color: string };
+
+function paletteFor(colors: ThemeColors, variant: BadgeVariant): BadgePalette {
+  switch (variant) {
+    case "brand":
+      return { backgroundColor: colors.brandPrimary, color: colors.inkOnBrand };
+    case "gold":
+      return { backgroundColor: colors.tintGold, color: colors.accentGold };
+    case "info":
+      return { backgroundColor: colors.tintInfo, color: colors.info };
+    case "negative":
+      return { backgroundColor: colors.tintNegative, color: colors.negative };
+    case "positive":
+      return { backgroundColor: colors.tintPositive, color: colors.positive };
+    case "warning":
+      return { backgroundColor: colors.tintWarning, color: colors.warning };
+    case "neutral":
+    default:
+      return { backgroundColor: colors.bgSubtle, color: colors.inkSecondary };
+  }
+}
 
 const badgeSize: Record<BadgeSize, ViewStyle> = {
   md: { minHeight: 28, paddingHorizontal: spacing.md },
@@ -38,7 +51,8 @@ export function Badge({
   textStyle,
   variant = "neutral"
 }: BadgeProps) {
-  const palette = badgePalette[variant];
+  const { colors } = useTheme();
+  const palette = paletteFor(colors, variant);
 
   return (
     <View

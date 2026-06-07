@@ -3,9 +3,7 @@ import { useState } from "react";
 import {
   TextInput,
   View,
-  type NativeSyntheticEvent,
   type StyleProp,
-  type TextInputFocusEventData,
   type TextInputProps,
   type TextStyle,
   type ViewStyle
@@ -144,15 +142,15 @@ export function PhoneInput({
           ? lightColors.brandPrimary
           : lightColors.borderStrong;
 
-  function handleFocus(event: NativeSyntheticEvent<TextInputFocusEventData>) {
+  const handleFocus: NonNullable<TextInputProps["onFocus"]> = (event) => {
     setFocused(true);
     onFocus?.(event);
-  }
+  };
 
-  function handleBlur(event: NativeSyntheticEvent<TextInputFocusEventData>) {
+  const handleBlur: NonNullable<TextInputProps["onBlur"]> = (event) => {
     setFocused(false);
     onBlur?.(event);
-  }
+  };
 
   function handleChangeText(nextText: string) {
     const localNumber = normalizeBdPhoneNumber(nextText);

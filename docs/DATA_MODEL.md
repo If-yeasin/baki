@@ -216,3 +216,108 @@ Clients subscribe per-group; the mobile app filters by `group_id = $current_grou
 - `settlements(group_id, occurred_at desc)`
 - `activity_log(group_id, created_at desc)`
 - `group_members(user_id) where left_at is null`
+
+## Implementation status
+
+This section tracks divergences between the prose schema above and the actual migrations under `packages/db/migrations/`. Append, do not silently rewrite.
+
+### Money column widths
+
+The doc text above says "money columns: `integer` (paisa)". The shipped migration `0001_initial.sql` uses **`bigint`** for `expenses.amount_paisa`, `expense_shares.share_paisa`, and `settlements.amount_paisa`, which matches the project-wide non-negotiable "money is bigint paisa". The doc prose is the drift; treat the migration as authoritative. New columns must follow `bigint`.
+
+### `group_members` INSERT
+
+There is intentionally **no `INSERT` policy on `group_members`**. The only path that adds rows is the `accept_invite(p_invite_code text)` PL/pgSQL function, which is `SECURITY DEFINER` and validates the invite code before inserting. The group-creator membership row is added by the `add_group_creator_member` trigger, also `SECURITY DEFINER`. RLS default-deny on INSERT is therefore the desired behaviour and is now covered by an RLS test (`packages/db/tests/rls-policies.test.ts`).
+
+### `settlements` UPDATE / DELETE
+
+`0001_initial.sql` defines only `SELECT` and `INSERT` policies on `public.settlements`. No `UPDATE` or `DELETE` policy exists, so default-deny applies to both. This is intentional — settlements are append-only ledger entries; corrections happen by inserting a compensating settlement. Covered by an RLS test.
+
+### `expense_shares` DELETE
+
+Only `SELECT`, `INSERT`, and `UPDATE` policies are defined for `public.expense_shares`. `DELETE` is default-deny — share rows are removed only as a side-effect of the parent expense being soft-deleted (the trigger leaves shares intact for audit). If we ever need an explicit `DELETE` path, add it in a follow-up migration with a new RLS test.
+
+### Group archive / rename
+
+The doc prose says "UPDATE: only if user is admin of the group". This is enforced by `groups_update_admins`, which is `FOR UPDATE` and gates both `using` and `with check` on `current_user_is_group_admin(id)`. Archive (`archived_at`) and rename (`name`) both go through this single policy — no extra policy needed.
+
+### `device_tokens`
+
+`device_tokens_own_rows` is `FOR ALL` (SELECT/INSERT/UPDATE/DELETE) gated to `user_id = auth.uid()`. The doc bullet ("ALL: only own rows") matches the migration.
+
+### Database functions added since 0001
+
+- `get_group_balances(p_group_id uuid) returns table(user_id uuid, net_paisa bigint)` — added in `0003_balances_helper.sql`. `SECURITY DEFINER`, raises `not_group_member` (SQLSTATE `42501`) if the caller is not a current member. Returns one row per member who has a non-zero net (creditor positive, debtor negative). The mobile app uses this for the per-member balance strip without re-running `simplify_debts`.
+
+### Type-generation note
+
+`packages/db/src/types.ts` was regenerated against a local Supabase with `0001`–`0003` applied; `Database["public"]["Functions"].get_group_balances` is now present and typed. `GroupBalanceRow` in `packages/db/src/index.ts` is derived from that generated type, so the mobile app calls `supabase.rpc("get_group_balances", { p_group_id })` against the typed client with no casts. Re-run `pnpm --filter db gen:types` after any new migration that touches the function or its return shape.
+
+## Account deletion
+
+Apple Guideline 5.1.1(v) requires an in-app deletion path before the App Store submission. This section is the source of truth for what that path does on the server. The mobile-side hook (`apps/mobile/src/features/auth/`) calls this contract; do not change the wire shape without also updating the mobile agent.
+
+### Wire contract
+
+- **Edge Function name:** `delete-account`
+- **Method:** `POST`
+- **Request body:** `{}` — the user's identity is taken from the Supabase JWT in the `Authorization: Bearer <token>` header. No other inputs are accepted.
+- **Success response:** HTTP `200` with JSON body `{ "deleted": true }`. After this, the client must `supabase.auth.signOut()` locally; the server has already invalidated the session as a side-effect of removing the `auth.users` row.
+- **Failure response:** HTTP `4xx`/`5xx` with JSON body `{ "error": "<machine_code>" }`. Localized strings live in `packages/i18n`; the function returns codes only.
+
+### Error codes
+
+| Code | HTTP | Meaning |
+|---|---|---|
+| `not_authenticated` | 401 | No valid JWT was attached. The client must redirect to the OTP flow. |
+| `unsettled_balances` | 409 | The user has a non-zero net balance in at least one active group. The client surfaces "settle up first" and lists the offending groups (the client already has balances locally). |
+| `internal_error` | 500 | Catch-all. The function logs the raw error to its own Deno logs (never phone numbers or MFS numbers — `maskMfsNumber` from `@baki/payments` is used if anything resembling a phone is logged). |
+
+### Cascade behavior
+
+`public.profiles.id` is `references auth.users(id) on delete cascade` (see `0001_initial.sql`). When we delete a row from `auth.users`, Postgres cascades through `public.profiles`, and from there cascades into:
+
+- `public.group_members` — `user_id ... on delete cascade`
+- `public.device_tokens` — `user_id ... on delete cascade`
+- `public.expense_shares` — `expense_id ... on delete cascade` only cascades when the parent **expense** is deleted; it does not cascade when the user is deleted, because `expense_shares.user_id` has **no** `on delete` clause. We address this below.
+
+The following FK columns reference `public.profiles(id)` **without** `on delete cascade`, so a naive cascade would fail or orphan data:
+
+- `expenses.paid_by`
+- `expenses.created_by`
+- `settlements.from_user`
+- `settlements.to_user`
+- `activity_log.actor_id`
+- `expense_shares.user_id`
+
+These rows belong to other group members' ledgers; deleting them would corrupt every co-member's balance. We therefore reassign these references to a sentinel "tombstone" profile rather than dropping them.
+
+### Tombstone profile
+
+A singleton row in `public.profiles` represents "[deleted user]". Its UUID is the all-zeros UUID `00000000-0000-0000-0000-000000000000`. It is inserted by `0004_account_deletion.sql` with `on conflict (id) do nothing` so the migration is idempotent. It is **not** backed by an `auth.users` row — the FK from `profiles.id -> auth.users.id` is created with `on delete cascade`, but Postgres allows the child row to exist without a parent only if we insert the child without a matching parent (the constraint is not deferred). For that reason the migration first inserts a stub `auth.users` row for the tombstone (`aud = 'authenticated'`, `role = 'authenticated'`, phone `+00000000000`, email `deleted@baki.invalid`, dummy encrypted password, `email_confirmed_at` set), and then inserts the matching `profiles` row. The stub user has no usable credentials — its password hash is meaningless and SMS/email confirmation is set so OTP cannot be initiated against it.
+
+The mobile app must filter the tombstone out of any "member list" UI. Its `display_name` is the literal string `[deleted user]`, which the renderer maps via `i18n` to the localized "মুছে ফেলা ব্যবহারকারী" / "Deleted user".
+
+### Unsettled-balance check
+
+Deletion is refused if the user has any non-zero net in any active (non-archived, non-soft-deleted) group. The check reuses the existing `get_group_balances` data flow rather than recomputing it. Specifically: the RPC `public.delete_my_account()` iterates over every group the caller is a current member of (`group_members.left_at is null` AND `groups.archived_at is null` AND `groups.deleted_at is null`), and for each one computes the caller's net the same way `get_group_balances` does. If any net is non-zero, the function raises `unsettled_balances` (SQLSTATE `P0001`) and the Edge Function translates that to HTTP 409 + `{ error: "unsettled_balances" }`.
+
+A user with a zero net in every group is allowed to delete even if the group still has outstanding balances between **other** members; their own ledger is clean.
+
+### RPC contract — `public.delete_my_account()`
+
+Added in `0004_account_deletion.sql`:
+
+- `SECURITY DEFINER`, owned by the Postgres role.
+- Raises `not_authenticated` (SQLSTATE `28000`) if `auth.uid()` is null.
+- Raises `unsettled_balances` (SQLSTATE `P0001`) if any active-group net is non-zero.
+- Reassigns the six FK columns listed above from the caller's UUID to the tombstone UUID inside a single transaction. Each `UPDATE` is scoped on `... = auth.uid()` so the function cannot touch other users' rows even by mistake.
+- Deletes the row from `auth.users where id = auth.uid()`. The cascade from `auth.users -> public.profiles -> (group_members, device_tokens)` removes the caller's identity and push tokens.
+- Returns `void`.
+- `EXECUTE` is revoked from `anon` and granted to `authenticated`.
+
+The Edge Function never deletes rows directly; it only calls this RPC with the user's JWT and translates SQL errors into the wire-level `error` codes.
+
+### Re-deletion idempotency
+
+If the same authenticated session calls the Edge Function twice, the second call will fail at `auth.uid()` (the session is invalidated after the first call removed the `auth.users` row) and return `not_authenticated`. From the user's perspective both calls produce the desired "I am signed out" state, so the client treats `not_authenticated` after a `deleted: true` as a no-op.

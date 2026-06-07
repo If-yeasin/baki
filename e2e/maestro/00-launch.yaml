@@ -1,0 +1,8 @@
+appId: com.baki.app
+name: Launch baki
+tags:
+  - smoke
+---
+- launchApp:
+    clearState: false
+- assertVisible: "বাকি"

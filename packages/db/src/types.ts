@@ -411,6 +411,13 @@ export type Database = {
         Args: { target_group_id: string }
         Returns: boolean
       }
+      get_group_balances: {
+        Args: { p_group_id: string }
+        Returns: {
+          net_paisa: number
+          user_id: string
+        }[]
+      }
       simplify_debts: {
         Args: { p_group_id: string }
         Returns: {

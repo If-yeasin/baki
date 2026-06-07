@@ -19,6 +19,10 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": ["dist/**", "build/**"]
+    },
+    "check": {
+      "dependsOn": ["lint", "typecheck", "test"],
+      "outputs": []
     }
   }
 }

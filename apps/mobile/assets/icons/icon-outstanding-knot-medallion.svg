@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-label="Baki outstanding knot app icon">
+  <title>Baki outstanding knot mark</title>
+  <desc>One continuous jade brushstroke loop crossing itself once, with a small gold dot at the crossing.</desc>
+  <rect width="1024" height="1024" fill="#faf6ef"/>
+  <circle cx="512" cy="512" r="380" fill="none" stroke="#b8860b" stroke-width="12"/>
+  <path d="M588 304 C523 244 436 252 405 326 C366 418 292 422 292 518 C292 641 347 715 430 730 C548 752 645 746 698 710 C773 659 811 594 793 525 C773 449 706 392 625 354 C577 331 532 315 476 304 C510 236 557 242 588 304" fill="none" stroke="#0d7c66" stroke-width="104" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="557" cy="311" r="44" fill="#0d7c66"/>
+  <circle cx="557" cy="311" r="19" fill="#b8860b"/>
+</svg>

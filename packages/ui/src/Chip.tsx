@@ -2,7 +2,8 @@ import type { ReactNode } from "react";
 import { Pressable, type PressableProps, type StyleProp, type ViewStyle } from "react-native";
 
 import { Text } from "./Text";
-import { lightColors, radii, spacing } from "./theme/tokens";
+import { radii, spacing } from "./theme/tokens";
+import { useTheme } from "./theme/useTheme";
 
 type ChipVariant = "neutral" | "brand";
 
@@ -29,6 +30,7 @@ export function Chip({
   variant = "neutral",
   ...props
 }: ChipProps) {
+  const { colors } = useTheme();
   const interactive = Boolean(onPress || onLongPress);
   const active = selected || variant === "brand";
   const isDisabled = disabled === true;
@@ -44,8 +46,11 @@ export function Chip({
       style={({ pressed }) => [
         {
           alignItems: "center",
-          backgroundColor: active ? lightColors.brandPrimary : lightColors.bgSubtle,
-          borderColor: active ? lightColors.brandPrimary : lightColors.borderSubtle,
+          // Selected: solid brand fill with on-brand ink.
+          // Unselected: surface chip with strong border — reads on canvas without
+          // a competing tint that would muddy the rhythm in dense rows.
+          backgroundColor: active ? colors.brandPrimary : colors.bgSurface,
+          borderColor: active ? colors.brandPrimary : colors.borderStrong,
           borderRadius: radii.pill,
           borderWidth: 1,
           flexDirection: "row",
@@ -62,7 +67,10 @@ export function Chip({
     >
       {leading}
       <Text
-        style={{ color: active ? lightColors.bgSurface : lightColors.inkPrimary }}
+        ellipsizeMode="tail"
+        numberOfLines={2}
+        style={{ flexShrink: 1, maxWidth: 220, textAlign: "center" }}
+        tone={active ? "onBrand" : "primary"}
         variant="bodyStrong"
       >
         {children}

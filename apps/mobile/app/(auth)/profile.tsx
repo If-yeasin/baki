@@ -4,7 +4,7 @@ import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { ScrollView, View } from "react-native";
 
-import { Button, Card, Input, Text, lightColors, spacing } from "@baki/ui";
+import { Button, Card, Input, Text, spacing, useTheme } from "@baki/ui";
 
 import { profileSchema } from "@/features/auth/phone";
 import { useUpsertProfile } from "@/features/auth/use-phone-auth";
@@ -15,6 +15,7 @@ export default function ProfileScreen() {
   const params = useLocalSearchParams<{ phone?: string }>();
   const phone = params.phone ?? "";
   const upsertProfile = useUpsertProfile();
+  const { colors } = useTheme();
   const {
     control,
     formState: { errors },
@@ -32,7 +33,7 @@ export default function ProfileScreen() {
   return (
     <ScrollView
       contentInsetAdjustmentBehavior="automatic"
-      style={{ backgroundColor: lightColors.bgCanvas, flex: 1 }}
+      style={{ backgroundColor: colors.bgCanvas, flex: 1 }}
       contentContainerStyle={{ gap: spacing.lg, padding: spacing.xl }}
     >
       <Stack.Screen options={{ title: t("auth.profile.title") }} />

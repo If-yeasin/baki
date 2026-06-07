@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ScrollView, View } from "react-native";
 
+import { formatDhakaDate, type SupportedLocale } from "@baki/i18n";
 import {
   Badge,
   Button,
@@ -17,22 +18,23 @@ import {
   Tabs,
   Text,
   Toast,
-  lightColors,
-  spacing
+  spacing,
+  useTheme
 } from "@baki/ui";
 
 type DemoTab = "all" | "pending";
 
 export default function ComponentDemoScreen() {
-  const { t } = useTranslation();
+  const { i18n, t } = useTranslation();
   const [tab, setTab] = useState<DemoTab>("all");
   const [phone, setPhone] = useState("01712345678");
   const [amount, setAmount] = useState("1250");
+  const { colors } = useTheme();
 
   return (
     <ScrollView
       contentContainerStyle={{ gap: spacing.lg, padding: spacing.xl }}
-      style={{ backgroundColor: lightColors.bgCanvas, flex: 1 }}
+      style={{ backgroundColor: colors.bgCanvas, flex: 1 }}
     >
       <View style={{ gap: spacing.xs }}>
         <Text variant="h1">{t("dev.components.title")}</Text>
@@ -85,7 +87,7 @@ export default function ComponentDemoScreen() {
           <Money amountPaisa={125000} variant="positive" />
         </View>
         <DatePicker
-          displayValue="১৮ মে, ২০২৬"
+          displayValue={formatDhakaDate(new Date(), (i18n.language as SupportedLocale) ?? "bn")}
           label={t("dev.components.dateLabel")}
           placeholder={t("dev.components.datePlaceholder")}
         />

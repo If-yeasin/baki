@@ -7,7 +7,6 @@ const config: ExpoConfig = {
   orientation: "portrait",
   scheme: "baki",
   userInterfaceStyle: "automatic",
-  newArchEnabled: true,
   assetBundlePatterns: ["**/*"],
   icon: "./assets/icons/icon.png",
   ios: {
@@ -37,6 +36,7 @@ const config: ExpoConfig = {
     "@sentry/react-native/expo"
   ],
   experiments: {
+    reactCompiler: true,
     typedRoutes: true
   },
   extra: {

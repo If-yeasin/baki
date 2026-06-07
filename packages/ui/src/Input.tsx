@@ -2,17 +2,16 @@ import { type ReactNode, useState } from "react";
 import {
   TextInput,
   View,
-  type NativeSyntheticEvent,
   type StyleProp,
-  type TextInputFocusEventData,
   type TextInputProps,
   type TextStyle,
   type ViewStyle
 } from "react-native";
 
 import { Text } from "./Text";
-import { lightColors, radii, spacing } from "./theme/tokens";
+import { radii, spacing } from "./theme/tokens";
 import { typography } from "./theme/typography";
+import { useTheme } from "./theme/useTheme";
 
 export type InputProps = Omit<TextInputProps, "style"> & {
   containerStyle?: StyleProp<ViewStyle>;
@@ -37,28 +36,29 @@ export function Input({
   leading,
   onBlur,
   onFocus,
-  placeholderTextColor = lightColors.inkMuted,
+  placeholderTextColor,
   trailing,
   ...props
 }: InputProps) {
+  const { colors } = useTheme();
   const [focused, setFocused] = useState(false);
   const disabled = editable === false;
   const supportText = errorText ?? helperText;
   const borderColor = errorText
-    ? lightColors.negative
+    ? colors.negative
     : focused
-      ? lightColors.brandPrimary
-      : lightColors.borderStrong;
+      ? colors.brandPrimary
+      : colors.borderStrong;
 
-  function handleFocus(event: NativeSyntheticEvent<TextInputFocusEventData>) {
+  const handleFocus: NonNullable<TextInputProps["onFocus"]> = (event) => {
     setFocused(true);
     onFocus?.(event);
-  }
+  };
 
-  function handleBlur(event: NativeSyntheticEvent<TextInputFocusEventData>) {
+  const handleBlur: NonNullable<TextInputProps["onBlur"]> = (event) => {
     setFocused(false);
     onBlur?.(event);
-  }
+  };
 
   return (
     <View style={[{ gap: spacing.sm }, containerStyle]}>
@@ -71,7 +71,7 @@ export function Input({
         style={[
           {
             alignItems: "center",
-            backgroundColor: disabled ? lightColors.bgSubtle : lightColors.bgSurface,
+            backgroundColor: disabled ? colors.bgSubtle : colors.bgSurface,
             borderColor,
             borderRadius: radii.md,
             borderWidth: 1,
@@ -91,10 +91,10 @@ export function Input({
           editable={editable}
           onBlur={handleBlur}
           onFocus={handleFocus}
-          placeholderTextColor={placeholderTextColor}
+          placeholderTextColor={placeholderTextColor ?? colors.inkMuted}
           style={[
             {
-              color: lightColors.inkPrimary,
+              color: colors.inkPrimary,
               flex: 1,
               fontSize: typography.body.fontSize,
               fontWeight: typography.body.fontWeight,

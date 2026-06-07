@@ -1,0 +1,21 @@
+appId: com.baki.app
+name: Add an expense to a khata
+tags:
+  - expenses
+# Pre-condition: at least one group named "সাজেক ট্রিপ" exists.
+---
+- launchApp:
+    clearState: false
+- tapOn: "সাজেক ট্রিপ"
+- tapOn:
+    id: "add-expense-fab"
+- tapOn:
+    id: "amount-input"
+- inputText: "450"
+- tapOn:
+    id: "description-input"
+- inputText: "চা-নাস্তা"
+# Uses testID rather than the Bengali label so the flow is robust to copy changes.
+- tapOn:
+    id: "expense-save-cta"
+- assertVisible: "৳ ৪৫০"

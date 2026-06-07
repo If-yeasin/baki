@@ -2,7 +2,8 @@ import { View, type StyleProp, type ViewStyle } from "react-native";
 
 import { Button } from "./Button";
 import { Text } from "./Text";
-import { lightColors, radii, spacing } from "./theme/tokens";
+import { radii, spacing } from "./theme/tokens";
+import { useTheme, type ThemeColors } from "./theme/useTheme";
 
 type ToastVariant = "error" | "info" | "neutral" | "success" | "warning";
 
@@ -25,13 +26,21 @@ export type ToastProps = {
   visible?: boolean;
 };
 
-const toastAccent: Record<ToastVariant, string> = {
-  error: lightColors.negative,
-  info: lightColors.info,
-  neutral: lightColors.borderStrong,
-  success: lightColors.positive,
-  warning: lightColors.warning
-};
+function accentFor(colors: ThemeColors, variant: ToastVariant): string {
+  switch (variant) {
+    case "error":
+      return colors.negative;
+    case "info":
+      return colors.info;
+    case "success":
+      return colors.positive;
+    case "warning":
+      return colors.warning;
+    case "neutral":
+    default:
+      return colors.borderStrong;
+  }
+}
 
 export function Toast({
   accessibilityLabel,
@@ -45,6 +54,8 @@ export function Toast({
   variant = "neutral",
   visible = true
 }: ToastProps) {
+  const { colors } = useTheme();
+
   if (!visible) {
     return null;
   }
@@ -56,9 +67,9 @@ export function Toast({
       accessibilityRole="alert"
       style={[
         {
-          backgroundColor: lightColors.bgSurface,
-          borderColor: lightColors.borderSubtle,
-          borderLeftColor: toastAccent[variant],
+          backgroundColor: colors.bgSurface,
+          borderColor: colors.borderSubtle,
+          borderLeftColor: accentFor(colors, variant),
           borderLeftWidth: 4,
           borderRadius: radii.md,
           borderWidth: 1,

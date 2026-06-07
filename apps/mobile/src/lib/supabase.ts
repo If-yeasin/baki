@@ -7,6 +7,8 @@ import { storage } from "./mmkv";
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? "";
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? "";
 
+export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+
 const mmkvStorage = {
   getItem: (key: string) => {
     const value = storage.getString(key);
@@ -22,16 +24,20 @@ const mmkvStorage = {
   }
 };
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    detectSessionInUrl: false,
-    persistSession: true,
-    storage: mmkvStorage
-  },
-  global: {
-    headers: {
-      "x-client-info": "baki-mobile"
+export const supabase = createClient<Database>(
+  isSupabaseConfigured ? supabaseUrl : "https://baki-disabled.invalid",
+  isSupabaseConfigured ? supabaseAnonKey : "disabled",
+  {
+    auth: {
+      autoRefreshToken: true,
+      detectSessionInUrl: false,
+      persistSession: true,
+      storage: mmkvStorage
+    },
+    global: {
+      headers: {
+        "x-client-info": "baki-mobile"
+      }
     }
   }
-});
+);

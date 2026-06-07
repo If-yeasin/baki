@@ -34,6 +34,11 @@ describe("money formatting", () => {
   it("formats bigint paisa without losing precision", () => {
     expect(formatMoney(900_719_925_474_099_312n, "en")).toBe("৳ 9,00,71,99,25,47,40,993.12");
   });
+
+  it("groups lakhs and crores in Bengali numerals", () => {
+    // 12,345,000,000 paisa = 12,34,50,000 BDT → Bengali "১২,৩৪,৫০,০০০"
+    expect(formatMoney(12_345_000_000n, "bn")).toContain("১২,৩৪,৫০,০০০");
+  });
 });
 
 describe("Dhaka date formatting", () => {

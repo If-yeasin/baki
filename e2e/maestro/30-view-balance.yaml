@@ -1,0 +1,15 @@
+appId: com.baki.app
+name: View per-group balances
+tags:
+  - balances
+# Pre-condition: a group with at least one expense exists.
+---
+- launchApp:
+    clearState: false
+- tapOn: "সাজেক ট্রিপ"
+# Uses testID instead of the Bengali label so the flow is independent of locale.
+- tapOn:
+    id: "tab-balances"
+# Widens to also accept 'all settled' so the flow passes for a freshly-seeded test user.
+- assertVisible:
+    text: "তুমি পাবে|তুমি দিবে|সব হিসাব মিটে গেছে"

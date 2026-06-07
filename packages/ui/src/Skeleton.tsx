@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 import { Animated, type DimensionValue, type StyleProp, type ViewStyle } from "react-native";
 
-import { lightColors, radii } from "./theme/tokens";
+import { radii } from "./theme/tokens";
+import { useTheme } from "./theme/useTheme";
 
 type SkeletonVariant = "circle" | "rect" | "text";
 
@@ -14,6 +15,11 @@ export type SkeletonProps = {
   width?: DimensionValue;
 };
 
+/**
+ * Loading shimmer. Sits on `bgSubtle` and cross-fades up to `borderSubtle`
+ * via opacity so the dark canvas reads it as a soft pulse instead of a
+ * harsh white flash. Never animates to a light colour, even in dark mode.
+ */
 export function Skeleton({
   accessibilityLabel,
   animated = true,
@@ -22,7 +28,8 @@ export function Skeleton({
   variant = "rect",
   width = "100%"
 }: SkeletonProps) {
-  const opacity = useRef(new Animated.Value(animated ? 0.56 : 1)).current;
+  const { colors } = useTheme();
+  const opacity = useRef(new Animated.Value(animated ? 0.6 : 1)).current;
 
   useEffect(() => {
     if (!animated) {
@@ -39,7 +46,7 @@ export function Skeleton({
         }),
         Animated.timing(opacity, {
           duration: 720,
-          toValue: 0.56,
+          toValue: 0.6,
           useNativeDriver: true
         })
       ])
@@ -59,8 +66,10 @@ export function Skeleton({
       importantForAccessibility={accessibilityLabel ? "auto" : "no"}
       style={[
         {
-          backgroundColor: lightColors.bgSubtle,
+          backgroundColor: colors.bgSubtle,
+          borderColor: colors.borderSubtle,
           borderRadius,
+          borderWidth: 1,
           height: resolvedHeight,
           opacity,
           overflow: "hidden",

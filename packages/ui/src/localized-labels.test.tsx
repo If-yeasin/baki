@@ -1,11 +1,14 @@
 import { initBakiI18n } from "@baki/i18n";
 import type { ReactNode } from "react";
-import renderer from "react-test-renderer";
+import renderer, { act } from "react-test-renderer";
 import { describe, expect, it, vi } from "vitest";
 
 import { Button } from "./Button";
 import { Input } from "./Input";
 import { PhoneInput } from "./PhoneInput";
+
+(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT =
+  true;
 
 vi.mock("react-native", async () => {
   const React = await import("react");
@@ -76,8 +79,10 @@ function collectText(node: unknown): string[] {
 describe("localized component labels", () => {
   it("renders Bengali labels and helper copy", () => {
     const i18n = initBakiI18n("bn");
-    const tree = renderer
-      .create(
+    let testRenderer: renderer.ReactTestRenderer | undefined;
+
+    act(() => {
+      testRenderer = renderer.create(
         <>
           <Input
             helperText={i18n.t("auth.profile.name.placeholder")}
@@ -86,8 +91,9 @@ describe("localized component labels", () => {
           <PhoneInput helperText={i18n.t("auth.phone.helper")} label={i18n.t("auth.phone.label")} />
           <Button>{i18n.t("auth.phone.cta")}</Button>
         </>
-      )
-      .toJSON();
+      );
+    });
+    const tree = testRenderer!.toJSON();
 
     expect(collectText(tree)).toEqual(
       expect.arrayContaining([
@@ -102,8 +108,10 @@ describe("localized component labels", () => {
 
   it("renders English labels and helper copy", () => {
     const i18n = initBakiI18n("en");
-    const tree = renderer
-      .create(
+    let testRenderer: renderer.ReactTestRenderer | undefined;
+
+    act(() => {
+      testRenderer = renderer.create(
         <>
           <Input
             helperText={i18n.t("auth.profile.name.placeholder")}
@@ -112,8 +120,9 @@ describe("localized component labels", () => {
           <PhoneInput helperText={i18n.t("auth.phone.helper")} label={i18n.t("auth.phone.label")} />
           <Button>{i18n.t("auth.phone.cta")}</Button>
         </>
-      )
-      .toJSON();
+      );
+    });
+    const tree = testRenderer!.toJSON();
 
     expect(collectText(tree)).toEqual(
       expect.arrayContaining([

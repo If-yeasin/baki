@@ -1,16 +1,18 @@
 import { normalizeBdPhone, paisaToTaka } from "./format";
+import { parseMoneyTransferIntent } from "./schema";
 import type { MoneyTransferIntent, PaymentLinkPlan } from "./types";
 
 export function createBkashSendMoneyPlan(intent: MoneyTransferIntent): PaymentLinkPlan {
-  const number = normalizeBdPhone(intent.recipientNumber);
-  const amount = paisaToTaka(intent.amountPaisa);
+  const parsed = parseMoneyTransferIntent(intent);
+  const number = normalizeBdPhone(parsed.recipientNumber);
+  const amount = paisaToTaka(parsed.amountPaisa);
   const params = new URLSearchParams({
     amount,
     number
   });
 
-  if (intent.note) {
-    params.set("reference", intent.note.slice(0, 50));
+  if (parsed.note) {
+    params.set("reference", parsed.note.slice(0, 50));
   }
 
   return {

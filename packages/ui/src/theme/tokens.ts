@@ -2,9 +2,18 @@ export const lightColors = {
   bgCanvas: "#faf6ef",
   bgSurface: "#ffffff",
   bgSubtle: "#f1ece1",
+  // Tinted surfaces used for soft state backgrounds (badges, pills).
+  tintBrand: "#dff3ec",
+  tintPositive: "#dcfce7",
+  tintNegative: "#fee2e2",
+  tintWarning: "#ffedd5",
+  tintInfo: "#e0f2fe",
+  tintGold: "#fff7dc",
   inkPrimary: "#0d1b1e",
   inkSecondary: "#4a5b5e",
   inkMuted: "#8a9395",
+  // Foreground used on filled brand/destructive backgrounds.
+  inkOnBrand: "#ffffff",
   brandPrimary: "#0d7c66",
   brandPrimaryPressed: "#0a5f4f",
   accentGold: "#b8860b",
@@ -13,25 +22,40 @@ export const lightColors = {
   warning: "#d97706",
   info: "#0369a1",
   borderSubtle: "#e7e1d3",
-  borderStrong: "#c8bfaa"
+  borderStrong: "#c8bfaa",
+  // Hairline divider between dense list rows.
+  rowDivider: "#ece6d6"
 } as const;
 
+// Dark palette tuned for a dense ledger/expense-split feel:
+// deep near-black canvas, slightly lifted surface rows, teal brand,
+// orange for debt (you owe), teal-green for credit (owed to you).
+// Keeps Baki's jade lineage while reading clearly in low light and
+// handling long Bengali strings without color noise.
 export const darkColors = {
-  bgCanvas: "#0d1b1e",
-  bgSurface: "#152428",
-  bgSubtle: "#1f3034",
-  inkPrimary: "#f5f0e3",
-  inkSecondary: "#b8c5c7",
-  inkMuted: "#7c8a8c",
-  brandPrimary: "#3ecf8e",
-  brandPrimaryPressed: "#34b97f",
+  bgCanvas: "#101415",
+  bgSurface: "#171c1e",
+  bgSubtle: "#22292b",
+  tintBrand: "#13322c",
+  tintPositive: "#102e26",
+  tintNegative: "#3a1d14",
+  tintWarning: "#3a2814",
+  tintInfo: "#0f2a3a",
+  tintGold: "#3a2e10",
+  inkPrimary: "#f7f8f8",
+  inkSecondary: "#c3ced0",
+  inkMuted: "#879396",
+  inkOnBrand: "#0a1110",
+  brandPrimary: "#38d89a",
+  brandPrimaryPressed: "#25b77e",
   accentGold: "#f0b429",
-  positive: "#4ade80",
-  negative: "#f87171",
+  positive: "#3ecf8e",
+  negative: "#fb923c",
   warning: "#fb923c",
   info: "#38bdf8",
-  borderSubtle: "#1f3034",
-  borderStrong: "#2d4045"
+  borderSubtle: "#252d30",
+  borderStrong: "#3a464a",
+  rowDivider: "#202729"
 } as const;
 
 export const spacing = {

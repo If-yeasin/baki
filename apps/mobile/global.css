@@ -2,14 +2,63 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Dark is the default Baki look — the app's <ThemeProvider> is locked to
+ * "dark" in app/_layout.tsx. We put the dark palette on :root so unscoped
+ * Tailwind classes (`bg-canvas`, `text-ink-primary`, etc.) resolve to the
+ * correct surface even before the `.dark` class is applied to a host node.
+ * Values mirror packages/ui/src/theme/tokens.ts → darkColors. Channels are
+ * "R G B" so `rgb(var(--token) / <alpha-value>)` in tailwind.config.js works.
+ */
 :root {
+  --bg-canvas: 16 20 21;
+  --bg-surface: 23 28 30;
+  --bg-subtle: 34 41 43;
+  --tint-brand: 19 50 44;
+  --tint-positive: 16 46 38;
+  --tint-negative: 58 29 20;
+  --tint-warning: 58 40 20;
+  --tint-info: 15 42 58;
+  --tint-gold: 58 46 16;
+  --ink-primary: 247 248 248;
+  --ink-secondary: 195 206 208;
+  --ink-muted: 135 147 150;
+  --ink-on-brand: 10 17 16;
+  --brand-primary: 56 216 154;
+  --brand-primary-pressed: 37 183 126;
+  --accent-gold: 240 180 41;
+  --positive: 62 207 142;
+  --negative: 251 146 60;
+  --warning: 251 146 60;
+  --info: 56 189 248;
+  --border-subtle: 37 45 48;
+  --border-strong: 58 70 74;
+  --row-divider: 32 39 41;
+}
+
+/*
+ * The `.light` class flips the variables back to the warm-cream ledger
+ * palette in `packages/ui/src/theme/tokens.ts` → lightColors. Use this on
+ * a root element when (and only when) the user explicitly opts into light
+ * mode via Settings → Theme. NativeWind's class-based dark mode (`dark:`
+ * variants) keeps targeting the `.dark` class for compatibility.
+ */
+.light {
   --bg-canvas: 250 246 239;
   --bg-surface: 255 255 255;
   --bg-subtle: 241 236 225;
+  --tint-brand: 223 243 236;
+  --tint-positive: 220 252 231;
+  --tint-negative: 254 226 226;
+  --tint-warning: 255 237 213;
+  --tint-info: 224 242 254;
+  --tint-gold: 255 247 220;
   --ink-primary: 13 27 30;
   --ink-secondary: 74 91 94;
   --ink-muted: 138 147 149;
+  --ink-on-brand: 255 255 255;
   --brand-primary: 13 124 102;
+  --brand-primary-pressed: 10 95 79;
   --accent-gold: 184 134 11;
   --positive: 22 163 74;
   --negative: 220 38 38;
@@ -17,21 +66,31 @@
   --info: 3 105 161;
   --border-subtle: 231 225 211;
   --border-strong: 200 191 170;
+  --row-divider: 236 230 214;
 }
 
 .dark {
-  --bg-canvas: 13 27 30;
-  --bg-surface: 21 36 40;
-  --bg-subtle: 31 48 52;
-  --ink-primary: 245 240 227;
-  --ink-secondary: 184 197 199;
-  --ink-muted: 124 138 140;
-  --brand-primary: 62 207 142;
+  --bg-canvas: 16 20 21;
+  --bg-surface: 23 28 30;
+  --bg-subtle: 34 41 43;
+  --tint-brand: 19 50 44;
+  --tint-positive: 16 46 38;
+  --tint-negative: 58 29 20;
+  --tint-warning: 58 40 20;
+  --tint-info: 15 42 58;
+  --tint-gold: 58 46 16;
+  --ink-primary: 247 248 248;
+  --ink-secondary: 195 206 208;
+  --ink-muted: 135 147 150;
+  --ink-on-brand: 10 17 16;
+  --brand-primary: 56 216 154;
+  --brand-primary-pressed: 37 183 126;
   --accent-gold: 240 180 41;
-  --positive: 74 222 128;
-  --negative: 248 113 113;
+  --positive: 62 207 142;
+  --negative: 251 146 60;
   --warning: 251 146 60;
   --info: 56 189 248;
-  --border-subtle: 31 48 52;
-  --border-strong: 45 64 69;
+  --border-subtle: 37 45 48;
+  --border-strong: 58 70 74;
+  --row-divider: 32 39 41;
 }

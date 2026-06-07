@@ -37,5 +37,10 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
+# local bootstrap kit leftovers
+baki-bootstrap/
+CODEX_BOOTSTRAP_PROMPT.md
+baki-bootstrap-README.md
+
 # macOS
 .DS_Store

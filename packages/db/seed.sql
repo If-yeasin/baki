@@ -2,6 +2,10 @@ begin;
 
 set constraints all deferred;
 
+-- pgcrypto installs into the `extensions` schema. Some seed contexts (e.g.
+-- `supabase db reset`) run statement-by-statement under a search_path that
+-- does not include it, so we fully qualify `gen_salt` / `crypt` below.
+
 insert into auth.users (
   id,
   aud,
@@ -22,7 +26,7 @@ insert into auth.users (
     'authenticated',
     'tanvir@example.test',
     '+8801700000001',
-    crypt('password', gen_salt('bf')),
+    extensions.crypt('password', extensions.gen_salt('bf')),
     now(),
     now(),
     '{"provider":"phone","providers":["phone"]}'::jsonb,
@@ -36,7 +40,7 @@ insert into auth.users (
     'authenticated',
     'rini@example.test',
     '+8801800000002',
-    crypt('password', gen_salt('bf')),
+    extensions.crypt('password', extensions.gen_salt('bf')),
     now(),
     now(),
     '{"provider":"phone","providers":["phone"]}'::jsonb,

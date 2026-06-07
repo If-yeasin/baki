@@ -2,7 +2,8 @@ import { Pressable, View, type StyleProp, type ViewStyle } from "react-native";
 
 import { Badge } from "./Badge";
 import { Text } from "./Text";
-import { lightColors, radii, spacing } from "./theme/tokens";
+import { radii, spacing } from "./theme/tokens";
+import { useTheme } from "./theme/useTheme";
 
 type TabsSize = "sm" | "md";
 
@@ -38,14 +39,18 @@ export function Tabs<TValue extends string = string>({
   tabStyle,
   value
 }: TabsProps<TValue>) {
+  const { colors } = useTheme();
+
   return (
     <View
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="tablist"
       style={[
         {
-          backgroundColor: lightColors.bgSubtle,
+          backgroundColor: colors.bgSubtle,
+          borderColor: colors.borderSubtle,
           borderRadius: radii.md,
+          borderWidth: 1,
           flexDirection: "row",
           gap: spacing.xs,
           padding: spacing.xs
@@ -67,8 +72,11 @@ export function Tabs<TValue extends string = string>({
             style={({ pressed }) => [
               {
                 alignItems: "center",
-                backgroundColor: selected ? lightColors.bgSurface : "transparent",
-                borderColor: selected ? lightColors.borderSubtle : "transparent",
+                // Active tab lifts to the surface step; inactive stays flat on
+                // the subtle strip so the segmented control reads as a single
+                // tactile control on either canvas or surface.
+                backgroundColor: selected ? colors.bgSurface : "transparent",
+                borderColor: selected ? colors.borderStrong : "transparent",
                 borderRadius: radii.sm,
                 borderWidth: 1,
                 flex: 1,
@@ -82,11 +90,20 @@ export function Tabs<TValue extends string = string>({
               tabStyle
             ]}
           >
-            <Text tone={selected ? "primary" : "secondary"} variant="label">
+            <Text
+              ellipsizeMode="tail"
+              numberOfLines={2}
+              style={{ flexShrink: 1, textAlign: "center" }}
+              tone={selected ? "brand" : "muted"}
+              variant="label"
+            >
               {item.label}
             </Text>
             {item.badge === undefined ? null : (
-              <Badge size="sm" variant={selected ? "brand" : "neutral"}>
+              <Badge
+                size="sm"
+                variant={selected ? "brand" : "neutral"}
+              >
                 {item.badge}
               </Badge>
             )}
