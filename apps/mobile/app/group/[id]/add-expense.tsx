@@ -1,7 +1,8 @@
 import { zodResolver } from "@hookform/resolvers/zod";
+import { formatMoney, toBengaliNumerals } from "@baki/i18n";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { Check, X } from "lucide-react-native";
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, View } from "react-native";
@@ -19,10 +20,13 @@ import {
   useTheme
 } from "@baki/ui";
 
+import { ExpenseReviewCard } from "@/components/expense-review-card";
+import { ExpenseCategoryMark } from "@/components/ledger-marks";
 import { useSession } from "@/features/auth/use-session";
 import { useCreateExpense } from "@/features/expenses/use-create-expense";
 import {
   SplitMathError,
+  splitEqual,
   splitExact,
   splitPercent,
   splitShares,
@@ -59,6 +63,10 @@ function mapSplitMathError(code: string): string {
   }
 }
 
+function formatMemberCount(count: number, locale: "bn" | "en"): string {
+  return locale === "bn" ? toBengaliNumerals(count) : String(count);
+}
+
 export default function AddExpenseScreen() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -76,7 +84,9 @@ export default function AddExpenseScreen() {
   const {
     control,
     formState: { errors },
+    getValues,
     handleSubmit,
+    reset,
     setValue,
     watch
   } = useForm<FormShape>({
@@ -97,8 +107,108 @@ export default function AddExpenseScreen() {
   const splitMethod = watch("splitMethod");
   const splitValues = watch("splitValues");
   const amountPaisa = watch("amountPaisa");
+  const description = watch("description");
 
+  const memberIds = useMemo(() => members.map((member) => member.userId), [members]);
+  const defaultPayerId = useMemo(() => {
+    const sessionUserId = session.userId ?? "";
+    return memberIds.includes(sessionUserId) ? sessionUserId : (memberIds[0] ?? "");
+  }, [memberIds, session.userId]);
   const [splitError, setSplitError] = useState<string | null>(null);
+  const [splitMembersTouched, setSplitMembersTouched] = useState(false);
+  const initializedSplitMembers = useRef(false);
+  const selectedSplitMembers = splitMembersTouched ? splitMembers : memberIds;
+  const selectedPaidBy = paidBy || defaultPayerId;
+  const selectedCategory = watch("category");
+  const selectedPayerName =
+    members.find((member) => member.userId === selectedPaidBy)?.displayName ??
+    t("common.unknown_user");
+  const splitMemberCount = selectedSplitMembers.length;
+  const quickPreview = useMemo(() => {
+    const countLabel = formatMemberCount(splitMemberCount, locale);
+    const splitCountLabel = t("expense.review.splitWithCount", { count: countLabel });
+    const methodLabel = t(`expense.add.splitMethod.${splitMethod}`);
+    const readyForEqualPreview =
+      amountPaisa > 0 && splitMemberCount > 0 && splitMethod === "equal";
+    const equalShare = readyForEqualPreview
+      ? splitEqual(amountPaisa, selectedSplitMembers, { payerId: selectedPaidBy })[
+          selectedSplitMembers[0] ?? ""
+        ] ?? 0
+      : 0;
+
+    return {
+      amountLabel: readyForEqualPreview
+        ? formatMoney(equalShare, locale)
+        : amountPaisa > 0
+          ? t("expense.quickPreview.customValue")
+          : t("expense.quickPreview.waitingValue"),
+      amountTone: readyForEqualPreview ? ("brand" as const) : ("muted" as const),
+      payerLine: t("expense.quickPreview.paidBy", { name: selectedPayerName }),
+      splitLine: t("expense.quickPreview.splitLine", {
+        count: splitCountLabel,
+        method: methodLabel
+      }),
+      valueLabel: readyForEqualPreview
+        ? t("expense.quickPreview.perPerson")
+        : t("expense.quickPreview.valueLabel")
+    };
+  }, [
+    amountPaisa,
+    locale,
+    selectedPaidBy,
+    selectedPayerName,
+    selectedSplitMembers,
+    splitMemberCount,
+    splitMethod,
+    t
+  ]);
+  const splitPreview = useMemo(() => {
+    if (splitMemberCount === 0) {
+      return {
+        body: t("expense.splitPreview.noMembers.body"),
+        title: t("expense.splitPreview.noMembers.title")
+      };
+    }
+
+    const countLabel = formatMemberCount(splitMemberCount, locale);
+
+    if (amountPaisa <= 0) {
+      return {
+        body: t("expense.splitPreview.waiting.body"),
+        title: t("expense.splitPreview.waiting.title", { count: countLabel })
+      };
+    }
+
+    if (splitMethod === "equal") {
+      const equalShares = splitEqual(amountPaisa, selectedSplitMembers, {
+        payerId: selectedPaidBy
+      });
+      const firstShare = equalShares[selectedSplitMembers[0] ?? ""] ?? 0;
+
+      return {
+        body: t("expense.splitPreview.equal.body", {
+          amount: formatMoney(firstShare, locale)
+        }),
+        title: t("expense.splitPreview.equal.title", { count: countLabel })
+      };
+    }
+
+    const bodyKey =
+      splitMethod === "exact"
+        ? "expense.splitPreview.exact.body"
+        : splitMethod === "percent"
+          ? "expense.splitPreview.percent.body"
+          : "expense.splitPreview.shares.body";
+
+    return {
+      body: t(bodyKey),
+      title: t("expense.splitPreview.custom.title", { count: countLabel })
+    };
+  }, [amountPaisa, locale, selectedPaidBy, selectedSplitMembers, splitMemberCount, splitMethod, t]);
+  const reviewStatusKey =
+    amountPaisa > 0 && description.trim().length > 0
+      ? "expense.review.status.ready"
+      : "expense.review.status.draft";
   const inputFieldStyle = {
     backgroundColor: colors.bgSurface,
     borderColor: colors.borderStrong,
@@ -106,13 +216,28 @@ export default function AddExpenseScreen() {
   };
   const inputTextStyle = { color: colors.inkPrimary };
 
+  useEffect(() => {
+    if (initializedSplitMembers.current || members.length === 0) return;
+
+    const currentValues = getValues();
+    const currentPaidBy = currentValues.paidBy;
+
+    reset({
+      ...currentValues,
+      paidBy: currentPaidBy && memberIds.includes(currentPaidBy) ? currentPaidBy : defaultPayerId,
+      splitMembers: memberIds
+    });
+    initializedSplitMembers.current = true;
+  }, [defaultPayerId, getValues, memberIds, members.length, reset]);
+
   function toggleMember(userId: string) {
-    const current = new Set(splitMembers);
+    const current = new Set(selectedSplitMembers);
     if (current.has(userId)) {
       current.delete(userId);
     } else {
       current.add(userId);
     }
+    setSplitMembersTouched(true);
     setValue("splitMembers", Array.from(current), { shouldValidate: true });
   }
 
@@ -168,7 +293,13 @@ export default function AddExpenseScreen() {
   const onSubmit = handleSubmit(async (values) => {
     if (!groupId) return;
 
-    const splitValidationKey = validateSplit(values);
+    const submissionValues = {
+      ...values,
+      paidBy: values.paidBy || defaultPayerId,
+      splitMembers: splitMembersTouched ? values.splitMembers : memberIds
+    };
+
+    const splitValidationKey = validateSplit(submissionValues);
     if (splitValidationKey) {
       setSplitError(splitValidationKey);
       return;
@@ -176,22 +307,22 @@ export default function AddExpenseScreen() {
     setSplitError(null);
 
     const preparedSplitValues =
-      values.splitMethod === "equal"
+      submissionValues.splitMethod === "equal"
         ? undefined
         : buildSplitValuesForMode(
-            values.splitMethod,
-            values.splitMembers,
-            values.splitValues ?? {}
+            submissionValues.splitMethod,
+            submissionValues.splitMembers,
+            submissionValues.splitValues ?? {}
           );
 
     await createExpense.mutateAsync({
-      amountPaisa: values.amountPaisa,
-      category: values.category,
-      description: values.description,
+      amountPaisa: submissionValues.amountPaisa,
+      category: submissionValues.category,
+      description: submissionValues.description,
       groupId,
-      paidBy: values.paidBy,
-      splitMembers: values.splitMembers,
-      splitMethod: values.splitMethod,
+      paidBy: submissionValues.paidBy,
+      splitMembers: submissionValues.splitMembers,
+      splitMethod: submissionValues.splitMethod,
       splitValues: preparedSplitValues
     });
 
@@ -305,7 +436,9 @@ export default function AddExpenseScreen() {
                   inputStyle={[inputTextStyle, { fontSize: 28 }]}
                   locale={locale}
                   onChangePaisa={onChange}
+                  placeholder={t("expense.amount.placeholder")}
                   placeholderTextColor={colors.inkMuted}
+                  showZeroValue={false}
                   testID="amount-input"
                   valuePaisa={value}
                 />
@@ -340,6 +473,16 @@ export default function AddExpenseScreen() {
           />
         </View>
 
+        <ExpenseQuickPreview
+          amountLabel={quickPreview.amountLabel}
+          amountTone={quickPreview.amountTone}
+          category={selectedCategory}
+          payerLine={quickPreview.payerLine}
+          splitLine={quickPreview.splitLine}
+          title={t("expense.quickPreview.title")}
+          valueLabel={quickPreview.valueLabel}
+        />
+
         <View style={{ gap: spacing.md }}>
           <Text style={{ color: colors.inkSecondary }} variant="label">
             {t("expense.add.category.label")}
@@ -348,35 +491,20 @@ export default function AddExpenseScreen() {
             control={control}
             name="category"
             render={({ field: { onChange, value } }) => (
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View style={{ flexDirection: "row", gap: spacing.sm }}>
-                  {EXPENSE_CATEGORIES.map((cat: ExpenseCategory) => (
-                    <Pressable
-                      accessibilityLabel={t(`expense.category.${cat}`)}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected: value === cat }}
-                      key={cat}
-                      onPress={() => onChange(cat)}
-                      style={({ pressed }) => ({
-                        backgroundColor: value === cat ? colors.brandPrimary : colors.bgSurface,
-                        borderColor: value === cat ? colors.brandPrimary : colors.borderStrong,
-                        borderRadius: radii.pill,
-                        borderWidth: 1,
-                        minHeight: 40,
-                        opacity: pressed ? 0.72 : 1,
-                        paddingHorizontal: spacing.lg,
-                        paddingVertical: spacing.sm
-                      })}
-                    >
-                      <Text
-                        style={{ color: value === cat ? colors.inkOnBrand : colors.inkPrimary }}
-                        variant="bodyStrong"
-                      >
-                        {t(`expense.category.${cat}`)}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
+              <ScrollView
+                contentContainerStyle={{ gap: spacing.xs, paddingRight: spacing.xl }}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+              >
+                {EXPENSE_CATEGORIES.map((cat: ExpenseCategory) => (
+                  <CategoryTile
+                    category={cat}
+                    key={cat}
+                    label={t(`expense.category.${cat}`)}
+                    onPress={() => onChange(cat)}
+                    selected={value === cat}
+                  />
+                ))}
               </ScrollView>
             )}
           />
@@ -392,14 +520,15 @@ export default function AddExpenseScreen() {
                 <Pressable
                   accessibilityLabel={member.displayName}
                   accessibilityRole="button"
-                  accessibilityState={{ selected: paidBy === member.userId }}
+                  accessibilityState={{ selected: selectedPaidBy === member.userId }}
                   key={member.userId}
                   onPress={() => setValue("paidBy", member.userId, { shouldValidate: true })}
                   style={({ pressed }) => ({
                     alignItems: "center",
-                    backgroundColor: paidBy === member.userId ? colors.bgSubtle : colors.bgSurface,
+                    backgroundColor:
+                      selectedPaidBy === member.userId ? colors.bgSubtle : colors.bgSurface,
                     borderColor:
-                      paidBy === member.userId ? colors.brandPrimary : colors.borderStrong,
+                      selectedPaidBy === member.userId ? colors.brandPrimary : colors.borderStrong,
                     borderRadius: radii.pill,
                     borderWidth: 1,
                     flexDirection: "row",
@@ -449,12 +578,32 @@ export default function AddExpenseScreen() {
             )}
           />
 
+          <View
+            accessibilityRole="summary"
+            style={{
+              backgroundColor: colors.bgSubtle,
+              borderRadius: radii.md,
+              gap: spacing.xs,
+              paddingHorizontal: spacing.md,
+              paddingVertical: spacing.sm
+            }}
+            testID="expense-split-preview"
+          >
+            <Text tone="muted" variant="label">
+              {t("expense.splitPreview.title")}
+            </Text>
+            <Text variant="bodyStrong">{splitPreview.title}</Text>
+            <Text tone="secondary" variant="caption">
+              {splitPreview.body}
+            </Text>
+          </View>
+
           <Text style={{ color: colors.inkSecondary }} variant="label">
             {t("expense.add.splitWith.label")}
           </Text>
           <View style={{ gap: spacing.sm }}>
             {members.map((member) => {
-              const selected = splitMembers.includes(member.userId);
+              const selected = selectedSplitMembers.includes(member.userId);
               return (
                 <Pressable
                   accessibilityLabel={member.displayName}
@@ -511,7 +660,7 @@ export default function AddExpenseScreen() {
           {splitMethod !== "equal" ? (
             <View style={{ gap: spacing.sm }}>
               {members
-                .filter((member) => splitMembers.includes(member.userId))
+                .filter((member) => selectedSplitMembers.includes(member.userId))
                 .map((member) => {
                   const rawValue = splitValues?.[member.userId];
                   const stringValue =
@@ -540,7 +689,7 @@ export default function AddExpenseScreen() {
                 })}
               {splitMethod === "exact" && amountPaisa > 0 ? (
                 <Text style={{ color: colors.inkMuted }} variant="caption">
-                  ৳{(amountPaisa / 100).toFixed(2)}
+                  {formatMoney(amountPaisa, locale)}
                 </Text>
               ) : null}
             </View>
@@ -553,35 +702,22 @@ export default function AddExpenseScreen() {
           ) : null}
         </View>
 
-        <View
-          style={{
-            backgroundColor: colors.bgSurface,
-            borderColor: colors.borderSubtle,
-            borderRadius: radii.lg,
-            borderWidth: 1,
-            flexDirection: "row",
-            gap: spacing.md,
-            padding: spacing.lg
-          }}
-        >
-          <View style={{ flex: 1, gap: spacing.xs }}>
-            <Text style={{ color: colors.inkMuted }} variant="label">
-              {t("expense.add.paidBy.label")}
-            </Text>
-            <Text numberOfLines={1} style={{ color: colors.inkPrimary }} variant="bodyStrong">
-              {members.find((member) => member.userId === paidBy)?.displayName ??
-                t("common.unknown_user")}
-            </Text>
-          </View>
-          <View style={{ flex: 1, gap: spacing.xs }}>
-            <Text style={{ color: colors.inkMuted }} variant="label">
-              {t("expense.add.splitMethod.label")}
-            </Text>
-            <Text numberOfLines={1} style={{ color: colors.inkPrimary }} variant="bodyStrong">
-              {t(`expense.add.splitMethod.${splitMethod}`)}
-            </Text>
-          </View>
-        </View>
+        <ExpenseReviewCard
+          amountLabel={formatMoney(amountPaisa, locale)}
+          categoryLabel={t("expense.review.category")}
+          categoryValue={t(`expense.category.${selectedCategory}`)}
+          methodLabel={t("expense.review.method")}
+          methodValue={t(`expense.add.splitMethod.${splitMethod}`)}
+          payerLabel={t("expense.review.payer")}
+          payerValue={selectedPayerName}
+          splitWithLabel={t("expense.review.splitWith")}
+          splitWithValue={t("expense.review.splitWithCount", {
+            count: formatMemberCount(splitMemberCount, locale)
+          })}
+          statusLabel={t(reviewStatusKey)}
+          title={t("expense.review.title")}
+          totalLabel={t("expense.review.total")}
+        />
 
         {createExpense.error ? (
           <Text style={{ color: colors.negative }} variant="caption">
@@ -589,6 +725,126 @@ export default function AddExpenseScreen() {
           </Text>
         ) : null}
       </ScrollView>
+    </View>
+  );
+}
+
+function CategoryTile({
+  category,
+  label,
+  onPress,
+  selected
+}: {
+  category: ExpenseCategory;
+  label: string;
+  onPress: () => void;
+  selected: boolean;
+}) {
+  const { colors } = useTheme();
+
+  return (
+    <Pressable
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        alignItems: "center",
+        backgroundColor: selected ? colors.tintBrand : colors.bgSurface,
+        borderColor: selected ? colors.brandPrimary : colors.borderSubtle,
+        borderRadius: radii.md,
+        borderWidth: 1,
+        gap: spacing.xs,
+        justifyContent: "center",
+        minHeight: 76,
+        opacity: pressed ? 0.72 : 1,
+        paddingHorizontal: spacing.sm,
+        paddingVertical: spacing.sm,
+        width: 80
+      })}
+    >
+      <ExpenseCategoryMark category={category} size={34} />
+      <Text
+        adjustsFontSizeToFit
+        ellipsizeMode="tail"
+        minimumFontScale={0.76}
+        numberOfLines={1}
+        style={{
+          color: selected ? colors.brandPrimary : colors.inkPrimary,
+          textAlign: "center",
+          width: "100%"
+        }}
+        variant="label"
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function ExpenseQuickPreview({
+  amountLabel,
+  amountTone,
+  category,
+  payerLine,
+  splitLine,
+  title,
+  valueLabel
+}: {
+  amountLabel: string;
+  amountTone: "brand" | "muted";
+  category: ExpenseCategory;
+  payerLine: string;
+  splitLine: string;
+  title: string;
+  valueLabel: string;
+}) {
+  const { colors } = useTheme();
+
+  return (
+    <View
+      style={{
+        alignItems: "center",
+        backgroundColor: colors.bgSurface,
+        borderColor: colors.borderSubtle,
+        borderRadius: radii.md,
+        borderWidth: 1,
+        flexDirection: "row",
+        gap: spacing.md,
+        minHeight: 76,
+        paddingHorizontal: spacing.md,
+        paddingVertical: spacing.sm
+      }}
+      testID="expense-quick-preview"
+    >
+      <ExpenseCategoryMark category={category} size={38} />
+      <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
+        <Text style={{ color: colors.inkPrimary }} variant="bodyStrong">
+          {title}
+        </Text>
+        <Text ellipsizeMode="tail" numberOfLines={1} tone="muted" variant="caption">
+          {payerLine}
+        </Text>
+        <Text ellipsizeMode="tail" numberOfLines={1} tone="secondary" variant="caption">
+          {splitLine}
+        </Text>
+      </View>
+      <View style={{ alignItems: "flex-end", flexShrink: 0, gap: 2, maxWidth: 128 }}>
+        <Text tone="muted" variant="label">
+          {valueLabel}
+        </Text>
+        <Text
+          accessibilityLabel={amountLabel}
+          adjustsFontSizeToFit
+          minimumFontScale={0.74}
+          numberOfLines={1}
+          style={{ fontVariant: ["tabular-nums"], textAlign: "right" }}
+          tone={amountTone}
+          variant="bodyStrong"
+        >
+          {amountLabel}
+        </Text>
+      </View>
     </View>
   );
 }

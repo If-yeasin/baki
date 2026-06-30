@@ -4,6 +4,10 @@
 
 বাকি should feel like a modern interpretation of a corner-shop খাতা — warm, trustworthy, slightly handcrafted, never sterile. The visual identity borrows from accountant's ledger paper, the green of crisp new ৳500 notes, and the gold of family heirloom jewelry. It is decisively *not* a generic SaaS blue.
 
+## Reference boundary
+
+Splitwise is a usability benchmark, not a visual source to clone. Baki should match the clarity of quick balance scanning, concrete next actions, dense ledger rows, and low-friction expense entry. Baki must not copy Splitwise's brand colors, logo marks, exact layouts, icon choices, wording, illustrations, or screen composition. Every borrowed lesson should be translated through Baki's Bengali-first khata metaphor, jade/gold palette, bKash/Nagad settlement model, and offline-first constraints.
+
 ## Color tokens
 
 ### Light theme

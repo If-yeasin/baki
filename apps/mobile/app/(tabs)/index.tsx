@@ -1,19 +1,37 @@
-import { formatRelativeDhakaDate } from "@baki/i18n";
-import { useQueries } from "@tanstack/react-query";
+import { formatMoney, formatRelativeDhakaDate, toBengaliNumerals } from "@baki/i18n";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { Link, useRouter, type Href } from "expo-router";
-import { Plus, Search, UserPlus } from "lucide-react-native";
+import { BookOpenCheck, Plus, Search, UserPlus } from "lucide-react-native";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FlatList, Pressable, TextInput, View } from "react-native";
 
-import { Button, EmptyState, Money, Skeleton, Text, radii, spacing, useTheme } from "@baki/ui";
+import { Button, Money, Skeleton, Text, radii, spacing, useTheme } from "@baki/ui";
 
+import { BakiEmptyState } from "@/components/baki-empty-state";
 import { GroupTemplateMark } from "@/components/ledger-marks";
+import {
+  LedgerOverviewCard,
+  type LedgerOverviewAction,
+  type LedgerOverviewMetric
+} from "@/components/ledger-overview-card";
+import { NextBalanceActionCard } from "@/components/next-balance-action-card";
 import { useSession } from "@/features/auth/use-session";
+import {
+  buildNextBalanceAction,
+  getCounterpartyIds,
+  type BalanceCounterpartyProfile
+} from "@/features/balances/next-balance-action";
 import { balancesKeys, fetchGroupBalances } from "@/features/balances/use-balances";
 import { sumSelfNets } from "@/features/balances/simplify-display";
 import { useGroups } from "@/features/groups/use-groups";
+import { tabScreenBottomInset } from "@/lib/layout";
+import { supabase } from "@/lib/supabase";
 import { usePreferencesStore } from "@/stores/preferences";
+
+function formatDisplayCount(count: number, locale: string): string {
+  return locale === "bn" ? toBengaliNumerals(count) : String(count);
+}
 
 export default function GroupsListScreen() {
   const { t } = useTranslation();
@@ -42,6 +60,27 @@ export default function GroupsListScreen() {
       staleTime: 1000 * 30
     }))
   });
+  const balanceRowsByGroup = balanceQueries.map((query) => query.data ?? []);
+  const counterpartyIds = getCounterpartyIds({
+    balanceRowsByGroup,
+    groups,
+    selfId: session.userId
+  });
+  const counterpartyProfilesQuery = useQuery({
+    enabled: counterpartyIds.length > 0,
+    queryFn: async (): Promise<BalanceCounterpartyProfile[]> => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, display_name")
+        .in("id", counterpartyIds);
+
+      if (error) throw error;
+
+      return data ?? [];
+    },
+    queryKey: ["profiles", "homeBalanceCounterparties", counterpartyIds],
+    staleTime: 1000 * 60
+  });
 
   const selfNetByGroup = useMemo(() => {
     const map = new Map<string, { loading: boolean; netPaisa: number }>();
@@ -62,11 +101,90 @@ export default function GroupsListScreen() {
     () => sumSelfNets(Array.from(selfNetByGroup.values()).map((entry) => entry.netPaisa)),
     [selfNetByGroup]
   );
+  const totalReceivePaisa = useMemo(
+    () =>
+      Array.from(selfNetByGroup.values()).reduce(
+        (sum, entry) => (entry.netPaisa > 0 ? sum + entry.netPaisa : sum),
+        0
+      ),
+    [selfNetByGroup]
+  );
+  const totalPayPaisa = useMemo(
+    () =>
+      Array.from(selfNetByGroup.values()).reduce(
+        (sum, entry) => (entry.netPaisa < 0 ? sum + Math.abs(entry.netPaisa) : sum),
+        0
+      ),
+    [selfNetByGroup]
+  );
 
   const firstGroupId = groups[0]?.id;
+  const firstDebtGroupId = groups.find((group) => {
+    const entry = selfNetByGroup.get(group.id);
+    return (entry?.netPaisa ?? 0) < 0;
+  })?.id;
   const groupCount = groups.length;
+  const groupCountLabel = formatDisplayCount(groupCount, locale);
   const totalSettled = totalNet === 0;
   const totalCredit = totalNet > 0;
+  const overviewTone = totalSettled ? "settled" : totalCredit ? "positive" : "negative";
+  const overviewStatusLabel = totalSettled
+    ? t("ledger.overview.settled")
+    : t(totalCredit ? "balance.you_are_owed" : "balance.you_owe");
+  const overviewAmountLabel = formatMoney(Math.abs(totalNet), locale);
+  const overviewMetrics: [LedgerOverviewMetric, LedgerOverviewMetric] = [
+    {
+      amountAccessibilityLabel: formatMoney(totalReceivePaisa, locale),
+      amountLabel: formatMoney(totalReceivePaisa, locale),
+      label: t("ledger.overview.receive"),
+      tone: "positive"
+    },
+    {
+      amountAccessibilityLabel: formatMoney(totalPayPaisa, locale),
+      amountLabel: formatMoney(totalPayPaisa, locale),
+      label: t("ledger.overview.pay"),
+      tone: "negative"
+    }
+  ];
+  const addExpenseAction: LedgerOverviewAction | undefined = firstGroupId
+    ? {
+        kind: "add",
+        label: t("expense.add.title"),
+        onPress: () => router.push(`/group/${firstGroupId}/add-expense` as Href),
+        testID: "home-overview-add-expense"
+      }
+    : undefined;
+  const viewBalancesAction: LedgerOverviewAction = {
+    kind: "balances",
+    label: t("groups.detail.action.balances"),
+    onPress: () => router.push("/balances" as Href),
+    testID: "home-overview-balances"
+  };
+  const settleAction: LedgerOverviewAction | undefined = firstDebtGroupId
+    ? {
+        kind: "settle",
+        label: t("settle.title"),
+        onPress: () => router.push(`/group/${firstDebtGroupId}/settle` as Href),
+        testID: "home-overview-settle"
+      }
+    : undefined;
+  const overviewPrimaryAction = settleAction ?? addExpenseAction ?? viewBalancesAction;
+  const overviewSecondaryAction =
+    overviewPrimaryAction.kind === "settle" ? addExpenseAction : viewBalancesAction;
+  const profileNameById = new Map(
+    (counterpartyProfilesQuery.data ?? []).map((profile) => [profile.id, profile.display_name])
+  );
+  const perGroupNets = groups.map((group) => selfNetByGroup.get(group.id)?.netPaisa ?? 0);
+  const searchTerm = query.trim().toLowerCase();
+  const nextBalanceAction = buildNextBalanceAction({
+    balanceRowsByGroup,
+    groups,
+    locale,
+    perGroupNets,
+    profileNameById,
+    selfId: session.userId,
+    t
+  });
 
   return (
     <View style={{ backgroundColor: colors.bgCanvas, flex: 1 }}>
@@ -90,61 +208,50 @@ export default function GroupsListScreen() {
               <Skeleton height={72} style={{ backgroundColor: colors.bgSubtle }} />
               <Skeleton height={72} style={{ backgroundColor: colors.bgSubtle }} />
             </View>
-          ) : (
-            <View
-              style={{
-                backgroundColor: colors.bgSurface,
-                borderColor: colors.borderSubtle,
-                borderRadius: radii.md,
-                borderWidth: 1,
-                marginHorizontal: spacing.lg,
-                padding: spacing.lg
+          ) : groupCount > 0 && query.trim().length > 0 ? (
+            <BakiEmptyState
+              action={{
+                accessibilityLabel: t("common.clear_search"),
+                label: t("common.clear_search"),
+                onPress: () => setQuery(""),
+                variant: "secondary"
               }}
-            >
-              <EmptyState
-                action={{
-                  label: t("groups.create.cta"),
-                  onPress: () => router.push("/groups/create" as Href)
-                }}
-                body={t("groups.list.empty.body")}
-                title={t("groups.list.empty.title")}
-              />
-            </View>
+              body={t("groups.list.search.empty.body")}
+              icon={Search}
+              style={{ marginHorizontal: spacing.lg }}
+              testID="groups-search-empty-state"
+              title={t("groups.list.search.empty.title")}
+              tone="neutral"
+            />
+          ) : (
+            <BakiEmptyState
+              action={{
+                accessibilityLabel: t("groups.create.cta"),
+                label: t("groups.create.cta"),
+                onPress: () => router.push("/groups/create" as Href)
+              }}
+              body={t("groups.list.empty.body")}
+              icon={BookOpenCheck}
+              style={{ marginHorizontal: spacing.lg }}
+              testID="groups-empty-state"
+              title={t("groups.list.empty.title")}
+            />
           )
         }
         ListFooterComponent={
           groups.length > 0 ? (
             <View style={{ height: spacing["3xl"] }} />
           ) : (
-            <View
-              style={{
-                flexDirection: "row",
-                gap: spacing.md,
-                padding: spacing.lg,
-                paddingTop: spacing.xl
-              }}
-            >
+            <View style={{ padding: spacing.lg, paddingTop: spacing.xl }}>
               <Link asChild href={"/groups/join" as Href}>
-                <Button
-                  accessibilityLabel={t("groups.join.cta")}
-                  style={{ flex: 1 }}
-                  variant="secondary"
-                >
+                <Button accessibilityLabel={t("groups.join.cta")} variant="secondary">
                   {t("groups.join.cta")}
-                </Button>
-              </Link>
-              <Link asChild href={"/groups/create" as Href}>
-                <Button
-                  accessibilityLabel={t("groups.create.cta")}
-                  style={{ backgroundColor: colors.brandPrimary, flex: 1 }}
-                >
-                  {t("groups.create.cta")}
                 </Button>
               </Link>
             </View>
           )
         }
-        contentContainerStyle={{ paddingBottom: spacing["5xl"] }}
+        contentContainerStyle={{ paddingBottom: tabScreenBottomInset }}
         data={filteredGroups}
         keyExtractor={(item) => item.id}
         renderItem={({ index, item }) => {
@@ -181,7 +288,7 @@ export default function GroupsListScreen() {
               testID={`group-card-${index}`}
             >
               <GroupTemplateMark template={item.template} />
-              <View style={{ flex: 1, gap: 2, justifyContent: "center" }}>
+              <View style={{ flex: 1, gap: 2, justifyContent: "center", minWidth: 0 }}>
                 <Text
                   ellipsizeMode="tail"
                   numberOfLines={1}
@@ -255,7 +362,7 @@ export default function GroupsListScreen() {
                     style={{ color: colors.inkMuted }}
                     variant="caption"
                   >
-                    {t("groups.list.active_count", { count: groupCount })}
+                    {t("groups.list.active_count", { count: groupCountLabel })}
                   </Text>
                 ) : null}
               </View>
@@ -298,117 +405,71 @@ export default function GroupsListScreen() {
                 </Pressable>
               </View>
             </View>
-            <View
-              style={{
-                backgroundColor: colors.bgSurface,
-                borderColor: colors.borderSubtle,
-                borderRadius: radii.md,
-                borderWidth: 1,
-                gap: spacing.xs,
-                paddingHorizontal: spacing.lg,
-                paddingVertical: spacing.md
-              }}
-            >
-              <Text style={{ color: colors.inkMuted }} variant="caption">
-                {t("groups.list.total_balance")}
-              </Text>
-              <Money
-                amountPaisa={Math.abs(totalNet)}
-                locale={locale}
-                style={{
-                  color: totalSettled
-                    ? colors.inkPrimary
-                    : totalCredit
-                      ? colors.positive
-                      : colors.negative,
-                  fontSize: 28,
-                  lineHeight: 34
-                }}
-                variant={totalSettled ? "neutral" : totalCredit ? "positive" : "negative"}
+            {groupCount > 0 ? (
+              <LedgerOverviewCard
+                amountAccessibilityLabel={overviewAmountLabel}
+                amountLabel={overviewAmountLabel}
+                caption={t("ledger.overview.khatas", { count: groupCountLabel })}
+                metrics={overviewMetrics}
+                primaryAction={overviewPrimaryAction}
+                secondaryAction={overviewSecondaryAction}
+                statusLabel={overviewStatusLabel}
+                title={t("groups.list.total_balance")}
+                tone={overviewTone}
               />
-              <Text
+            ) : null}
+            {nextBalanceAction && !searchTerm ? (
+              <NextBalanceActionCard
+                action={nextBalanceAction}
+                onPress={() =>
+                  router.push(
+                    nextBalanceAction.tone === "negative"
+                      ? (`/group/${nextBalanceAction.groupId}/settle` as Href)
+                      : (`/group/${nextBalanceAction.groupId}` as Href)
+                  )
+                }
+                testID="home-next-action"
+              />
+            ) : null}
+            {groupCount > 0 ? (
+              <View
                 style={{
-                  color: totalSettled
-                    ? colors.inkMuted
-                    : totalCredit
-                      ? colors.positive
-                      : colors.negative
+                  alignItems: "center",
+                  backgroundColor: colors.bgSurface,
+                  borderColor: colors.borderSubtle,
+                  borderRadius: radii.pill,
+                  borderWidth: 1,
+                  flexDirection: "row",
+                  gap: spacing.sm,
+                  minHeight: 44,
+                  paddingHorizontal: spacing.lg
                 }}
-                variant="caption"
               >
-                {totalSettled
-                  ? t("balance.all_settled")
-                  : t(totalCredit ? "balance.you_are_owed" : "balance.you_owe")}
-              </Text>
-            </View>
-            <View
-              style={{
-                alignItems: "center",
-                backgroundColor: colors.bgSurface,
-                borderColor: colors.borderSubtle,
-                borderRadius: radii.pill,
-                borderWidth: 1,
-                flexDirection: "row",
-                gap: spacing.sm,
-                minHeight: 44,
-                paddingHorizontal: spacing.lg
-              }}
-            >
-              <Search color={colors.inkMuted} size={18} />
-              <TextInput
-                accessibilityLabel={t("common.search") || t("groups.list.title")}
-                accessibilityRole="search"
-                autoCapitalize="none"
-                autoCorrect={false}
-                onChangeText={setQuery}
-                placeholder={t("groups.list.search.placeholder")}
-                placeholderTextColor={colors.inkMuted}
-                returnKeyType="search"
-                style={{
-                  color: colors.inkPrimary,
-                  flex: 1,
-                  fontFamily: "HindSiliguri_400Regular",
-                  fontSize: 15,
-                  paddingVertical: 0
-                }}
-                testID="groups-search-input"
-                value={query}
-              />
-            </View>
+                <Search color={colors.inkMuted} size={18} />
+                <TextInput
+                  accessibilityLabel={t("common.search")}
+                  accessibilityRole="search"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  onChangeText={setQuery}
+                  placeholder={t("groups.list.search.placeholder")}
+                  placeholderTextColor={colors.inkMuted}
+                  returnKeyType="search"
+                  style={{
+                    color: colors.inkPrimary,
+                    flex: 1,
+                    fontFamily: "HindSiliguri_400Regular",
+                    fontSize: 15,
+                    paddingVertical: 0
+                  }}
+                  testID="groups-search-input"
+                  value={query}
+                />
+              </View>
+            ) : null}
           </View>
         }
       />
-      <Pressable
-        accessibilityLabel={firstGroupId ? t("expense.add.title") : t("groups.create.cta")}
-        accessibilityRole="button"
-        onPress={() =>
-          router.push(
-            firstGroupId
-              ? (`/group/${firstGroupId}/add-expense` as Href)
-              : ("/groups/create" as Href)
-          )
-        }
-        style={({ pressed }) => ({
-          alignItems: "center",
-          backgroundColor: colors.brandPrimary,
-          borderRadius: radii.pill,
-          bottom: spacing["2xl"],
-          elevation: 6,
-          height: 58,
-          justifyContent: "center",
-          opacity: pressed ? 0.86 : 1,
-          position: "absolute",
-          right: spacing.lg,
-          shadowColor: colors.bgCanvas,
-          shadowOffset: { height: 6, width: 0 },
-          shadowOpacity: 0.32,
-          shadowRadius: 12,
-          width: 58
-        })}
-        testID="home-add-expense-fab"
-      >
-        <Plus color={colors.inkOnBrand} size={28} />
-      </Pressable>
     </View>
   );
 }

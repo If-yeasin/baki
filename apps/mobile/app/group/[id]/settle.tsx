@@ -1,14 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { ArrowLeft, Banknote, HandCoins, Smartphone } from "lucide-react-native";
+import { ArrowLeft, BadgeCheck, Banknote, HandCoins, Smartphone } from "lucide-react-native";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Alert, Pressable, ScrollView, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 
 import { formatMoney } from "@baki/i18n";
-import { Avatar, EmptyState, Skeleton, Text, radii, spacing, useTheme } from "@baki/ui";
+import { Avatar, Skeleton, Text, Toast, radii, spacing, useTheme } from "@baki/ui";
 import { PaymentInputError, isValidBdPhone } from "@baki/payments";
 
+import { BakiEmptyState } from "@/components/baki-empty-state";
+import { SettlementMethodTile } from "@/components/settlement-method-tile";
 import { useSession } from "@/features/auth/use-session";
 import { useGroupBalances } from "@/features/balances/use-balances";
 import { useGroupDetail } from "@/features/groups/use-group-detail";
@@ -27,6 +29,94 @@ type Creditor = {
   userId: string;
 };
 
+type SettlementProvider = "bkash" | "nagad" | "cash" | "other";
+
+type SettlementNotice = {
+  bodyKey?: string;
+  titleKey: string;
+  variant: "error" | "info" | "success" | "warning";
+};
+
+function SettlementFlowGuide() {
+  const { t } = useTranslation();
+  const { colors } = useTheme();
+  const steps = [
+    {
+      icon: Smartphone,
+      iconColor: colors.brandPrimary,
+      titleKey: "settle.guide.open.title",
+      bodyKey: "settle.guide.open.body"
+    },
+    {
+      icon: BadgeCheck,
+      iconColor: colors.positive,
+      titleKey: "settle.guide.confirm.title",
+      bodyKey: "settle.guide.confirm.body"
+    },
+    {
+      icon: HandCoins,
+      iconColor: colors.accentGold,
+      titleKey: "settle.guide.record.title",
+      bodyKey: "settle.guide.record.body"
+    }
+  ] as const;
+
+  return (
+    <View
+      style={{
+        backgroundColor: colors.bgSubtle,
+        borderColor: colors.borderSubtle,
+        borderRadius: radii.md,
+        borderWidth: 1,
+        gap: spacing.sm,
+        padding: spacing.md
+      }}
+      testID="settle-flow-guide"
+    >
+      <Text style={{ color: colors.inkSecondary }} variant="label">
+        {t("settle.guide.title")}
+      </Text>
+      <View style={{ gap: spacing.sm }}>
+        {steps.map((step) => {
+          const Icon = step.icon;
+          return (
+            <View
+              key={step.titleKey}
+              style={{ alignItems: "center", flexDirection: "row", gap: spacing.sm }}
+            >
+              <View
+                style={{
+                  alignItems: "center",
+                  backgroundColor: colors.bgSurface,
+                  borderRadius: radii.pill,
+                  height: 32,
+                  justifyContent: "center",
+                  width: 32
+                }}
+              >
+                <Icon color={step.iconColor} size={17} />
+              </View>
+              <View style={{ flex: 1, gap: 1, minWidth: 0 }}>
+                <Text
+                  ellipsizeMode="tail"
+                  numberOfLines={1}
+                  style={{ color: colors.inkPrimary }}
+                  variant="caption"
+                >
+                  {t(step.titleKey)}
+                </Text>
+                <Text ellipsizeMode="tail" numberOfLines={2} tone="muted" variant="caption">
+                  {t(step.bodyKey)}
+                </Text>
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 export default function SettleScreen() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -37,8 +127,9 @@ export default function SettleScreen() {
   const { colors } = useTheme();
   const [pendingCreditor, setPendingCreditor] = useState<{
     creditor: Creditor;
-    provider: "bkash" | "nagad" | "cash" | "other";
+    provider: SettlementProvider;
   } | null>(null);
+  const [settlementNotice, setSettlementNotice] = useState<SettlementNotice | null>(null);
 
   const detailQuery = useGroupDetail(groupId);
   const balancesQuery = useGroupBalances(groupId);
@@ -114,12 +205,21 @@ export default function SettleScreen() {
     return draft.map(({ credit: _credit, ...row }) => row);
   }, [balancesQuery.data, profilesQuery.data, session.userId]);
 
+  const totalOwedPaisa = useMemo(
+    () => creditors.reduce((sum, creditor) => sum + creditor.amountPaisa, 0),
+    [creditors]
+  );
+
   async function handleOpenProvider(creditor: Creditor, provider: "bkash" | "nagad") {
     const number = provider === "bkash" ? creditor.bkashNumber : creditor.nagadNumber;
     const targetNumber = number ?? creditor.phone;
 
     if (!isValidBdPhone(targetNumber)) {
-      Alert.alert(t("settle.error.no_app"));
+      setSettlementNotice({
+        bodyKey: "settle.notice.noNumber.body",
+        titleKey: "settle.notice.noNumber.title",
+        variant: "error"
+      });
       return;
     }
 
@@ -131,21 +231,35 @@ export default function SettleScreen() {
       });
 
       if (result.kind !== "opened") {
-        Alert.alert(t("settle.error.no_app"), t("settle.error.copied"));
-        return;
+        setSettlementNotice({
+          bodyKey: "settle.notice.copied.body",
+          titleKey: "settle.notice.copied.title",
+          variant: "info"
+        });
+      } else {
+        setSettlementNotice({
+          bodyKey: "settle.notice.opened.body",
+          titleKey: "settle.notice.opened.title",
+          variant: "success"
+        });
       }
 
       setPendingCreditor({ creditor, provider });
     } catch (error) {
       if (error instanceof PaymentInputError) {
-        Alert.alert(t("settle.error.no_app"));
+        setSettlementNotice({
+          bodyKey: "settle.notice.noNumber.body",
+          titleKey: "settle.notice.noNumber.title",
+          variant: "error"
+        });
         return;
       }
-      throw error;
+      Sentry.captureException(error, { tags: { feature: "settle.openProvider", provider } });
+      setSettlementNotice({ titleKey: "common.error.generic", variant: "error" });
     }
   }
 
-  async function handleMarkPaid(creditor: Creditor, method: "bkash" | "nagad" | "cash" | "other") {
+  async function handleMarkPaid(creditor: Creditor, method: SettlementProvider) {
     if (!session.userId) return;
 
     try {
@@ -161,7 +275,7 @@ export default function SettleScreen() {
       router.back();
     } catch (error) {
       Sentry.captureException(error, { tags: { feature: "settle.markPaid" } });
-      Alert.alert(t("common.error.generic"));
+      setSettlementNotice({ titleKey: "common.error.generic", variant: "error" });
     }
   }
 
@@ -178,90 +292,103 @@ export default function SettleScreen() {
     );
   }
 
-  const renderProviderRow = (
+  const renderProviderTile = (
     creditor: Creditor,
-    provider: "bkash" | "nagad" | "cash" | "other",
+    provider: SettlementProvider,
     idx: number,
     onPress: () => void,
     disabled = false
   ) => {
     const isMfs = provider === "bkash" || provider === "nagad";
     const labelKey = `settle.via.${provider}` as const;
+    const subtitleKey = `settle.method.${provider}.short` as const;
     const Icon = isMfs ? Smartphone : provider === "cash" ? Banknote : HandCoins;
+    const iconColor = isMfs
+      ? colors.inkOnBrand
+      : provider === "cash"
+        ? colors.accentGold
+        : colors.info;
 
     return (
-      <Pressable
-        accessibilityLabel={`${t(labelKey)} — ${creditor.displayName}`}
-        accessibilityRole="button"
-        accessibilityState={{ disabled }}
+      <SettlementMethodTile
+        amountLabel={isMfs ? undefined : formatMoney(creditor.amountPaisa, locale)}
         disabled={disabled}
+        icon={<Icon color={iconColor} size={19} />}
+        label={t(labelKey)}
         onPress={onPress}
-        style={({ pressed }) => ({
-          alignItems: "center",
-          backgroundColor: colors.bgCanvas,
-          borderColor: colors.borderSubtle,
-          borderRadius: radii.lg,
-          borderWidth: 1,
-          flexDirection: "row",
-          gap: spacing.md,
-          minHeight: 64,
-          opacity: disabled ? 0.48 : pressed ? 0.78 : 1,
-          paddingHorizontal: spacing.md,
-          paddingVertical: spacing.sm
-        })}
+        showDisclosure={isMfs}
+        subtitle={t(subtitleKey)}
         testID={`settle-${provider}-${idx}`}
-      >
-        <View
-          style={{
-            alignItems: "center",
-            backgroundColor: isMfs ? colors.brandPrimary : colors.bgSubtle,
-            borderRadius: radii.pill,
-            height: 40,
-            justifyContent: "center",
-            width: 40
-          }}
-        >
-          <Icon color={isMfs ? colors.bgCanvas : colors.inkSecondary} size={20} />
-        </View>
-        <View style={{ flex: 1, gap: spacing.xs }}>
-          <Text style={{ color: colors.inkPrimary }} variant="bodyStrong">
-            {t(labelKey)}
-          </Text>
-          <Text numberOfLines={1} style={{ color: colors.inkMuted }} variant="caption">
-            {creditor.displayName}
-          </Text>
-        </View>
-        <Text
-          accessibilityLabel={formatMoney(creditor.amountPaisa, locale)}
-          style={{ color: colors.inkPrimary, fontVariant: ["tabular-nums"] }}
-          variant="bodyStrong"
-        >
-          {formatMoney(creditor.amountPaisa, locale)}
-        </Text>
-      </Pressable>
+        variant={isMfs ? "primary" : "manual"}
+      />
     );
   };
 
   if (creditors.length === 0) {
     return (
-      <ScrollView
-        contentContainerStyle={{ padding: spacing.xl }}
-        style={{ backgroundColor: colors.bgCanvas, flex: 1 }}
-      >
+      <View style={{ backgroundColor: colors.bgCanvas, flex: 1 }}>
         <Stack.Screen options={{ headerShown: false, title: t("settle.title") }} />
         <View
           style={{
-            backgroundColor: colors.bgSurface,
-            borderColor: colors.borderStrong,
-            borderRadius: radii.xl,
-            borderWidth: 1,
-            marginTop: spacing["3xl"],
-            padding: spacing.lg
+            backgroundColor: colors.brandPrimary,
+            gap: spacing.lg,
+            paddingBottom: spacing.xl,
+            paddingHorizontal: spacing.xl,
+            paddingTop: spacing["3xl"]
           }}
         >
-          <EmptyState body={t("balance.all_settled")} title={t("settle.title")} />
+          <View style={{ alignItems: "center", flexDirection: "row", gap: spacing.md }}>
+            <Pressable
+              accessibilityLabel={t("common.cancel")}
+              accessibilityRole="button"
+              onPress={() => router.back()}
+              style={({ pressed }) => ({
+                alignItems: "center",
+                backgroundColor: "rgba(255,255,255,0.18)",
+                borderRadius: radii.pill,
+                height: 40,
+                justifyContent: "center",
+                opacity: pressed ? 0.72 : 1,
+                width: 40
+              })}
+            >
+              <ArrowLeft color={colors.inkOnBrand} size={20} />
+            </Pressable>
+            <Text style={{ color: colors.inkOnBrand, flex: 1, minWidth: 0 }} variant="h2">
+              {t("settle.title")}
+            </Text>
+          </View>
+          <Text
+            ellipsizeMode="tail"
+            numberOfLines={1}
+            style={{ color: colors.inkOnBrand, opacity: 0.86 }}
+            variant="label"
+          >
+            {detailQuery.data?.group.name ?? t("groups.detail.fallback_title")}
+          </Text>
         </View>
-      </ScrollView>
+        <ScrollView
+          contentContainerStyle={{
+            padding: spacing.xl,
+            paddingBottom: spacing["5xl"]
+          }}
+          style={{ backgroundColor: colors.bgCanvas, flex: 1 }}
+        >
+          <BakiEmptyState
+            action={{
+              accessibilityLabel: t("settle.empty.action"),
+              label: t("settle.empty.action"),
+              onPress: () => router.back(),
+              variant: "secondary"
+            }}
+            body={t("settle.empty.body")}
+            icon={BadgeCheck}
+            testID="settle-empty-state"
+            title={t("settle.empty.title")}
+            tone="positive"
+          />
+        </ScrollView>
+      </View>
     );
   }
 
@@ -270,11 +397,9 @@ export default function SettleScreen() {
       <Stack.Screen options={{ headerShown: false, title: t("settle.title") }} />
       <View
         style={{
-          backgroundColor: colors.bgSurface,
-          borderBottomColor: colors.borderSubtle,
-          borderBottomWidth: 1,
-          gap: spacing.md,
-          paddingBottom: spacing.lg,
+          backgroundColor: colors.brandPrimary,
+          gap: spacing.lg,
+          paddingBottom: spacing.xl,
           paddingHorizontal: spacing.xl,
           paddingTop: spacing["3xl"]
         }}
@@ -286,7 +411,7 @@ export default function SettleScreen() {
             onPress={() => router.back()}
             style={({ pressed }) => ({
               alignItems: "center",
-              backgroundColor: colors.bgSubtle,
+              backgroundColor: "rgba(255,255,255,0.18)",
               borderRadius: radii.pill,
               height: 40,
               justifyContent: "center",
@@ -294,43 +419,109 @@ export default function SettleScreen() {
               width: 40
             })}
           >
-            <ArrowLeft color={colors.inkPrimary} size={20} />
+            <ArrowLeft color={colors.inkOnBrand} size={20} />
           </Pressable>
-          <Text style={{ color: colors.inkPrimary, flex: 1 }} variant="h2">
+          <Text style={{ color: colors.inkOnBrand, flex: 1, minWidth: 0 }} variant="h2">
             {t("settle.title")}
           </Text>
         </View>
-        <Text style={{ color: colors.inkSecondary }} variant="body">
-          {t("settle.confirmation.body")}
-        </Text>
+        <View style={{ gap: spacing.sm }}>
+          <Text
+            ellipsizeMode="tail"
+            numberOfLines={1}
+            style={{ color: colors.inkOnBrand, opacity: 0.82 }}
+            variant="label"
+          >
+            {detailQuery.data?.group.name ?? t("groups.detail.fallback_title")}
+          </Text>
+          <Text
+            accessibilityLabel={formatMoney(totalOwedPaisa, locale)}
+            ellipsizeMode="tail"
+            numberOfLines={1}
+            style={{ color: colors.inkOnBrand, fontVariant: ["tabular-nums"] }}
+            variant="monoAmount"
+          >
+            {formatMoney(totalOwedPaisa, locale)}
+          </Text>
+          <Text style={{ color: colors.inkOnBrand, opacity: 0.86 }} variant="body">
+            {t("settle.hero.subtitle")}
+          </Text>
+        </View>
       </View>
 
       <ScrollView
-        contentContainerStyle={{ gap: spacing.lg, padding: spacing.xl, paddingBottom: spacing["4xl"] }}
+        contentContainerStyle={{
+          gap: spacing.lg,
+          padding: spacing.xl,
+          paddingBottom: spacing["4xl"]
+        }}
       >
-      {creditors.map((creditor, idx) => (
-        <View key={creditor.userId} testID={`settle-row-${idx}`}>
-          <View
-            style={{
-              backgroundColor: colors.bgSurface,
-              borderColor: colors.borderStrong,
-              borderRadius: radii.xl,
-              borderWidth: 1,
-              gap: spacing.md,
-              padding: spacing.lg
-            }}
-          >
-            <View style={{ alignItems: "center", flexDirection: "row", gap: spacing.md }}>
-              <Avatar name={creditor.displayName} size="lg" />
-              <View style={{ flex: 1, gap: spacing.xs }}>
-                <Text
-                  ellipsizeMode="tail"
-                  numberOfLines={2}
-                  style={{ color: colors.inkPrimary }}
-                  variant="bodyStrong"
-                >
-                  {creditor.displayName}
-                </Text>
+        {settlementNotice ? (
+          <Toast
+            dismissLabel={t("common.dismiss")}
+            message={settlementNotice.bodyKey ? t(settlementNotice.bodyKey) : undefined}
+            onDismiss={() => setSettlementNotice(null)}
+            testID="settle-notice"
+            title={t(settlementNotice.titleKey)}
+            variant={settlementNotice.variant}
+          />
+        ) : null}
+        {creditors.map((creditor, idx) => (
+          <View key={creditor.userId} testID={`settle-row-${idx}`}>
+            <View
+              style={{
+                backgroundColor: colors.bgSurface,
+                borderColor: colors.borderStrong,
+                borderRadius: radii.lg,
+                borderWidth: 1,
+                gap: spacing.md,
+                padding: spacing.lg
+              }}
+            >
+              <View style={{ alignItems: "center", flexDirection: "row", gap: spacing.md }}>
+                <Avatar name={creditor.displayName} size="lg" />
+                <View style={{ flex: 1, gap: spacing.xs, minWidth: 0 }}>
+                  <Text style={{ color: colors.inkMuted }} variant="label">
+                    {t("settle.due_to")}
+                  </Text>
+                  <Text
+                    ellipsizeMode="tail"
+                    numberOfLines={1}
+                    style={{ color: colors.inkPrimary }}
+                    variant="bodyStrong"
+                  >
+                    {creditor.displayName}
+                  </Text>
+                </View>
+                <View style={{ alignItems: "flex-end", gap: spacing.xs, maxWidth: 128 }}>
+                  <Text style={{ color: colors.inkMuted }} variant="label">
+                    {t("settle.amount_due")}
+                  </Text>
+                  <Text
+                    accessibilityLabel={formatMoney(creditor.amountPaisa, locale)}
+                    ellipsizeMode="tail"
+                    numberOfLines={1}
+                    style={{
+                      color: colors.negative,
+                      fontVariant: ["tabular-nums"],
+                      textAlign: "right"
+                    }}
+                    variant="monoAmount"
+                  >
+                    {formatMoney(creditor.amountPaisa, locale)}
+                  </Text>
+                </View>
+              </View>
+
+              <View
+                style={{
+                  backgroundColor: colors.tintWarning,
+                  borderRadius: radii.md,
+                  gap: 2,
+                  paddingHorizontal: spacing.md,
+                  paddingVertical: spacing.sm
+                }}
+              >
                 <Text style={{ color: colors.warning }} variant="caption">
                   {t("settle.summary", {
                     amount: formatMoney(creditor.amountPaisa, locale),
@@ -338,51 +529,104 @@ export default function SettleScreen() {
                   })}
                 </Text>
               </View>
-            </View>
 
-            <View style={{ gap: spacing.sm }}>
-              {renderProviderRow(
-                creditor,
-                "bkash",
-                idx,
-                () => handleOpenProvider(creditor, "bkash"),
-                !creditor.bkashNumber && !creditor.phone
-              )}
-              {renderProviderRow(
-                creditor,
-                "nagad",
-                idx,
-                () => handleOpenProvider(creditor, "nagad"),
-                !creditor.nagadNumber && !creditor.phone
-              )}
-              {renderProviderRow(creditor, "cash", idx, () => handleMarkPaid(creditor, "cash"))}
-              {renderProviderRow(creditor, "other", idx, () => handleMarkPaid(creditor, "other"))}
-            </View>
+              <SettlementFlowGuide />
 
-            {pendingCreditor?.creditor.userId === creditor.userId ? (
-              <Pressable
-                accessibilityLabel={t("settle.action.markPaid")}
-                accessibilityRole="button"
-                disabled={createSettlement.isPending}
-                onPress={() => handleMarkPaid(pendingCreditor.creditor, pendingCreditor.provider)}
-                style={({ pressed }) => ({
-                  alignItems: "center",
-                  backgroundColor: colors.brandPrimary,
-                  borderRadius: radii.pill,
-                  justifyContent: "center",
-                  minHeight: 48,
-                  opacity: createSettlement.isPending ? 0.48 : pressed ? 0.82 : 1
-                })}
-                testID="settle-mark-paid-cta"
-              >
-                <Text style={{ color: colors.bgCanvas }} variant="bodyStrong">
-                  {createSettlement.isPending ? t("common.loading") : t("settle.action.markPaid")}
+              {pendingCreditor?.creditor.userId === creditor.userId ? (
+                <View
+                  style={{
+                    backgroundColor: colors.bgSubtle,
+                    borderRadius: radii.lg,
+                    gap: spacing.md,
+                    padding: spacing.md
+                  }}
+                >
+                  <View style={{ gap: spacing.xs }}>
+                    <Text style={{ color: colors.inkPrimary }} variant="bodyStrong">
+                      {t("settle.confirmation.title")}
+                    </Text>
+                    <Text style={{ color: colors.inkSecondary }} variant="caption">
+                      {t("settle.confirmation.body")}
+                    </Text>
+                  </View>
+                  <Pressable
+                    accessibilityLabel={t("settle.action.markPaid")}
+                    accessibilityRole="button"
+                    disabled={createSettlement.isPending}
+                    onPress={() =>
+                      handleMarkPaid(pendingCreditor.creditor, pendingCreditor.provider)
+                    }
+                    style={({ pressed }) => ({
+                      alignItems: "center",
+                      backgroundColor: colors.brandPrimary,
+                      borderRadius: radii.pill,
+                      justifyContent: "center",
+                      minHeight: 48,
+                      opacity: createSettlement.isPending ? 0.48 : pressed ? 0.82 : 1
+                    })}
+                    testID="settle-mark-paid-cta"
+                  >
+                    <Text style={{ color: colors.inkOnBrand }} variant="bodyStrong">
+                      {createSettlement.isPending
+                        ? t("common.loading")
+                        : t("settle.action.markPaid")}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
+
+              <View style={{ gap: spacing.sm }}>
+                <View style={{ alignItems: "center", flexDirection: "row", gap: spacing.sm }}>
+                  <Text style={{ color: colors.inkMuted, flex: 1 }} variant="label">
+                    {t("settle.methods.mfs_title")}
+                  </Text>
+                  <View
+                    style={{
+                      backgroundColor: colors.tintBrand,
+                      borderRadius: radii.pill,
+                      paddingHorizontal: spacing.sm,
+                      paddingVertical: spacing.xs
+                    }}
+                  >
+                    <Text style={{ color: colors.brandPrimary }} variant="label">
+                      {t("settle.methods.mfs_badge")}
+                    </Text>
+                  </View>
+                </View>
+                <View style={{ flexDirection: "row", gap: spacing.sm }}>
+                  {renderProviderTile(
+                    creditor,
+                    "bkash",
+                    idx,
+                    () => handleOpenProvider(creditor, "bkash"),
+                    !creditor.bkashNumber && !creditor.phone
+                  )}
+                  {renderProviderTile(
+                    creditor,
+                    "nagad",
+                    idx,
+                    () => handleOpenProvider(creditor, "nagad"),
+                    !creditor.nagadNumber && !creditor.phone
+                  )}
+                </View>
+              </View>
+
+              <View style={{ gap: spacing.sm }}>
+                <Text style={{ color: colors.inkMuted }} variant="label">
+                  {t("settle.methods.manual_title")}
                 </Text>
-              </Pressable>
-            ) : null}
+                <View style={{ flexDirection: "row", gap: spacing.sm }}>
+                  {renderProviderTile(creditor, "cash", idx, () =>
+                    handleMarkPaid(creditor, "cash")
+                  )}
+                  {renderProviderTile(creditor, "other", idx, () =>
+                    handleMarkPaid(creditor, "other")
+                  )}
+                </View>
+              </View>
+            </View>
           </View>
-        </View>
-      ))}
+        ))}
       </ScrollView>
     </View>
   );

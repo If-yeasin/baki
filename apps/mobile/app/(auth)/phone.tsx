@@ -1,12 +1,14 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Stack, useRouter, type Href } from "expo-router";
+import { ShieldCheck, Smartphone } from "lucide-react-native";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { ScrollView, View } from "react-native";
+import { View } from "react-native";
 import { z } from "zod";
 
-import { Button, Card, PhoneInput, Text, spacing, useTheme } from "@baki/ui";
+import { Button, Card, PhoneInput, Text, radii, spacing, useTheme } from "@baki/ui";
 
+import { AuthScreenFrame } from "@/components/auth-screen-frame";
 import { bdPhoneSchema, displayBdPhone } from "@/features/auth/phone";
 import { useRequestOtp } from "@/features/auth/use-phone-auth";
 
@@ -36,16 +38,14 @@ export default function PhoneScreen() {
   });
 
   return (
-    <ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      style={{ backgroundColor: colors.bgCanvas, flex: 1 }}
-      contentContainerStyle={{ gap: spacing.lg, padding: spacing.xl }}
+    <AuthScreenFrame
+      brandLabel={t("common.appName")}
+      eyebrow={t("auth.step.phone")}
+      icon={Smartphone}
+      subtitle={t("auth.phone.subtitle")}
+      title={t("auth.phone.title")}
     >
       <Stack.Screen options={{ title: t("auth.phone.title") }} />
-      <View style={{ gap: spacing.sm }}>
-        <Text variant="h1">{t("auth.phone.title")}</Text>
-        <Text tone="secondary">{t("auth.phone.subtitle")}</Text>
-      </View>
 
       <Card style={{ gap: spacing.lg }}>
         <Controller
@@ -61,10 +61,33 @@ export default function PhoneScreen() {
               onChangeText={onChange}
               placeholder={t("auth.phone.placeholder")}
               showValidationState
+              testID="auth-phone-input"
               value={value}
             />
           )}
         />
+
+        <View
+          style={{
+            alignItems: "center",
+            backgroundColor: colors.bgSubtle,
+            borderRadius: radii.md,
+            flexDirection: "row",
+            gap: spacing.sm,
+            paddingHorizontal: spacing.md,
+            paddingVertical: spacing.sm
+          }}
+        >
+          <ShieldCheck color={colors.positive} size={18} />
+          <Text
+            ellipsizeMode="tail"
+            numberOfLines={2}
+            style={{ color: colors.inkSecondary, flex: 1, minWidth: 0 }}
+            variant="caption"
+          >
+            {t("auth.phone.secure_note")}
+          </Text>
+        </View>
 
         {requestOtp.error ? (
           <Text tone="negative" variant="caption">
@@ -72,10 +95,10 @@ export default function PhoneScreen() {
           </Text>
         ) : null}
 
-        <Button disabled={requestOtp.isPending} onPress={onSubmit}>
+        <Button disabled={requestOtp.isPending} onPress={onSubmit} size="lg">
           {requestOtp.isPending ? t("common.loading") : t("auth.phone.cta")}
         </Button>
       </Card>
-    </ScrollView>
+    </AuthScreenFrame>
   );
 }

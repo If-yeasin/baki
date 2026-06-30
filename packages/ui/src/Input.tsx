@@ -100,6 +100,9 @@ export function Input({
               fontWeight: typography.body.fontWeight,
               lineHeight: typography.body.lineHeight,
               minHeight: 46,
+              outlineColor: "transparent",
+              outlineStyle: "solid",
+              outlineWidth: 0,
               paddingVertical: 0
             },
             inputStyle

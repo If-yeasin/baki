@@ -10,7 +10,7 @@ export const expensesKeys = {
   list: (groupId: string) => [...expensesKeys.all, "list", groupId] as const
 };
 
-async function fetchExpenses(groupId: string): Promise<ExpenseSummary[]> {
+export async function fetchExpenses(groupId: string): Promise<ExpenseSummary[]> {
   const { data, error } = await supabase
     .from("expenses")
     .select("*")

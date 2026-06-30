@@ -131,7 +131,9 @@ export function PhoneInput({
   const [focused, setFocused] = useState(false);
   const disabled = editable === false;
   const validation = validateBdPhoneNumber(value);
-  const hasValidationError = Boolean(showValidationState && value.length > 0 && !validation.isValid);
+  const hasValidationError = Boolean(
+    showValidationState && value.length > 0 && !validation.isValid
+  );
   const supportText = errorText ?? helperText;
   const borderColor =
     errorText || hasValidationError
@@ -213,6 +215,9 @@ export function PhoneInput({
               fontWeight: typography.body.fontWeight,
               lineHeight: typography.body.lineHeight,
               minHeight: 46,
+              outlineColor: "transparent",
+              outlineStyle: "solid",
+              outlineWidth: 0,
               paddingVertical: 0
             },
             inputStyle

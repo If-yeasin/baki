@@ -1,11 +1,13 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Stack, useLocalSearchParams, useRouter, type Href } from "expo-router";
+import { KeyRound } from "lucide-react-native";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { ScrollView, View } from "react-native";
+import { View } from "react-native";
 
-import { Button, Card, Input, Text, spacing, useTheme } from "@baki/ui";
+import { Button, Card, Input, Text, radii, spacing, useTheme } from "@baki/ui";
 
+import { AuthScreenFrame } from "@/components/auth-screen-frame";
 import { displayBdPhone, otpSchema } from "@/features/auth/phone";
 import { useVerifyOtp } from "@/features/auth/use-phone-auth";
 
@@ -31,21 +33,39 @@ export default function OtpScreen() {
   });
 
   return (
-    <ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      style={{ backgroundColor: colors.bgCanvas, flex: 1 }}
-      contentContainerStyle={{ gap: spacing.lg, padding: spacing.xl }}
+    <AuthScreenFrame
+      backLabel={t("common.cancel")}
+      brandLabel={t("common.appName")}
+      eyebrow={t("auth.step.otp")}
+      icon={KeyRound}
+      onBack={() => router.back()}
+      subtitle={t("auth.otp.subtitle")}
+      title={t("auth.otp.title")}
     >
       <Stack.Screen options={{ title: t("auth.otp.title") }} />
-      <View style={{ gap: spacing.sm }}>
-        <Text variant="h1">{t("auth.otp.title")}</Text>
-        <Text tone="secondary">{t("auth.otp.subtitle")}</Text>
-        <Text tone="muted" variant="caption">
-          {displayBdPhone(phone)}
-        </Text>
-      </View>
 
       <Card style={{ gap: spacing.lg }}>
+        <View
+          style={{
+            backgroundColor: colors.bgSubtle,
+            borderRadius: radii.md,
+            gap: spacing.xs,
+            paddingHorizontal: spacing.md,
+            paddingVertical: spacing.sm
+          }}
+        >
+          <Text style={{ color: colors.inkMuted }} variant="label">
+            {t("auth.otp.sent_to")}
+          </Text>
+          <Text
+            selectable
+            style={{ color: colors.inkPrimary, fontVariant: ["tabular-nums"] }}
+            variant="bodyStrong"
+          >
+            {displayBdPhone(phone)}
+          </Text>
+        </View>
+
         <Controller
           control={control}
           name="otp"
@@ -54,10 +74,13 @@ export default function OtpScreen() {
               accessibilityLabel={t("auth.otp.label")}
               errorText={errors.otp?.message ? t(errors.otp.message) : undefined}
               inputMode="numeric"
+              fieldStyle={{ minHeight: 64 }}
               inputStyle={{
                 fontFamily: "Inter_600SemiBold",
                 fontSize: 24,
-                letterSpacing: 0
+                fontVariant: ["tabular-nums"],
+                letterSpacing: 0,
+                textAlign: "center"
               }}
               keyboardType="number-pad"
               label={t("auth.otp.label")}
@@ -65,10 +88,15 @@ export default function OtpScreen() {
               onBlur={onBlur}
               onChangeText={onChange}
               placeholder={t("auth.otp.placeholder")}
+              testID="auth-otp-input"
               value={value}
             />
           )}
         />
+
+        <Text style={{ color: colors.inkMuted }} variant="caption">
+          {t("auth.otp.helper")}
+        </Text>
 
         {verifyOtp.error ? (
           <Text tone="negative" variant="caption">
@@ -76,10 +104,10 @@ export default function OtpScreen() {
           </Text>
         ) : null}
 
-        <Button disabled={verifyOtp.isPending} onPress={onSubmit}>
+        <Button disabled={verifyOtp.isPending} onPress={onSubmit} size="lg">
           {verifyOtp.isPending ? t("common.loading") : t("auth.otp.confirm")}
         </Button>
       </Card>
-    </ScrollView>
+    </AuthScreenFrame>
   );
 }

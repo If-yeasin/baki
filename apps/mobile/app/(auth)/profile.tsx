@@ -1,12 +1,14 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { Controller, useForm } from "react-hook-form";
+import { UserRound } from "lucide-react-native";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { ScrollView, View } from "react-native";
+import { View } from "react-native";
 
-import { Button, Card, Input, Text, spacing, useTheme } from "@baki/ui";
+import { Avatar, Button, Card, Input, Text, radii, spacing, useTheme } from "@baki/ui";
 
-import { profileSchema } from "@/features/auth/phone";
+import { AuthScreenFrame } from "@/components/auth-screen-frame";
+import { displayBdPhone, profileSchema } from "@/features/auth/phone";
 import { useUpsertProfile } from "@/features/auth/use-phone-auth";
 
 export default function ProfileScreen() {
@@ -24,6 +26,8 @@ export default function ProfileScreen() {
     defaultValues: { displayName: "", phone },
     resolver: zodResolver(profileSchema)
   });
+  const watchedName = useWatch({ control, name: "displayName" });
+  const previewName = watchedName.trim() || t("auth.profile.name.placeholder");
 
   const onSubmit = handleSubmit(async ({ displayName }) => {
     await upsertProfile.mutateAsync({ displayName, phone });
@@ -31,18 +35,52 @@ export default function ProfileScreen() {
   });
 
   return (
-    <ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      style={{ backgroundColor: colors.bgCanvas, flex: 1 }}
-      contentContainerStyle={{ gap: spacing.lg, padding: spacing.xl }}
+    <AuthScreenFrame
+      backLabel={t("common.cancel")}
+      brandLabel={t("common.appName")}
+      eyebrow={t("auth.step.profile")}
+      icon={UserRound}
+      onBack={() => router.back()}
+      subtitle={t("auth.profile.subtitle")}
+      title={t("auth.profile.title")}
     >
       <Stack.Screen options={{ title: t("auth.profile.title") }} />
-      <View style={{ gap: spacing.sm }}>
-        <Text variant="h1">{t("auth.profile.title")}</Text>
-        <Text tone="secondary">{t("auth.profile.subtitle")}</Text>
-      </View>
 
       <Card style={{ gap: spacing.lg }}>
+        <View
+          style={{
+            alignItems: "center",
+            backgroundColor: colors.bgSubtle,
+            borderRadius: radii.md,
+            flexDirection: "row",
+            gap: spacing.md,
+            padding: spacing.md
+          }}
+        >
+          <Avatar name={previewName} size="lg" />
+          <View style={{ flex: 1, gap: spacing.xs, minWidth: 0 }}>
+            <Text style={{ color: colors.inkMuted }} variant="label">
+              {t("auth.profile.preview.label")}
+            </Text>
+            <Text
+              ellipsizeMode="tail"
+              numberOfLines={1}
+              style={{ color: colors.inkPrimary }}
+              variant="bodyStrong"
+            >
+              {previewName}
+            </Text>
+            <Text
+              ellipsizeMode="tail"
+              numberOfLines={1}
+              style={{ color: colors.inkMuted, fontVariant: ["tabular-nums"] }}
+              variant="caption"
+            >
+              {displayBdPhone(phone)}
+            </Text>
+          </View>
+        </View>
+
         <Controller
           control={control}
           name="displayName"
@@ -56,10 +94,15 @@ export default function ProfileScreen() {
               onBlur={onBlur}
               onChangeText={onChange}
               placeholder={t("auth.profile.name.placeholder")}
+              testID="auth-profile-name-input"
               value={value}
             />
           )}
         />
+
+        <Text style={{ color: colors.inkMuted }} variant="caption">
+          {t("auth.profile.helper")}
+        </Text>
 
         {upsertProfile.error ? (
           <Text tone="negative" variant="caption">
@@ -67,10 +110,10 @@ export default function ProfileScreen() {
           </Text>
         ) : null}
 
-        <Button disabled={upsertProfile.isPending} onPress={onSubmit}>
+        <Button disabled={upsertProfile.isPending} onPress={onSubmit} size="lg">
           {upsertProfile.isPending ? t("common.loading") : t("auth.profile.continue")}
         </Button>
       </Card>
-    </ScrollView>
+    </AuthScreenFrame>
   );
 }

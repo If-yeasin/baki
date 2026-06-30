@@ -1,13 +1,14 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Stack, useRouter, type Href } from "expo-router";
-import { ArrowLeft, Check } from "lucide-react-native";
-import { Controller, useForm } from "react-hook-form";
+import { ArrowLeft, Check, Share2, UsersRound, type LucideIcon } from "lucide-react-native";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, View } from "react-native";
 import { z } from "zod";
 
-import { Input, Text, radii, spacing, useTheme } from "@baki/ui";
+import { Button, Input, Text, radii, spacing, useTheme } from "@baki/ui";
 
+import { GroupTemplateMark } from "@/components/ledger-marks";
 import { useCreateGroup } from "@/features/groups/use-create-group";
 import { GROUP_TEMPLATES, type GroupTemplate } from "@/features/groups/types";
 
@@ -35,6 +36,10 @@ export default function CreateGroupScreen() {
     defaultValues: { name: "", template: "custom" },
     resolver: zodResolver(createGroupSchema)
   });
+  const watchedName = useWatch({ control, name: "name" });
+  const watchedTemplate = useWatch({ control, name: "template" });
+  const previewName = watchedName.trim() || t("groups.create.name.placeholder");
+  const previewTemplate = watchedTemplate ?? "custom";
 
   const onSubmit = handleSubmit(async (values) => {
     const group = await createGroup.mutateAsync(values);
@@ -46,35 +51,36 @@ export default function CreateGroupScreen() {
       <Stack.Screen options={{ headerShown: false, title: t("groups.create.title") }} />
       <View
         style={{
-          alignItems: "center",
           backgroundColor: colors.brandPrimary,
-          borderBottomColor: colors.brandPrimaryPressed,
-          borderBottomWidth: 1,
-          flexDirection: "row",
-          gap: spacing.md,
-          paddingBottom: spacing.md,
+          gap: spacing.lg,
+          paddingBottom: spacing.xl,
           paddingHorizontal: spacing.xl,
           paddingTop: spacing["3xl"]
         }}
       >
-        <Pressable
-          accessibilityLabel={t("common.cancel")}
-          accessibilityRole="button"
-          onPress={() => router.back()}
-          style={({ pressed }) => ({
-            alignItems: "center",
-            backgroundColor: "rgba(255,255,255,0.18)",
-            borderRadius: radii.pill,
-            height: 40,
-            justifyContent: "center",
-            opacity: pressed ? 0.72 : 1,
-            width: 40
-          })}
-        >
-          <ArrowLeft color={colors.inkOnBrand} size={20} />
-        </Pressable>
-        <Text style={{ color: colors.inkOnBrand, flex: 1 }} variant="h3">
-          {t("groups.create.title")}
+        <View style={{ alignItems: "center", flexDirection: "row", gap: spacing.md }}>
+          <Pressable
+            accessibilityLabel={t("common.cancel")}
+            accessibilityRole="button"
+            onPress={() => router.back()}
+            style={({ pressed }) => ({
+              alignItems: "center",
+              backgroundColor: "rgba(255,255,255,0.18)",
+              borderRadius: radii.pill,
+              height: 40,
+              justifyContent: "center",
+              opacity: pressed ? 0.72 : 1,
+              width: 40
+            })}
+          >
+            <ArrowLeft color={colors.inkOnBrand} size={20} />
+          </Pressable>
+          <Text style={{ color: colors.inkOnBrand, flex: 1, minWidth: 0 }} variant="h2">
+            {t("groups.create.title")}
+          </Text>
+        </View>
+        <Text style={{ color: colors.inkOnBrand, opacity: 0.88 }} variant="body">
+          {t("groups.create.subtitle")}
         </Text>
       </View>
 
@@ -82,10 +88,60 @@ export default function CreateGroupScreen() {
         contentContainerStyle={{
           gap: spacing.lg,
           padding: spacing.xl,
-          paddingBottom: spacing["4xl"]
+          paddingBottom: spacing.xl
         }}
+        contentInsetAdjustmentBehavior="automatic"
         keyboardShouldPersistTaps="handled"
+        style={{ flex: 1 }}
       >
+        <View
+          style={{
+            backgroundColor: colors.bgSurface,
+            borderColor: colors.borderStrong,
+            borderRadius: radii.md,
+            borderWidth: 1,
+            gap: spacing.md,
+            padding: spacing.lg
+          }}
+        >
+          <Text style={{ color: colors.inkMuted }} variant="label">
+            {t("groups.create.preview.label")}
+          </Text>
+          <View style={{ alignItems: "center", flexDirection: "row", gap: spacing.md }}>
+            <GroupTemplateMark size={52} template={previewTemplate} />
+            <View style={{ flex: 1, gap: spacing.xs, minWidth: 0 }}>
+              <Text
+                ellipsizeMode="tail"
+                numberOfLines={1}
+                style={{ color: colors.inkPrimary }}
+                variant="bodyStrong"
+              >
+                {previewName}
+              </Text>
+              <Text
+                ellipsizeMode="tail"
+                numberOfLines={1}
+                style={{ color: colors.inkMuted }}
+                variant="caption"
+              >
+                {t(`groups.template.${previewTemplate}`)}
+              </Text>
+            </View>
+          </View>
+          <View style={{ flexDirection: "row", gap: spacing.sm }} testID="group-create-preview-meta">
+            <PreviewMetaCell
+              icon={UsersRound}
+              label={t("groups.create.preview.members")}
+              value={t("groups.create.preview.membersValue")}
+            />
+            <PreviewMetaCell
+              icon={Share2}
+              label={t("groups.create.preview.invite")}
+              value={t("groups.create.preview.inviteValue")}
+            />
+          </View>
+        </View>
+
         <View
           style={{
             backgroundColor: colors.bgSurface,
@@ -132,7 +188,7 @@ export default function CreateGroupScreen() {
               control={control}
               name="template"
               render={({ field: { onChange, value } }) => (
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+                <View style={{ gap: spacing.sm }}>
                   {GROUP_TEMPLATES.map((template: GroupTemplate) => (
                     <Pressable
                       accessibilityLabel={t(`groups.template.${template}`)}
@@ -141,28 +197,53 @@ export default function CreateGroupScreen() {
                       key={template}
                       onPress={() => onChange(template)}
                       style={({ pressed }) => ({
-                        backgroundColor:
-                          value === template ? colors.brandPrimary : colors.bgSurface,
-                        borderColor: value === template ? colors.brandPrimary : colors.borderStrong,
-                        borderRadius: radii.pill,
+                        backgroundColor: value === template ? colors.tintBrand : colors.bgSurface,
+                        borderColor: value === template ? colors.brandPrimary : colors.borderSubtle,
+                        borderRadius: radii.md,
                         borderWidth: 1,
+                        alignItems: "center",
                         flexDirection: "row",
-                        gap: spacing.xs,
-                        minHeight: 42,
+                        gap: spacing.md,
+                        minHeight: 72,
                         opacity: pressed ? 0.72 : 1,
-                        paddingHorizontal: spacing.lg,
+                        paddingHorizontal: spacing.md,
                         paddingVertical: spacing.sm
                       })}
                     >
-                      {value === template ? <Check color={colors.inkOnBrand} size={14} /> : null}
-                      <Text
+                      <GroupTemplateMark size={44} template={template} />
+                      <View style={{ flex: 1, gap: spacing.xs, minWidth: 0 }}>
+                        <Text
+                          ellipsizeMode="tail"
+                          numberOfLines={1}
+                          style={{ color: colors.inkPrimary }}
+                          variant="bodyStrong"
+                        >
+                          {t(`groups.template.${template}`)}
+                        </Text>
+                        <Text
+                          ellipsizeMode="tail"
+                          numberOfLines={2}
+                          style={{ color: colors.inkMuted }}
+                          variant="caption"
+                        >
+                          {t(`groups.template.${template}.description`)}
+                        </Text>
+                      </View>
+                      <View
                         style={{
-                          color: value === template ? colors.inkOnBrand : colors.inkPrimary
+                          alignItems: "center",
+                          backgroundColor:
+                            value === template ? colors.brandPrimary : colors.bgSubtle,
+                          borderRadius: radii.pill,
+                          height: 28,
+                          justifyContent: "center",
+                          width: 28
                         }}
-                        variant="bodyStrong"
                       >
-                        {t(`groups.template.${template}`)}
-                      </Text>
+                        {value === template ? (
+                          <Check color={colors.inkOnBrand} size={16} strokeWidth={2.4} />
+                        ) : null}
+                      </View>
                     </Pressable>
                   ))}
                 </View>
@@ -175,27 +256,103 @@ export default function CreateGroupScreen() {
               {t("groups.create.error.generic")}
             </Text>
           ) : null}
-
-          <Pressable
-            accessibilityLabel={t("groups.create.cta")}
-            accessibilityRole="button"
-            disabled={createGroup.isPending}
-            onPress={onSubmit}
-            style={({ pressed }) => ({
-              alignItems: "center",
-              backgroundColor: colors.brandPrimary,
-              borderRadius: radii.pill,
-              justifyContent: "center",
-              minHeight: 52,
-              opacity: createGroup.isPending ? 0.48 : pressed ? 0.82 : 1
-            })}
-          >
-            <Text style={{ color: colors.inkOnBrand }} variant="bodyStrong">
-              {createGroup.isPending ? t("common.loading") : t("groups.create.cta")}
-            </Text>
-          </Pressable>
         </View>
       </ScrollView>
+
+      <View
+        style={{
+          backgroundColor: colors.bgCanvas,
+          borderTopColor: colors.borderSubtle,
+          borderTopWidth: 1,
+          gap: spacing.sm,
+          paddingBottom: spacing.xl,
+          paddingHorizontal: spacing.xl,
+          paddingTop: spacing.md
+        }}
+      >
+        <View
+          accessibilityRole="summary"
+          style={{
+            alignItems: "center",
+            backgroundColor: colors.bgSurface,
+            borderColor: colors.borderSubtle,
+            borderRadius: radii.md,
+            borderWidth: 1,
+            flexDirection: "row",
+            gap: spacing.sm,
+            padding: spacing.sm
+          }}
+          testID="create-group-footer-summary"
+        >
+          <GroupTemplateMark size={36} template={previewTemplate} />
+          <View style={{ flex: 1, gap: 1, minWidth: 0 }}>
+            <Text tone="muted" variant="label">
+              {t("groups.create.footer.label")}
+            </Text>
+            <Text
+              ellipsizeMode="tail"
+              numberOfLines={1}
+              style={{ color: colors.inkPrimary }}
+              variant="bodyStrong"
+            >
+              {previewName}
+            </Text>
+          </View>
+          <Text
+            ellipsizeMode="tail"
+            numberOfLines={1}
+            style={{ color: colors.brandPrimary, maxWidth: 92 }}
+            variant="label"
+          >
+            {t(`groups.template.${previewTemplate}`)}
+          </Text>
+        </View>
+        <Button
+          accessibilityLabel={t("groups.create.cta")}
+          disabled={createGroup.isPending}
+          onPress={onSubmit}
+          size="lg"
+          testID="create-group-submit"
+        >
+          {createGroup.isPending ? t("common.loading") : t("groups.create.cta")}
+        </Button>
+      </View>
+    </View>
+  );
+}
+
+function PreviewMetaCell({
+  icon: Icon,
+  label,
+  value
+}: {
+  icon: LucideIcon;
+  label: string;
+  value: string;
+}) {
+  const { colors } = useTheme();
+
+  return (
+    <View
+      style={{
+        backgroundColor: colors.bgSubtle,
+        borderRadius: radii.md,
+        flex: 1,
+        gap: spacing.xs,
+        minWidth: 0,
+        paddingHorizontal: spacing.sm,
+        paddingVertical: spacing.sm
+      }}
+    >
+      <View style={{ alignItems: "center", flexDirection: "row", gap: spacing.xs }}>
+        <Icon color={colors.brandPrimary} size={15} />
+        <Text ellipsizeMode="tail" numberOfLines={1} tone="muted" variant="label">
+          {label}
+        </Text>
+      </View>
+      <Text ellipsizeMode="tail" numberOfLines={1} style={{ color: colors.inkPrimary }} variant="caption">
+        {value}
+      </Text>
     </View>
   );
 }

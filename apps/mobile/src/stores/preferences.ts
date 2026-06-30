@@ -2,7 +2,7 @@ import { create } from "zustand";
 
 import type { AppLocale } from "@baki/i18n";
 
-type ThemePreference = "light" | "dark" | "system";
+export type ThemePreference = "light" | "dark" | "system";
 
 type PreferencesState = {
   locale: AppLocale;

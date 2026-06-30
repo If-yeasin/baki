@@ -25,19 +25,22 @@ export type OpenSettlementResult =
  */
 export async function openSettlement(input: OpenSettlementInput): Promise<OpenSettlementResult> {
   const plan = buildSettlementPlan(input);
+  const shouldOpenDeepLinks = process.env.EXPO_OS !== "web";
 
-  for (const url of plan.urls) {
-    try {
-      const supported = await Linking.canOpenURL(url);
-      if (supported) {
-        await Linking.openURL(url);
-        return { kind: "opened", provider: plan.provider };
+  if (shouldOpenDeepLinks) {
+    for (const url of plan.urls) {
+      try {
+        const supported = await Linking.canOpenURL(url);
+        if (supported) {
+          await Linking.openURL(url);
+          return { kind: "opened", provider: plan.provider };
+        }
+      } catch (error) {
+        // Log and try the next candidate URL.
+        Sentry.captureException(error, {
+          tags: { feature: "settlement.deep_link", provider: plan.provider }
+        });
       }
-    } catch (error) {
-      // Log and try the next candidate URL.
-      Sentry.captureException(error, {
-        tags: { feature: "settlement.deep_link", provider: plan.provider }
-      });
     }
   }
 

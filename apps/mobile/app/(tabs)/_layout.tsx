@@ -36,7 +36,7 @@ export default function TabsLayout() {
         name="index"
         options={{
           tabBarIcon: ({ color, size }) => <ScrollText color={color} size={size} />,
-          tabBarLabel: t("groups.list.title"),
+          tabBarLabel: t("tabs.khatas"),
           tabBarButtonTestID: "tab-groups",
           title: t("groups.list.title")
         }}
@@ -45,7 +45,7 @@ export default function TabsLayout() {
         name="balances"
         options={{
           tabBarIcon: ({ color, size }) => <ListChecks color={color} size={size} />,
-          tabBarLabel: t("groups.detail.balances.title"),
+          tabBarLabel: t("tabs.balances"),
           tabBarButtonTestID: "tab-balances",
           title: t("groups.detail.balances.title")
         }}
@@ -54,7 +54,7 @@ export default function TabsLayout() {
         name="activity"
         options={{
           tabBarIcon: ({ color, size }) => <Activity color={color} size={size} />,
-          tabBarLabel: t("groups.detail.activity.title"),
+          tabBarLabel: t("tabs.activity"),
           tabBarButtonTestID: "tab-activity",
           title: t("groups.detail.activity.title")
         }}
@@ -63,7 +63,7 @@ export default function TabsLayout() {
         name="settings"
         options={{
           tabBarIcon: ({ color, size }) => <SettingsIcon color={color} size={size} />,
-          tabBarLabel: t("settings.title"),
+          tabBarLabel: t("tabs.settings"),
           tabBarButtonTestID: "tab-settings",
           title: t("settings.title")
         }}

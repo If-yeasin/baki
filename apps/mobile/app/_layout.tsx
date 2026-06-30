@@ -28,6 +28,7 @@ import { i18n } from "@/lib/i18n";
 import { SyncStatusIndicator } from "@/components/SyncStatusIndicator";
 import { queryClient } from "@/lib/query-client";
 import { Sentry } from "@/lib/sentry";
+import { usePreferencesStore } from "@/stores/preferences";
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -60,12 +61,11 @@ function RootLayout() {
   return (
     <GestureHandlerRootView style={{ backgroundColor: lightColors.bgCanvas, flex: 1 }}>
       <RootErrorBoundary>
-        {/* Light, list-first expense tracking is the default look for Baki. */}
-        <ThemeProvider override="light">
+        <AppThemeProvider>
           <QueryClientProvider client={queryClient}>
             <RootStack />
           </QueryClientProvider>
-        </ThemeProvider>
+        </AppThemeProvider>
       </RootErrorBoundary>
     </GestureHandlerRootView>
   );
@@ -137,4 +137,10 @@ function RootStack() {
       <Stack.Screen name="group/[id]/settle" options={{ title: t("settle.title") }} />
     </Stack>
   );
+}
+
+function AppThemeProvider({ children }: { children: ReactNode }) {
+  const themePreference = usePreferencesStore((state) => state.theme);
+
+  return <ThemeProvider override={themePreference}>{children}</ThemeProvider>;
 }

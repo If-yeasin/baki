@@ -15,6 +15,7 @@ export type AmountInputProps = Omit<
   label?: string;
   locale?: SupportedLocale;
   onChangePaisa: (paisa: number) => void;
+  showZeroValue?: boolean;
   valuePaisa: number;
 };
 
@@ -52,13 +53,14 @@ export function AmountInput({
   label,
   locale = "bn",
   onChangePaisa,
+  showZeroValue = true,
   valuePaisa,
   ...props
 }: AmountInputProps) {
-  const display = useMemo(
-    () => formatMoney(valuePaisa, locale).replace(/^৳\s*/, ""),
-    [valuePaisa, locale]
-  );
+  const display = useMemo(() => {
+    if (!showZeroValue && valuePaisa === 0) return "";
+    return formatMoney(valuePaisa, locale).replace(/^৳\s*/, "");
+  }, [locale, showZeroValue, valuePaisa]);
 
   function handleChangeText(next: string) {
     onChangePaisa(sanitizePaisaInput(next));
