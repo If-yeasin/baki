@@ -1,5 +1,5 @@
 import { formatRelativeDhakaDate } from "@baki/i18n";
-import { Link, type Href } from "expo-router";
+import { useRouter, type Href } from "expo-router";
 import { Plus, Search } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, View } from "react-native";
@@ -11,11 +11,16 @@ import { usePreferencesStore } from "@/stores/preferences";
 
 export default function ActivityScreen() {
   const { t } = useTranslation();
+  const router = useRouter();
   const { colors } = useTheme();
   const locale = usePreferencesStore((state) => state.locale);
   const groupsQuery = useGroups();
   const groups = groupsQuery.data ?? [];
   const firstGroupId = groups[0]?.id;
+  const addTarget = firstGroupId
+    ? (`/group/${firstGroupId}/add-expense` as Href)
+    : ("/groups/create" as Href);
+  const addLabel = firstGroupId ? t("expense.add.title") : t("groups.create.cta");
 
   return (
     <View style={{ backgroundColor: colors.bgCanvas, flex: 1 }}>
@@ -37,7 +42,7 @@ export default function ActivityScreen() {
             style={{
               alignItems: "center",
               backgroundColor: colors.bgSurface,
-              borderColor: colors.borderStrong,
+              borderColor: colors.borderSubtle,
               borderRadius: radii.pill,
               borderWidth: 1,
               height: 44,
@@ -56,7 +61,7 @@ export default function ActivityScreen() {
                 key={group.id}
                 style={{
                   backgroundColor: colors.bgSurface,
-                  borderBottomColor: colors.borderStrong,
+                  borderBottomColor: colors.rowDivider,
                   borderBottomWidth: 1,
                   flexDirection: "row",
                   gap: spacing.md,
@@ -68,7 +73,7 @@ export default function ActivityScreen() {
                 <View
                   style={{
                     alignItems: "center",
-                    backgroundColor: colors.bgSubtle,
+                    backgroundColor: colors.tintBrand,
                     borderRadius: radii.pill,
                     height: 36,
                     justifyContent: "center",
@@ -100,7 +105,7 @@ export default function ActivityScreen() {
           <View
             style={{
               backgroundColor: colors.bgSurface,
-              borderColor: colors.borderStrong,
+              borderColor: colors.borderSubtle,
               borderRadius: radii.md,
               borderWidth: 1,
               padding: spacing.lg
@@ -110,32 +115,26 @@ export default function ActivityScreen() {
           </View>
         )}
       </ScrollView>
-      <Link
-        asChild
-        href={
-          firstGroupId ? (`/group/${firstGroupId}/add-expense` as Href) : ("/groups/create" as Href)
-        }
+      <Pressable
+        accessibilityLabel={addLabel}
+        accessibilityRole="button"
+        onPress={() => router.push(addTarget)}
+        style={({ pressed }) => ({
+          alignItems: "center",
+          backgroundColor: colors.brandPrimary,
+          borderRadius: radii.pill,
+          bottom: spacing["2xl"],
+          height: 58,
+          justifyContent: "center",
+          opacity: pressed ? 0.86 : 1,
+          position: "absolute",
+          right: spacing.lg,
+          width: 58
+        })}
+        testID="activity-add-expense-fab"
       >
-        <Pressable
-          accessibilityLabel={firstGroupId ? t("expense.add.title") : t("groups.create.cta")}
-          accessibilityRole="button"
-          style={({ pressed }) => ({
-            alignItems: "center",
-            backgroundColor: colors.brandPrimary,
-            borderRadius: radii.pill,
-            bottom: spacing["2xl"],
-            height: 58,
-            justifyContent: "center",
-            opacity: pressed ? 0.86 : 1,
-            position: "absolute",
-            right: spacing.lg,
-            width: 58
-          })}
-          testID="activity-add-expense-fab"
-        >
-          <Plus color={colors.bgCanvas} size={28} />
-        </Pressable>
-      </Link>
+        <Plus color={colors.bgCanvas} size={28} />
+      </Pressable>
     </View>
   );
 }

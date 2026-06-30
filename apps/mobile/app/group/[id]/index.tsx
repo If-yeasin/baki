@@ -1,20 +1,13 @@
 import { formatMoney, formatRelativeDhakaDate } from "@baki/i18n";
 import { Stack, useLocalSearchParams, useRouter, type Href } from "expo-router";
-import { ArrowLeft, HandCoins, Plus, ReceiptText, Users } from "lucide-react-native";
+import { ArrowLeft, HandCoins, Plus, Users } from "lucide-react-native";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { FlatList, Pressable, View } from "react-native";
 
-import {
-  Avatar,
-  EmptyState,
-  Skeleton,
-  Text,
-  radii,
-  spacing,
-  useTheme
-} from "@baki/ui";
+import { Avatar, EmptyState, Skeleton, Text, radii, spacing, useTheme } from "@baki/ui";
 
+import { ExpenseCategoryMark } from "@/components/ledger-marks";
 import { useSession } from "@/features/auth/use-session";
 import { useGroupBalances } from "@/features/balances/use-balances";
 import { useExpenses } from "@/features/expenses/use-expenses";
@@ -53,11 +46,7 @@ export default function GroupDetailScreen() {
 
   const settled = selfNet === 0;
   const youAreOwed = selfNet > 0;
-  const summaryColor = settled
-    ? colors.inkPrimary
-    : youAreOwed
-      ? colors.positive
-      : colors.negative;
+  const summaryColor = settled ? colors.inkPrimary : youAreOwed ? colors.positive : colors.negative;
 
   return (
     <View style={{ backgroundColor: colors.bgCanvas, flex: 1 }}>
@@ -80,7 +69,9 @@ export default function GroupDetailScreen() {
         )}
         ListEmptyComponent={
           expensesQuery.isPending ? (
-            <View style={{ gap: spacing.md, paddingHorizontal: spacing.xl, paddingTop: spacing.md }}>
+            <View
+              style={{ gap: spacing.md, paddingHorizontal: spacing.xl, paddingTop: spacing.md }}
+            >
               <Skeleton height={64} />
               <Skeleton height={64} />
               <Skeleton height={64} />
@@ -99,8 +90,7 @@ export default function GroupDetailScreen() {
                 <EmptyState
                   action={{
                     label: t("expense.add.title"),
-                    onPress: () =>
-                      router.push(`/group/${groupId}/add-expense` as Href)
+                    onPress: () => router.push(`/group/${groupId}/add-expense` as Href)
                   }}
                   body={t("groups.detail.empty.expenses")}
                   title={t("expense.add.title")}
@@ -117,8 +107,8 @@ export default function GroupDetailScreen() {
                 expense list begins. */}
             <View
               style={{
-                backgroundColor: colors.bgSurface,
-                borderBottomColor: colors.borderSubtle,
+                backgroundColor: colors.brandPrimary,
+                borderBottomColor: colors.brandPrimaryPressed,
                 borderBottomWidth: 1,
                 paddingBottom: spacing.lg
               }}
@@ -146,7 +136,7 @@ export default function GroupDetailScreen() {
                     width: 40
                   })}
                 >
-                  <ArrowLeft color={colors.inkPrimary} size={22} />
+                  <ArrowLeft color={colors.inkOnBrand} size={22} />
                 </Pressable>
                 <View style={{ flex: 1 }} />
               </View>
@@ -164,19 +154,17 @@ export default function GroupDetailScreen() {
                     <Text
                       ellipsizeMode="tail"
                       numberOfLines={2}
-                      style={{ color: colors.inkPrimary }}
+                      style={{ color: colors.inkOnBrand }}
                       variant="h2"
                     >
                       {groupName}
                     </Text>
-                    <View
-                      style={{ alignItems: "center", flexDirection: "row", gap: spacing.xs }}
-                    >
-                      <Users color={colors.inkMuted} size={12} />
+                    <View style={{ alignItems: "center", flexDirection: "row", gap: spacing.xs }}>
+                      <Users color={colors.inkOnBrand} size={12} />
                       <Text
                         ellipsizeMode="tail"
                         numberOfLines={1}
-                        style={{ color: colors.inkMuted, flexShrink: 1 }}
+                        style={{ color: colors.inkOnBrand, flexShrink: 1, opacity: 0.82 }}
                         variant="caption"
                       >
                         {memberCount > 0
@@ -193,8 +181,8 @@ export default function GroupDetailScreen() {
                     cover surface without a hard border. */}
                 <View
                   style={{
-                    backgroundColor: colors.bgSubtle,
-                    borderRadius: radii.lg,
+                    backgroundColor: colors.bgSurface,
+                    borderRadius: radii.md,
                     gap: spacing.xs,
                     paddingHorizontal: spacing.lg,
                     paddingVertical: spacing.md
@@ -231,7 +219,7 @@ export default function GroupDetailScreen() {
                     onPress={() => router.push(`/group/${groupId}/settle` as Href)}
                     style={({ pressed }) => ({
                       alignItems: "center",
-                      backgroundColor: colors.brandPrimary,
+                      backgroundColor: colors.bgSurface,
                       borderRadius: radii.pill,
                       flex: 1,
                       flexDirection: "row",
@@ -242,8 +230,8 @@ export default function GroupDetailScreen() {
                     })}
                     testID="settle-cta"
                   >
-                    <HandCoins color={colors.inkOnBrand} size={16} />
-                    <Text style={{ color: colors.inkOnBrand }} variant="label">
+                    <HandCoins color={colors.brandPrimary} size={16} />
+                    <Text style={{ color: colors.brandPrimary }} variant="label">
                       {t("settle.title")}
                     </Text>
                   </Pressable>
@@ -252,7 +240,7 @@ export default function GroupDetailScreen() {
                     accessibilityRole="button"
                     style={({ pressed }) => ({
                       alignItems: "center",
-                      backgroundColor: colors.bgSubtle,
+                      backgroundColor: "rgba(255,255,255,0.18)",
                       borderRadius: radii.pill,
                       flex: 1,
                       flexDirection: "row",
@@ -262,8 +250,8 @@ export default function GroupDetailScreen() {
                       paddingVertical: spacing.sm
                     })}
                   >
-                    <Users color={colors.inkPrimary} size={16} />
-                    <Text style={{ color: colors.inkPrimary }} variant="label">
+                    <Users color={colors.inkOnBrand} size={16} />
+                    <Text style={{ color: colors.inkOnBrand }} variant="label">
                       {t("groups.detail.action.balances")}
                     </Text>
                   </Pressable>
@@ -306,25 +294,15 @@ export default function GroupDetailScreen() {
             <View
               style={{
                 alignItems: "center",
-                backgroundColor: colors.bgCanvas,
+                backgroundColor: colors.bgSurface,
                 flexDirection: "row",
                 gap: spacing.md,
+                minHeight: 72,
                 paddingHorizontal: spacing.xl,
-                paddingVertical: spacing.md
+                paddingVertical: spacing.sm
               }}
             >
-              <View
-                style={{
-                  alignItems: "center",
-                  backgroundColor: colors.bgSubtle,
-                  borderRadius: radii.md,
-                  height: 44,
-                  justifyContent: "center",
-                  width: 44
-                }}
-              >
-                <ReceiptText color={colors.brandPrimary} size={20} />
-              </View>
+              <ExpenseCategoryMark category={item.category} />
               <View style={{ flex: 1, gap: 2 }}>
                 <Text
                   ellipsizeMode="tail"
@@ -343,8 +321,13 @@ export default function GroupDetailScreen() {
                   {`${t(`expense.category.${item.category}`)} · ${formatRelativeDhakaDate(item.occurredAt, locale)}`}
                 </Text>
               </View>
-              <View style={{ alignItems: "flex-end", gap: 2 }}>
-                <Text style={{ color: colors.inkSecondary }} variant="caption">
+              <View style={{ alignItems: "flex-end", gap: 2, maxWidth: 132 }}>
+                <Text
+                  ellipsizeMode="tail"
+                  numberOfLines={1}
+                  style={{ color: colors.inkSecondary }}
+                  variant="caption"
+                >
                   {payerLine}
                 </Text>
                 <Text

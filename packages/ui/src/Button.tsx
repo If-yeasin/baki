@@ -34,10 +34,18 @@ function stylesForVariant(colors: ThemeColors, variant: ButtonVariant): VariantS
       return { backgroundColor: "transparent", borderColor: "transparent", borderWidth: 0 };
     case "secondary":
       // Outlined chip-style surface — works on canvas without competing with brand.
-      return { backgroundColor: colors.bgSurface, borderColor: colors.borderStrong, borderWidth: 1 };
+      return {
+        backgroundColor: colors.bgSurface,
+        borderColor: colors.borderStrong,
+        borderWidth: 1
+      };
     case "primary":
     default:
-      return { backgroundColor: colors.brandPrimary, borderColor: colors.brandPrimary, borderWidth: 0 };
+      return {
+        backgroundColor: colors.brandPrimary,
+        borderColor: colors.brandPrimary,
+        borderWidth: 0
+      };
   }
 }
 
@@ -65,7 +73,7 @@ export function Button({
       style={({ pressed }) => [
         {
           alignItems: "center",
-          borderRadius: radii.md,
+          borderRadius: variant === "ghost" ? radii.md : radii.pill,
           flexShrink: 1,
           justifyContent: "center",
           opacity: disabled ? 0.48 : 1,
@@ -77,12 +85,7 @@ export function Button({
       ]}
       {...props}
     >
-      <Text
-        numberOfLines={2}
-        style={{ textAlign: "center" }}
-        tone={textTone}
-        variant="bodyStrong"
-      >
+      <Text numberOfLines={2} style={{ textAlign: "center" }} tone={textTone} variant="bodyStrong">
         {children}
       </Text>
     </Pressable>

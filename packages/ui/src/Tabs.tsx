@@ -49,8 +49,8 @@ export function Tabs<TValue extends string = string>({
         {
           backgroundColor: colors.bgSubtle,
           borderColor: colors.borderSubtle,
-          borderRadius: radii.md,
-          borderWidth: 1,
+          borderRadius: radii.sm,
+          borderWidth: 0,
           flexDirection: "row",
           gap: spacing.xs,
           padding: spacing.xs
@@ -76,9 +76,9 @@ export function Tabs<TValue extends string = string>({
                 // the subtle strip so the segmented control reads as a single
                 // tactile control on either canvas or surface.
                 backgroundColor: selected ? colors.bgSurface : "transparent",
-                borderColor: selected ? colors.borderStrong : "transparent",
+                borderColor: "transparent",
                 borderRadius: radii.sm,
-                borderWidth: 1,
+                borderWidth: 0,
                 flex: 1,
                 flexDirection: "row",
                 gap: spacing.sm,
@@ -100,10 +100,7 @@ export function Tabs<TValue extends string = string>({
               {item.label}
             </Text>
             {item.badge === undefined ? null : (
-              <Badge
-                size="sm"
-                variant={selected ? "brand" : "neutral"}
-              >
+              <Badge size="sm" variant={selected ? "brand" : "neutral"}>
                 {item.badge}
               </Badge>
             )}

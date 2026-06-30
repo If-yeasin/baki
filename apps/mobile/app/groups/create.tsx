@@ -47,8 +47,8 @@ export default function CreateGroupScreen() {
       <View
         style={{
           alignItems: "center",
-          backgroundColor: colors.bgSurface,
-          borderBottomColor: colors.borderSubtle,
+          backgroundColor: colors.brandPrimary,
+          borderBottomColor: colors.brandPrimaryPressed,
           borderBottomWidth: 1,
           flexDirection: "row",
           gap: spacing.md,
@@ -63,7 +63,7 @@ export default function CreateGroupScreen() {
           onPress={() => router.back()}
           style={({ pressed }) => ({
             alignItems: "center",
-            backgroundColor: colors.bgSubtle,
+            backgroundColor: "rgba(255,255,255,0.18)",
             borderRadius: radii.pill,
             height: 40,
             justifyContent: "center",
@@ -71,123 +71,130 @@ export default function CreateGroupScreen() {
             width: 40
           })}
         >
-          <ArrowLeft color={colors.inkPrimary} size={20} />
+          <ArrowLeft color={colors.inkOnBrand} size={20} />
         </Pressable>
-        <Text style={{ color: colors.inkPrimary, flex: 1 }} variant="h3">
+        <Text style={{ color: colors.inkOnBrand, flex: 1 }} variant="h3">
           {t("groups.create.title")}
         </Text>
       </View>
 
       <ScrollView
-        contentContainerStyle={{ gap: spacing.lg, padding: spacing.xl, paddingBottom: spacing["4xl"] }}
+        contentContainerStyle={{
+          gap: spacing.lg,
+          padding: spacing.xl,
+          paddingBottom: spacing["4xl"]
+        }}
         keyboardShouldPersistTaps="handled"
       >
-      <View
-        style={{
-          backgroundColor: colors.bgSurface,
-          borderColor: colors.borderStrong,
-          borderRadius: radii.xl,
-          borderWidth: 1,
-          gap: spacing.lg,
-          padding: spacing.lg
-        }}
-      >
-        <Controller
-          control={control}
-          name="name"
-          render={({ field: { onBlur, onChange, value } }) => (
-            <View style={{ gap: spacing.sm }}>
-              <Text style={{ color: colors.inkSecondary }} variant="label">
-                {t("groups.create.name.label")}
-              </Text>
-              <Input
-                accessibilityLabel={t("groups.create.name.label")}
-                errorText={errors.name?.message ? t(errors.name.message) : undefined}
-                fieldStyle={{
-                  backgroundColor: colors.bgSubtle,
-                  borderColor: colors.borderStrong,
-                  borderRadius: radii.lg
-                }}
-                inputStyle={{ color: colors.inkPrimary }}
-                onBlur={onBlur}
-                onChangeText={onChange}
-                placeholder={t("groups.create.name.placeholder")}
-                placeholderTextColor={colors.inkMuted}
-                testID="group-name-input"
-                value={value}
-              />
-            </View>
-          )}
-        />
-
-        <View style={{ gap: spacing.sm }}>
-          <Text style={{ color: colors.inkSecondary }} variant="label">
-            {t("groups.create.template.label")}
-          </Text>
+        <View
+          style={{
+            backgroundColor: colors.bgSurface,
+            borderColor: colors.borderSubtle,
+            borderRadius: radii.md,
+            borderWidth: 1,
+            gap: spacing.lg,
+            padding: spacing.lg
+          }}
+        >
           <Controller
             control={control}
-            name="template"
-            render={({ field: { onChange, value } }) => (
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
-                {GROUP_TEMPLATES.map((template: GroupTemplate) => (
-                  <Pressable
-                    accessibilityLabel={t(`groups.template.${template}`)}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: value === template }}
-                    key={template}
-                    onPress={() => onChange(template)}
-                    style={({ pressed }) => ({
-                      backgroundColor: value === template ? colors.brandPrimary : colors.bgCanvas,
-                      borderColor: value === template ? colors.brandPrimary : colors.borderStrong,
-                      borderRadius: radii.pill,
-                      borderWidth: 1,
-                      flexDirection: "row",
-                      gap: spacing.xs,
-                      minHeight: 42,
-                      opacity: pressed ? 0.72 : 1,
-                      paddingHorizontal: spacing.lg,
-                      paddingVertical: spacing.sm
-                    })}
-                  >
-                    {value === template ? <Check color={colors.bgCanvas} size={14} /> : null}
-                    <Text
-                      style={{ color: value === template ? colors.bgCanvas : colors.inkPrimary }}
-                      variant="bodyStrong"
-                    >
-                      {t(`groups.template.${template}`)}
-                    </Text>
-                  </Pressable>
-                ))}
+            name="name"
+            render={({ field: { onBlur, onChange, value } }) => (
+              <View style={{ gap: spacing.sm }}>
+                <Text style={{ color: colors.inkSecondary }} variant="label">
+                  {t("groups.create.name.label")}
+                </Text>
+                <Input
+                  accessibilityLabel={t("groups.create.name.label")}
+                  errorText={errors.name?.message ? t(errors.name.message) : undefined}
+                  fieldStyle={{
+                    backgroundColor: colors.bgSurface,
+                    borderColor: colors.borderStrong,
+                    borderRadius: radii.md
+                  }}
+                  inputStyle={{ color: colors.inkPrimary }}
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  placeholder={t("groups.create.name.placeholder")}
+                  placeholderTextColor={colors.inkMuted}
+                  testID="group-name-input"
+                  value={value}
+                />
               </View>
             )}
           />
+
+          <View style={{ gap: spacing.sm }}>
+            <Text style={{ color: colors.inkSecondary }} variant="label">
+              {t("groups.create.template.label")}
+            </Text>
+            <Controller
+              control={control}
+              name="template"
+              render={({ field: { onChange, value } }) => (
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: spacing.sm }}>
+                  {GROUP_TEMPLATES.map((template: GroupTemplate) => (
+                    <Pressable
+                      accessibilityLabel={t(`groups.template.${template}`)}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: value === template }}
+                      key={template}
+                      onPress={() => onChange(template)}
+                      style={({ pressed }) => ({
+                        backgroundColor:
+                          value === template ? colors.brandPrimary : colors.bgSurface,
+                        borderColor: value === template ? colors.brandPrimary : colors.borderStrong,
+                        borderRadius: radii.pill,
+                        borderWidth: 1,
+                        flexDirection: "row",
+                        gap: spacing.xs,
+                        minHeight: 42,
+                        opacity: pressed ? 0.72 : 1,
+                        paddingHorizontal: spacing.lg,
+                        paddingVertical: spacing.sm
+                      })}
+                    >
+                      {value === template ? <Check color={colors.inkOnBrand} size={14} /> : null}
+                      <Text
+                        style={{
+                          color: value === template ? colors.inkOnBrand : colors.inkPrimary
+                        }}
+                        variant="bodyStrong"
+                      >
+                        {t(`groups.template.${template}`)}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            />
+          </View>
+
+          {createGroup.error ? (
+            <Text style={{ color: colors.negative }} variant="caption">
+              {t("groups.create.error.generic")}
+            </Text>
+          ) : null}
+
+          <Pressable
+            accessibilityLabel={t("groups.create.cta")}
+            accessibilityRole="button"
+            disabled={createGroup.isPending}
+            onPress={onSubmit}
+            style={({ pressed }) => ({
+              alignItems: "center",
+              backgroundColor: colors.brandPrimary,
+              borderRadius: radii.pill,
+              justifyContent: "center",
+              minHeight: 52,
+              opacity: createGroup.isPending ? 0.48 : pressed ? 0.82 : 1
+            })}
+          >
+            <Text style={{ color: colors.inkOnBrand }} variant="bodyStrong">
+              {createGroup.isPending ? t("common.loading") : t("groups.create.cta")}
+            </Text>
+          </Pressable>
         </View>
-
-        {createGroup.error ? (
-          <Text style={{ color: colors.negative }} variant="caption">
-            {t("groups.create.error.generic")}
-          </Text>
-        ) : null}
-
-        <Pressable
-          accessibilityLabel={t("groups.create.cta")}
-          accessibilityRole="button"
-          disabled={createGroup.isPending}
-          onPress={onSubmit}
-          style={({ pressed }) => ({
-            alignItems: "center",
-            backgroundColor: colors.brandPrimary,
-            borderRadius: radii.pill,
-            justifyContent: "center",
-            minHeight: 52,
-            opacity: createGroup.isPending ? 0.48 : pressed ? 0.82 : 1
-          })}
-        >
-          <Text style={{ color: colors.bgCanvas }} variant="bodyStrong">
-            {createGroup.isPending ? t("common.loading") : t("groups.create.cta")}
-          </Text>
-        </Pressable>
-      </View>
       </ScrollView>
     </View>
   );

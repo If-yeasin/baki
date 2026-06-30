@@ -22,7 +22,7 @@ import { useTranslation } from "react-i18next";
 import { Text as RNText, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 
-import { ThemeProvider, darkColors, useTheme } from "@baki/ui";
+import { ThemeProvider, lightColors, useTheme } from "@baki/ui";
 
 import { i18n } from "@/lib/i18n";
 import { SyncStatusIndicator } from "@/components/SyncStatusIndicator";
@@ -58,10 +58,10 @@ function RootLayout() {
   }
 
   return (
-    <GestureHandlerRootView style={{ backgroundColor: darkColors.bgCanvas, flex: 1 }}>
+    <GestureHandlerRootView style={{ backgroundColor: lightColors.bgCanvas, flex: 1 }}>
       <RootErrorBoundary>
-        {/* Splitwise-inspired dark surface is the default look for Baki. */}
-        <ThemeProvider override="dark">
+        {/* Light, list-first expense tracking is the default look for Baki. */}
+        <ThemeProvider override="light">
           <QueryClientProvider client={queryClient}>
             <RootStack />
           </QueryClientProvider>
@@ -91,13 +91,13 @@ class RootErrorBoundary extends Component<{ children: ReactNode }, { hasError: b
           accessibilityRole="alert"
           style={{
             alignItems: "center",
-            backgroundColor: darkColors.bgCanvas,
+            backgroundColor: lightColors.bgCanvas,
             flex: 1,
             justifyContent: "center",
             padding: 24
           }}
         >
-          <RNText style={{ color: darkColors.inkPrimary, textAlign: "center" }}>
+          <RNText style={{ color: lightColors.inkPrimary, textAlign: "center" }}>
             {i18n.t("common.error.generic")}
           </RNText>
         </View>

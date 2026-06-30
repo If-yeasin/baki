@@ -1,30 +1,30 @@
 export const lightColors = {
-  bgCanvas: "#faf6ef",
+  bgCanvas: "#f7fbfa",
   bgSurface: "#ffffff",
-  bgSubtle: "#f1ece1",
+  bgSubtle: "#edf5f2",
   // Tinted surfaces used for soft state backgrounds (badges, pills).
-  tintBrand: "#dff3ec",
-  tintPositive: "#dcfce7",
-  tintNegative: "#fee2e2",
+  tintBrand: "#dcf7ef",
+  tintPositive: "#dcf7ef",
+  tintNegative: "#fff0ec",
   tintWarning: "#ffedd5",
   tintInfo: "#e0f2fe",
-  tintGold: "#fff7dc",
-  inkPrimary: "#0d1b1e",
-  inkSecondary: "#4a5b5e",
-  inkMuted: "#8a9395",
+  tintGold: "#fff5d8",
+  inkPrimary: "#172321",
+  inkSecondary: "#53615f",
+  inkMuted: "#8a9693",
   // Foreground used on filled brand/destructive backgrounds.
   inkOnBrand: "#ffffff",
-  brandPrimary: "#0d7c66",
-  brandPrimaryPressed: "#0a5f4f",
+  brandPrimary: "#20b99a",
+  brandPrimaryPressed: "#178f78",
   accentGold: "#b8860b",
-  positive: "#16a34a",
-  negative: "#dc2626",
-  warning: "#d97706",
+  positive: "#18a879",
+  negative: "#f05f48",
+  warning: "#e1792f",
   info: "#0369a1",
-  borderSubtle: "#e7e1d3",
-  borderStrong: "#c8bfaa",
+  borderSubtle: "#e0ebe7",
+  borderStrong: "#c7d8d2",
   // Hairline divider between dense list rows.
-  rowDivider: "#ece6d6"
+  rowDivider: "#e6efec"
 } as const;
 
 // Dark palette tuned for a dense ledger/expense-split feel:
@@ -72,16 +72,16 @@ export const spacing = {
 
 export const radii = {
   sm: 6,
-  md: 10,
-  lg: 14,
-  xl: 20,
+  md: 8,
+  lg: 10,
+  xl: 14,
   pill: 999
 } as const;
 
 export const shadows = {
-  sm: "0 1px 2px rgba(13, 27, 30, 0.06)",
-  md: "0 8px 24px rgba(13, 27, 30, 0.08)",
-  lg: "0 16px 40px rgba(13, 27, 30, 0.12)"
+  sm: "0 1px 2px rgba(23, 35, 33, 0.06)",
+  md: "0 6px 18px rgba(23, 35, 33, 0.08)",
+  lg: "0 14px 34px rgba(23, 35, 33, 0.12)"
 } as const;
 
 export const theme = {

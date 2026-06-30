@@ -270,6 +270,7 @@ Apple Guideline 5.1.1(v) requires an in-app deletion path before the App Store s
 | Code | HTTP | Meaning |
 |---|---|---|
 | `not_authenticated` | 401 | No valid JWT was attached. The client must redirect to the OTP flow. |
+| `method_not_allowed` | 405 | A caller used anything other than `POST`. The mobile app should never hit this. |
 | `unsettled_balances` | 409 | The user has a non-zero net balance in at least one active group. The client surfaces "settle up first" and lists the offending groups (the client already has balances locally). |
 | `internal_error` | 500 | Catch-all. The function logs the raw error to its own Deno logs (never phone numbers or MFS numbers — `maskMfsNumber` from `@baki/payments` is used if anything resembling a phone is logged). |
 
@@ -316,7 +317,7 @@ Added in `0004_account_deletion.sql`:
 - Returns `void`.
 - `EXECUTE` is revoked from `anon` and granted to `authenticated`.
 
-The Edge Function never deletes rows directly; it only calls this RPC with the user's JWT and translates SQL errors into the wire-level `error` codes.
+The Edge Function at `supabase/functions/delete-account/index.ts` never deletes rows directly; it only calls this RPC with the user's JWT and translates SQL errors into the wire-level `error` codes.
 
 ### Re-deletion idempotency
 

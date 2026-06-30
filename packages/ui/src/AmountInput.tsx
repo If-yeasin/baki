@@ -55,7 +55,10 @@ export function AmountInput({
   valuePaisa,
   ...props
 }: AmountInputProps) {
-  const display = useMemo(() => formatMoney(valuePaisa, locale), [valuePaisa, locale]);
+  const display = useMemo(
+    () => formatMoney(valuePaisa, locale).replace(/^৳\s*/, ""),
+    [valuePaisa, locale]
+  );
 
   function handleChangeText(next: string) {
     onChangePaisa(sanitizePaisaInput(next));

@@ -238,6 +238,7 @@ otp_expiry = 3600
 enable_signup = true
 # If enabled, users need to confirm their phone number before signing in.
 enable_confirmations = false
+
 # Template for sending OTP to users
 template = "Your code is {{ .Code }}"
 # Controls the minimum amount of time that must pass before sending another sms otp.
@@ -364,6 +365,13 @@ deno_version = 2
 
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
+
+[functions.delete-account]
+enabled = true
+# Keep JWT verification in the function so every failure uses Baki's
+# documented `{ "error": "<machine_code>" }` response shape. The function
+# still calls Postgres with the caller's bearer token and the anon key only.
+verify_jwt = false
 
 [analytics]
 enabled = false

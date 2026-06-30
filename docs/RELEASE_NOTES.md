@@ -1,5 +1,17 @@
 # Release Notes
 
+## 0.2.4 — Account deletion Edge Function (2026-06-25)
+
+- Added the `delete-account` Supabase Edge Function for Apple's in-app
+  account deletion requirement. It calls `public.delete_my_account()` with the
+  caller's JWT and the anon key, preserving RLS/auth context without a
+  service-role bypass.
+- Hardened the mobile deletion hook so a successful server-side deletion clears
+  local auth/profile cache and does not report a false failure after the auth
+  row has been removed.
+- Removed stale "account deletion coming soon" copy and updated the App Store
+  preflight notes to track deployment/QA instead of implementation.
+
 ## 0.2.3 — SDK 54 preview verification (2026-05-20)
 
 Release-preview verification after the Expo SDK 54 upgrade:

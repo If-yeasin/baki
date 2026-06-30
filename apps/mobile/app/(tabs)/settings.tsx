@@ -208,7 +208,7 @@ export default function SettingsScreen() {
           onPress={handleSignOut}
           style={{
             backgroundColor: colors.bgSurface,
-            borderColor: colors.borderStrong,
+            borderColor: colors.borderSubtle,
             borderWidth: 1
           }}
           variant="secondary"
@@ -218,7 +218,7 @@ export default function SettingsScreen() {
         <Button
           disabled={deleteAccount.isPending}
           onPress={handleDeleteAccount}
-          style={{ backgroundColor: colors.warning }}
+          style={{ backgroundColor: colors.negative }}
           variant="destructive"
         >
           {t("settings.account.delete")}
@@ -241,7 +241,7 @@ function PreferenceRow({ colors, icon, subtitle, title }: PreferenceRowProps) {
       accessibilityRole="summary"
       style={{
         alignItems: "center",
-        borderBottomColor: colors.borderStrong,
+        borderBottomColor: colors.rowDivider,
         borderBottomWidth: 1,
         flexDirection: "row",
         gap: spacing.md,

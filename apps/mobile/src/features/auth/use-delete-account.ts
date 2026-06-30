@@ -1,9 +1,12 @@
 import { useMutation } from "@tanstack/react-query";
 
+import { storage } from "@/lib/mmkv";
 import { Sentry } from "@/lib/sentry";
 import { supabase } from "@/lib/supabase";
 
 import { persistUserId } from "./use-session";
+
+const PROFILE_CACHE_KEY = "profile.cache.v1";
 
 /**
  * Error thrown for failed account deletion. Carries the machine-readable
@@ -60,7 +63,15 @@ export function useDeleteAccount() {
       }
 
       persistUserId(null);
-      await supabase.auth.signOut();
+      storage.delete(PROFILE_CACHE_KEY);
+
+      const { error: signOutError } = await supabase.auth.signOut({ scope: "local" });
+      if (signOutError) {
+        Sentry.captureException(signOutError, {
+          tags: { feature: "account.delete", phase: "local-sign-out" }
+        });
+      }
+
       return { deleted: true };
     }
   });

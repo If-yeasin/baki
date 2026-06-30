@@ -6,7 +6,7 @@ import { useTheme } from "./theme/useTheme";
 /**
  * Card is the workhorse container for grouped sections (overall balance,
  * settings groups, settlement summaries). Surface background, hairline
- * border, large radius. No shadow — depth is communicated by the surface
+ * border, modest radius. No shadow — depth is communicated by the surface
  * step against the canvas, not by drop shadows.
  */
 export function Card({ children, style, ...props }: ViewProps) {
@@ -18,7 +18,7 @@ export function Card({ children, style, ...props }: ViewProps) {
         {
           backgroundColor: colors.bgSurface,
           borderColor: colors.borderSubtle,
-          borderRadius: radii.lg,
+          borderRadius: radii.md,
           borderWidth: 1,
           padding: spacing.lg
         },

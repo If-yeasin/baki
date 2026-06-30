@@ -28,9 +28,7 @@
 --   3. EXECUTE is revoked from `anon`; granted to `authenticated` only.
 --
 -- The Edge Function itself is NOT part of this migration — this file is the
--- SQL contract. The function lives under `supabase/functions/delete-account/`
--- (or, until that directory is bootstrapped, the deployment plan in
--- `tasks/account-deletion-backend.md`).
+-- SQL contract. The function lives under `supabase/functions/delete-account/`.
 
 set search_path = public;
 

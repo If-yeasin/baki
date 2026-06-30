@@ -71,6 +71,7 @@ export default function AddExpenseScreen() {
   const detailQuery = useGroupDetail(groupId);
   const createExpense = useCreateExpense();
   const members = detailQuery.data?.members ?? [];
+  const groupName = detailQuery.data?.group.name ?? t("groups.detail.fallback_title");
 
   const {
     control,
@@ -99,9 +100,9 @@ export default function AddExpenseScreen() {
 
   const [splitError, setSplitError] = useState<string | null>(null);
   const inputFieldStyle = {
-    backgroundColor: colors.bgSubtle,
+    backgroundColor: colors.bgSurface,
     borderColor: colors.borderStrong,
-    borderRadius: radii.lg
+    borderRadius: radii.md
   };
   const inputTextStyle = { color: colors.inkPrimary };
 
@@ -177,7 +178,11 @@ export default function AddExpenseScreen() {
     const preparedSplitValues =
       values.splitMethod === "equal"
         ? undefined
-        : buildSplitValuesForMode(values.splitMethod, values.splitMembers, values.splitValues ?? {});
+        : buildSplitValuesForMode(
+            values.splitMethod,
+            values.splitMembers,
+            values.splitValues ?? {}
+          );
 
     await createExpense.mutateAsync({
       amountPaisa: values.amountPaisa,
@@ -199,8 +204,8 @@ export default function AddExpenseScreen() {
       <View
         style={{
           alignItems: "center",
-          backgroundColor: colors.bgSurface,
-          borderBottomColor: colors.borderSubtle,
+          backgroundColor: colors.brandPrimary,
+          borderBottomColor: colors.brandPrimaryPressed,
           borderBottomWidth: 1,
           flexDirection: "row",
           gap: spacing.md,
@@ -215,7 +220,7 @@ export default function AddExpenseScreen() {
           onPress={() => router.back()}
           style={({ pressed }) => ({
             alignItems: "center",
-            backgroundColor: colors.bgSubtle,
+            backgroundColor: "rgba(255,255,255,0.18)",
             borderRadius: radii.pill,
             height: 40,
             justifyContent: "center",
@@ -223,9 +228,9 @@ export default function AddExpenseScreen() {
             width: 40
           })}
         >
-          <X color={colors.inkPrimary} size={20} />
+          <X color={colors.inkOnBrand} size={20} />
         </Pressable>
-        <Text style={{ color: colors.inkPrimary, flex: 1 }} variant="h3">
+        <Text style={{ color: colors.inkOnBrand, flex: 1 }} variant="h3">
           {t("expense.add.title")}
         </Text>
         <Pressable
@@ -235,7 +240,7 @@ export default function AddExpenseScreen() {
           onPress={onSubmit}
           style={({ pressed }) => ({
             alignItems: "center",
-            backgroundColor: colors.brandPrimary,
+            backgroundColor: colors.bgSurface,
             borderRadius: radii.pill,
             flexDirection: "row",
             gap: spacing.xs,
@@ -245,22 +250,42 @@ export default function AddExpenseScreen() {
           })}
           testID="expense-save-cta"
         >
-          <Check color={colors.bgCanvas} size={16} />
-          <Text style={{ color: colors.bgCanvas }} variant="label">
+          <Check color={colors.brandPrimary} size={16} />
+          <Text style={{ color: colors.brandPrimary }} variant="label">
             {createExpense.isPending ? t("common.loading") : t("expense.add.cta")}
           </Text>
         </Pressable>
       </View>
 
       <ScrollView
-        contentContainerStyle={{ gap: spacing.lg, padding: spacing.xl, paddingBottom: spacing["4xl"] }}
+        contentContainerStyle={{
+          gap: spacing.lg,
+          padding: spacing.xl,
+          paddingBottom: spacing["4xl"]
+        }}
         keyboardShouldPersistTaps="handled"
       >
         <View
           style={{
+            alignSelf: "flex-start",
+            backgroundColor: colors.tintBrand,
+            borderColor: colors.borderSubtle,
+            borderRadius: radii.pill,
+            borderWidth: 1,
+            paddingHorizontal: spacing.md,
+            paddingVertical: spacing.xs
+          }}
+        >
+          <Text style={{ color: colors.brandPrimary }} variant="label">
+            {t("expense.add.with_group", { name: groupName })}
+          </Text>
+        </View>
+
+        <View
+          style={{
             backgroundColor: colors.bgSurface,
-            borderColor: colors.borderStrong,
-            borderRadius: radii.xl,
+            borderColor: colors.borderSubtle,
+            borderRadius: radii.md,
             borderWidth: 1,
             gap: spacing.lg,
             padding: spacing.lg
@@ -298,7 +323,9 @@ export default function AddExpenseScreen() {
                 </Text>
                 <Input
                   accessibilityLabel={t("expense.add.description.label")}
-                  errorText={errors.description?.message ? t(errors.description.message) : undefined}
+                  errorText={
+                    errors.description?.message ? t(errors.description.message) : undefined
+                  }
                   fieldStyle={inputFieldStyle}
                   inputStyle={inputTextStyle}
                   onBlur={onBlur}
@@ -342,7 +369,7 @@ export default function AddExpenseScreen() {
                       })}
                     >
                       <Text
-                        style={{ color: value === cat ? colors.bgCanvas : colors.inkPrimary }}
+                        style={{ color: value === cat ? colors.inkOnBrand : colors.inkPrimary }}
                         variant="bodyStrong"
                       >
                         {t(`expense.category.${cat}`)}
@@ -371,7 +398,8 @@ export default function AddExpenseScreen() {
                   style={({ pressed }) => ({
                     alignItems: "center",
                     backgroundColor: paidBy === member.userId ? colors.bgSubtle : colors.bgSurface,
-                    borderColor: paidBy === member.userId ? colors.brandPrimary : colors.borderStrong,
+                    borderColor:
+                      paidBy === member.userId ? colors.brandPrimary : colors.borderStrong,
                     borderRadius: radii.pill,
                     borderWidth: 1,
                     flexDirection: "row",
@@ -394,8 +422,8 @@ export default function AddExpenseScreen() {
         <View
           style={{
             backgroundColor: colors.bgSurface,
-            borderColor: colors.borderStrong,
-            borderRadius: radii.xl,
+            borderColor: colors.borderSubtle,
+            borderRadius: radii.md,
             borderWidth: 1,
             gap: spacing.md,
             padding: spacing.lg
@@ -415,7 +443,7 @@ export default function AddExpenseScreen() {
                 }))}
                 onValueChange={(next) => onChange(next as SplitMethod)}
                 style={{ backgroundColor: colors.bgSubtle }}
-                tabStyle={{ borderColor: colors.borderStrong }}
+                tabStyle={{ borderColor: "transparent" }}
                 value={value}
               />
             )}
@@ -436,7 +464,7 @@ export default function AddExpenseScreen() {
                   onPress={() => toggleMember(member.userId)}
                   style={({ pressed }) => ({
                     alignItems: "center",
-                    backgroundColor: selected ? colors.bgSubtle : colors.bgCanvas,
+                    backgroundColor: selected ? colors.tintBrand : colors.bgSurface,
                     borderColor: selected ? colors.brandPrimary : colors.borderSubtle,
                     borderRadius: radii.lg,
                     borderWidth: 1,
@@ -468,7 +496,7 @@ export default function AddExpenseScreen() {
                       width: 24
                     }}
                   >
-                    {selected ? <Check color={colors.bgCanvas} size={14} /> : null}
+                    {selected ? <Check color={colors.inkOnBrand} size={14} /> : null}
                   </View>
                 </Pressable>
               );

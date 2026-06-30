@@ -13,21 +13,22 @@ export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
+        headerShown: false,
         headerRight: () => <SyncStatusIndicator />,
         headerShadowVisible: false,
-        headerStyle: { backgroundColor: colors.bgCanvas },
+        headerStyle: { backgroundColor: colors.bgSurface },
         headerTintColor: colors.inkPrimary,
         headerTitleStyle: { fontFamily: "HindSiliguri_600SemiBold" },
         tabBarActiveTintColor: colors.brandPrimary,
         tabBarInactiveTintColor: colors.inkMuted,
-        tabBarItemStyle: { paddingVertical: 6 },
+        tabBarItemStyle: { paddingVertical: 4 },
         tabBarLabelStyle: { fontFamily: "HindSiliguri_500Medium", fontSize: 12 },
         tabBarStyle: {
           backgroundColor: colors.bgSurface,
-          borderTopColor: colors.borderStrong,
+          borderTopColor: colors.borderSubtle,
           height: 76,
           paddingBottom: 12,
-          paddingTop: 6
+          paddingTop: 4
         }
       }}
     >

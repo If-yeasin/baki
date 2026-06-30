@@ -1,3 +1,4 @@
+import { formatRelativeDhakaDate } from "@baki/i18n";
 import { useQueries } from "@tanstack/react-query";
 import { Link, useRouter, type Href } from "expo-router";
 import { Plus, Search, UserPlus } from "lucide-react-native";
@@ -5,20 +6,12 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FlatList, Pressable, TextInput, View } from "react-native";
 
-import {
-  Avatar,
-  Button,
-  EmptyState,
-  Money,
-  Skeleton,
-  Text,
-  radii,
-  spacing,
-  useTheme
-} from "@baki/ui";
+import { Button, EmptyState, Money, Skeleton, Text, radii, spacing, useTheme } from "@baki/ui";
 
+import { GroupTemplateMark } from "@/components/ledger-marks";
 import { useSession } from "@/features/auth/use-session";
 import { balancesKeys, fetchGroupBalances } from "@/features/balances/use-balances";
+import { sumSelfNets } from "@/features/balances/simplify-display";
 import { useGroups } from "@/features/groups/use-groups";
 import { usePreferencesStore } from "@/stores/preferences";
 
@@ -65,8 +58,15 @@ export default function GroupsListScreen() {
     return map;
   }, [balanceQueries, groups, session.userId]);
 
+  const totalNet = useMemo(
+    () => sumSelfNets(Array.from(selfNetByGroup.values()).map((entry) => entry.netPaisa)),
+    [selfNetByGroup]
+  );
+
   const firstGroupId = groups[0]?.id;
   const groupCount = groups.length;
+  const totalSettled = totalNet === 0;
+  const totalCredit = totalNet > 0;
 
   return (
     <View style={{ backgroundColor: colors.bgCanvas, flex: 1 }}>
@@ -76,14 +76,16 @@ export default function GroupsListScreen() {
             style={{
               backgroundColor: colors.borderSubtle,
               height: 1,
-              marginLeft: spacing.lg + 44 + spacing.md,
+              marginLeft: spacing.lg + 48 + spacing.md,
               marginRight: spacing.lg
             }}
           />
         )}
         ListEmptyComponent={
           groupsQuery.isPending ? (
-            <View style={{ gap: spacing.sm, paddingHorizontal: spacing.lg }}>
+            <View
+              style={{ gap: spacing.sm, paddingHorizontal: spacing.lg, paddingTop: spacing.sm }}
+            >
               <Skeleton height={72} style={{ backgroundColor: colors.bgSubtle }} />
               <Skeleton height={72} style={{ backgroundColor: colors.bgSubtle }} />
               <Skeleton height={72} style={{ backgroundColor: colors.bgSubtle }} />
@@ -93,7 +95,7 @@ export default function GroupsListScreen() {
               style={{
                 backgroundColor: colors.bgSurface,
                 borderColor: colors.borderSubtle,
-                borderRadius: radii.lg,
+                borderRadius: radii.md,
                 borderWidth: 1,
                 marginHorizontal: spacing.lg,
                 padding: spacing.lg
@@ -111,25 +113,36 @@ export default function GroupsListScreen() {
           )
         }
         ListFooterComponent={
-          <View style={{ flexDirection: "row", gap: spacing.md, padding: spacing.lg }}>
-            <Link asChild href={"/groups/join" as Href}>
-              <Button
-                accessibilityLabel={t("groups.join.cta")}
-                style={{ backgroundColor: colors.bgSubtle, flex: 1 }}
-                variant="secondary"
-              >
-                {t("groups.join.cta")}
-              </Button>
-            </Link>
-            <Link asChild href={"/groups/create" as Href}>
-              <Button
-                accessibilityLabel={t("groups.create.cta")}
-                style={{ backgroundColor: colors.brandPrimary, flex: 1 }}
-              >
-                {t("groups.create.cta")}
-              </Button>
-            </Link>
-          </View>
+          groups.length > 0 ? (
+            <View style={{ height: spacing["3xl"] }} />
+          ) : (
+            <View
+              style={{
+                flexDirection: "row",
+                gap: spacing.md,
+                padding: spacing.lg,
+                paddingTop: spacing.xl
+              }}
+            >
+              <Link asChild href={"/groups/join" as Href}>
+                <Button
+                  accessibilityLabel={t("groups.join.cta")}
+                  style={{ flex: 1 }}
+                  variant="secondary"
+                >
+                  {t("groups.join.cta")}
+                </Button>
+              </Link>
+              <Link asChild href={"/groups/create" as Href}>
+                <Button
+                  accessibilityLabel={t("groups.create.cta")}
+                  style={{ backgroundColor: colors.brandPrimary, flex: 1 }}
+                >
+                  {t("groups.create.cta")}
+                </Button>
+              </Link>
+            </View>
+          )
         }
         contentContainerStyle={{ paddingBottom: spacing["5xl"] }}
         data={filteredGroups}
@@ -157,16 +170,17 @@ export default function GroupsListScreen() {
               onPress={() => router.push(`/group/${item.id}` as Href)}
               style={({ pressed }) => ({
                 alignItems: "center",
-                backgroundColor: colors.bgCanvas,
+                backgroundColor: colors.bgSurface,
                 flexDirection: "row",
                 gap: spacing.md,
+                minHeight: 76,
                 opacity: pressed ? 0.85 : 1,
                 paddingHorizontal: spacing.lg,
-                paddingVertical: spacing.md
+                paddingVertical: spacing.sm
               })}
               testID={`group-card-${index}`}
             >
-              <Avatar name={item.name} size="md" />
+              <GroupTemplateMark template={item.template} />
               <View style={{ flex: 1, gap: 2, justifyContent: "center" }}>
                 <Text
                   ellipsizeMode="tail"
@@ -182,13 +196,14 @@ export default function GroupsListScreen() {
                   style={{ color: colors.inkMuted }}
                   variant="caption"
                 >
-                  {t(`groups.template.${item.template}`)}
+                  {t("groups.list.group_meta", {
+                    template: t(`groups.template.${item.template}`),
+                    updatedAt: formatRelativeDhakaDate(item.updatedAt, locale)
+                  })}
                 </Text>
               </View>
               <View style={{ alignItems: "flex-end", flexShrink: 0, gap: 2, maxWidth: 140 }}>
                 {balanceLoading ? (
-                  // TODO(i18n): replace with `balance.loading` once design-system-engineer
-                  // adds it; using the closest existing common.loading copy.
                   <Text
                     ellipsizeMode="tail"
                     numberOfLines={1}
@@ -227,7 +242,7 @@ export default function GroupsListScreen() {
         }}
         style={{ backgroundColor: colors.bgCanvas, flex: 1 }}
         ListHeaderComponent={
-          <View style={{ gap: spacing.md, padding: spacing.lg }}>
+          <View style={{ gap: spacing.md, padding: spacing.lg, paddingBottom: spacing.md }}>
             <View style={{ alignItems: "center", flexDirection: "row", gap: spacing.md }}>
               <View style={{ flex: 1, gap: 2 }}>
                 <Text style={{ color: colors.inkPrimary }} variant="h2">
@@ -240,17 +255,15 @@ export default function GroupsListScreen() {
                     style={{ color: colors.inkMuted }}
                     variant="caption"
                   >
-                    {/* TODO(i18n): `groups.list.subtitle.active` not yet in catalogs —
-                       reuse the canonical members_count pluralization shape until
-                       design-system-engineer adds the dedicated key. */}
-                    {t("groups.detail.members_count", { count: groupCount })}
+                    {t("groups.list.active_count", { count: groupCount })}
                   </Text>
                 ) : null}
               </View>
-              <Link asChild href={"/groups/join" as Href}>
+              <View style={{ flexDirection: "row", gap: spacing.sm }}>
                 <Pressable
                   accessibilityLabel={t("groups.join.cta")}
                   accessibilityRole="button"
+                  onPress={() => router.push("/groups/join" as Href)}
                   style={({ pressed }) => ({
                     alignItems: "center",
                     backgroundColor: colors.bgSurface,
@@ -265,7 +278,68 @@ export default function GroupsListScreen() {
                 >
                   <UserPlus color={colors.brandPrimary} size={20} />
                 </Pressable>
-              </Link>
+                <Pressable
+                  accessibilityLabel={t("groups.create.cta")}
+                  accessibilityRole="button"
+                  onPress={() => router.push("/groups/create" as Href)}
+                  style={({ pressed }) => ({
+                    alignItems: "center",
+                    backgroundColor: colors.bgSurface,
+                    borderColor: colors.borderSubtle,
+                    borderRadius: radii.pill,
+                    borderWidth: 1,
+                    height: 44,
+                    justifyContent: "center",
+                    opacity: pressed ? 0.84 : 1,
+                    width: 44
+                  })}
+                >
+                  <Plus color={colors.brandPrimary} size={21} />
+                </Pressable>
+              </View>
+            </View>
+            <View
+              style={{
+                backgroundColor: colors.bgSurface,
+                borderColor: colors.borderSubtle,
+                borderRadius: radii.md,
+                borderWidth: 1,
+                gap: spacing.xs,
+                paddingHorizontal: spacing.lg,
+                paddingVertical: spacing.md
+              }}
+            >
+              <Text style={{ color: colors.inkMuted }} variant="caption">
+                {t("groups.list.total_balance")}
+              </Text>
+              <Money
+                amountPaisa={Math.abs(totalNet)}
+                locale={locale}
+                style={{
+                  color: totalSettled
+                    ? colors.inkPrimary
+                    : totalCredit
+                      ? colors.positive
+                      : colors.negative,
+                  fontSize: 28,
+                  lineHeight: 34
+                }}
+                variant={totalSettled ? "neutral" : totalCredit ? "positive" : "negative"}
+              />
+              <Text
+                style={{
+                  color: totalSettled
+                    ? colors.inkMuted
+                    : totalCredit
+                      ? colors.positive
+                      : colors.negative
+                }}
+                variant="caption"
+              >
+                {totalSettled
+                  ? t("balance.all_settled")
+                  : t(totalCredit ? "balance.you_are_owed" : "balance.you_owe")}
+              </Text>
             </View>
             <View
               style={{
@@ -287,9 +361,7 @@ export default function GroupsListScreen() {
                 autoCapitalize="none"
                 autoCorrect={false}
                 onChangeText={setQuery}
-                /* TODO(i18n): `groups.list.search.placeholder` not yet in catalogs —
-                   `common.search` is the orchestrator's interim fallback. */
-                placeholder={t("common.search") || t("groups.list.title")}
+                placeholder={t("groups.list.search.placeholder")}
                 placeholderTextColor={colors.inkMuted}
                 returnKeyType="search"
                 style={{

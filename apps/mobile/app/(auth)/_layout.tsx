@@ -15,6 +15,7 @@ function AuthStack() {
     <Stack
       screenOptions={{
         contentStyle: { backgroundColor: colors.bgCanvas },
+        headerShown: false,
         headerShadowVisible: false,
         headerStyle: { backgroundColor: colors.bgCanvas },
         headerTintColor: colors.inkPrimary,

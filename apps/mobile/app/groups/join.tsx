@@ -45,8 +45,8 @@ export default function JoinGroupScreen() {
       <View
         style={{
           alignItems: "center",
-          backgroundColor: colors.bgSurface,
-          borderBottomColor: colors.borderSubtle,
+          backgroundColor: colors.brandPrimary,
+          borderBottomColor: colors.brandPrimaryPressed,
           borderBottomWidth: 1,
           flexDirection: "row",
           gap: spacing.md,
@@ -61,7 +61,7 @@ export default function JoinGroupScreen() {
           onPress={() => router.back()}
           style={({ pressed }) => ({
             alignItems: "center",
-            backgroundColor: colors.bgSubtle,
+            backgroundColor: "rgba(255,255,255,0.18)",
             borderRadius: radii.pill,
             height: 40,
             justifyContent: "center",
@@ -69,89 +69,94 @@ export default function JoinGroupScreen() {
             width: 40
           })}
         >
-          <ArrowLeft color={colors.inkPrimary} size={20} />
+          <ArrowLeft color={colors.inkOnBrand} size={20} />
         </Pressable>
-        <Text style={{ color: colors.inkPrimary, flex: 1 }} variant="h3">
+        <Text style={{ color: colors.inkOnBrand, flex: 1 }} variant="h3">
           {t("groups.join.title")}
         </Text>
       </View>
 
       <ScrollView
-        contentContainerStyle={{ gap: spacing.lg, padding: spacing.xl, paddingBottom: spacing["4xl"] }}
+        contentContainerStyle={{
+          gap: spacing.lg,
+          padding: spacing.xl,
+          paddingBottom: spacing["4xl"]
+        }}
         keyboardShouldPersistTaps="handled"
       >
-      <View
-        style={{
-          backgroundColor: colors.bgSurface,
-          borderColor: colors.borderStrong,
-          borderRadius: radii.xl,
-          borderWidth: 1,
-          gap: spacing.lg,
-          padding: spacing.lg
-        }}
-      >
-        <Controller
-          control={control}
-          name="inviteCode"
-          render={({ field: { onBlur, onChange, value } }) => (
-            <View style={{ gap: spacing.sm }}>
-              <Text style={{ color: colors.inkSecondary }} variant="label">
-                {t("groups.invite.code.label")}
-              </Text>
-              <Input
-                accessibilityLabel={t("groups.invite.code.label")}
-                autoCapitalize="characters"
-                errorText={errors.inviteCode?.message ? t(errors.inviteCode.message) : undefined}
-                fieldStyle={{
-                  backgroundColor: colors.bgSubtle,
-                  borderColor: colors.borderStrong,
-                  borderRadius: radii.lg,
-                  minHeight: 64
-                }}
-                inputStyle={{
-                  color: colors.inkPrimary,
-                  fontFamily: "Inter_600SemiBold",
-                  fontSize: 22,
-                  letterSpacing: 4
-                }}
-                maxLength={6}
-                onBlur={onBlur}
-                onChangeText={onChange}
-                placeholder={t("groups.join.code.placeholder")}
-                placeholderTextColor={colors.inkMuted}
-                value={value}
-              />
-            </View>
-          )}
-        />
-
-        {joinGroup.error ? (
-          <Text style={{ color: colors.negative }} variant="caption">
-            {joinGroup.error instanceof Error && joinGroup.error.message.includes("invite_not_found")
-              ? t("groups.join.error.invalid_code")
-              : t("groups.join.error.generic")}
-          </Text>
-        ) : null}
-
-        <Pressable
-          accessibilityLabel={t("groups.join.cta")}
-          accessibilityRole="button"
-          disabled={joinGroup.isPending}
-          onPress={onSubmit}
-          style={({ pressed }) => ({
-            alignItems: "center",
-            backgroundColor: colors.brandPrimary,
-            borderRadius: radii.pill,
-            justifyContent: "center",
-            minHeight: 52,
-            opacity: joinGroup.isPending ? 0.48 : pressed ? 0.82 : 1
-          })}
+        <View
+          style={{
+            backgroundColor: colors.bgSurface,
+            borderColor: colors.borderSubtle,
+            borderRadius: radii.md,
+            borderWidth: 1,
+            gap: spacing.lg,
+            padding: spacing.lg
+          }}
         >
-          <Text style={{ color: colors.bgCanvas }} variant="bodyStrong">
-            {joinGroup.isPending ? t("common.loading") : t("groups.join.cta")}
-          </Text>
-        </Pressable>
-      </View>
+          <Controller
+            control={control}
+            name="inviteCode"
+            render={({ field: { onBlur, onChange, value } }) => (
+              <View style={{ gap: spacing.sm }}>
+                <Text style={{ color: colors.inkSecondary }} variant="label">
+                  {t("groups.invite.code.label")}
+                </Text>
+                <Input
+                  accessibilityLabel={t("groups.invite.code.label")}
+                  autoCapitalize="characters"
+                  errorText={errors.inviteCode?.message ? t(errors.inviteCode.message) : undefined}
+                  fieldStyle={{
+                    backgroundColor: colors.bgSurface,
+                    borderColor: colors.borderStrong,
+                    borderRadius: radii.md,
+                    minHeight: 64
+                  }}
+                  inputStyle={{
+                    color: colors.inkPrimary,
+                    fontFamily: "Inter_600SemiBold",
+                    fontSize: 22,
+                    letterSpacing: 4
+                  }}
+                  maxLength={6}
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  placeholder={t("groups.join.code.placeholder")}
+                  placeholderTextColor={colors.inkMuted}
+                  value={value}
+                />
+              </View>
+            )}
+          />
+
+          {joinGroup.error ? (
+            <Text style={{ color: colors.negative }} variant="caption">
+              {joinGroup.error instanceof Error &&
+              joinGroup.error.message.includes("invite_not_found")
+                ? t("groups.join.error.invalid_code")
+                : t("groups.join.error.generic")}
+            </Text>
+          ) : null}
+
+          <Pressable
+            accessibilityLabel={t("groups.join.cta")}
+            accessibilityRole="button"
+            disabled={joinGroup.isPending}
+            onPress={onSubmit}
+            style={({ pressed }) => ({
+              alignItems: "center",
+              backgroundColor: colors.brandPrimary,
+              borderRadius: radii.pill,
+              justifyContent: "center",
+              minHeight: 52,
+              opacity: joinGroup.isPending ? 0.48 : pressed ? 0.82 : 1
+            })}
+          >
+            <Text style={{ color: colors.inkOnBrand }} variant="bodyStrong">
+              {joinGroup.isPending ? t("common.loading") : t("groups.join.cta")}
+            </Text>
+          </Pressable>
+        </View>
       </ScrollView>
     </View>
   );
