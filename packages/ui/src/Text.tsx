@@ -1,5 +1,10 @@
 import i18next from "i18next";
-import { Text as RNText, type TextProps as RNTextProps, type TextStyle } from "react-native";
+import {
+  StyleSheet,
+  Text as RNText,
+  type TextProps as RNTextProps,
+  type TextStyle
+} from "react-native";
 
 import { typography, type TypographyVariant } from "./theme/typography";
 import { useTheme, type ThemeColors } from "./theme/useTheme";
@@ -52,6 +57,17 @@ const enFontByWeight: Record<string, string> = {
   "700": "Inter_700Bold"
 };
 
+function styleUsesTabularNumerals(style: TextProps["style"]): boolean {
+  const flattened = StyleSheet.flatten(style);
+  const fontVariant = flattened?.fontVariant;
+  return Array.isArray(fontVariant) && fontVariant.includes("tabular-nums");
+}
+
+function styleHasExplicitFontFamily(style: TextProps["style"]): boolean {
+  const flattened = StyleSheet.flatten(style);
+  return typeof flattened?.fontFamily === "string";
+}
+
 export function Text({
   children,
   selectable,
@@ -63,14 +79,20 @@ export function Text({
   const { colors } = useTheme();
   const type = typography[variant];
   const locale = i18next.language?.startsWith("en") ? "en" : "bn";
+  const fontWeight =
+    locale === "bn" &&
+    !styleHasExplicitFontFamily(style) &&
+    (variant === "monoAmount" || styleUsesTabularNumerals(style))
+      ? "700"
+      : type.fontWeight;
   const fontFamily =
-    locale === "bn" ? bnFontByWeight[type.fontWeight] : enFontByWeight[type.fontWeight];
+    locale === "bn" ? bnFontByWeight[fontWeight] : enFontByWeight[fontWeight];
 
   const textStyle: TextStyle = {
     color: colorForTone(colors, tone),
     fontFamily,
     fontSize: type.fontSize,
-    fontWeight: type.fontWeight,
+    fontWeight,
     lineHeight: type.lineHeight
   };
 

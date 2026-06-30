@@ -3,16 +3,17 @@
 ## Tech stack
 
 ### Mobile (apps/mobile)
-- **Expo SDK 52** with **React Native 0.76+** (New Architecture enabled)
+- **Expo SDK 54** with **React Native 0.81.5** (New Architecture enabled by default)
+- **React 19.1.0**
 - **TypeScript** strict mode
-- **Expo Router** for file-based navigation
-- **NativeWind v4** for styling (Tailwind in RN)
+- **Expo Router 6** for file-based navigation
+- **NativeWind v4.2** for styling (Tailwind in RN)
 - **Zustand** for client state (UI, prefs)
 - **TanStack Query v5** for server state
 - **WatermelonDB** for offline storage and sync
 - **react-hook-form** + **Zod** for forms and validation
 - **i18next** + **react-i18next** for localization
-- **Reanimated 3** + **Gesture Handler** for interactions
+- **Reanimated 4** + **Gesture Handler** for interactions
 - **Expo Notifications** for push
 - **Sentry** for error tracking
 - **MMKV** for fast key-value storage (auth tokens, prefs)
@@ -66,12 +67,15 @@ baki/
 │   │   ├── app.config.ts
 │   │   ├── eas.json
 │   │   └── package.json
-│   └── admin/                   # Next.js admin dashboard (v1.5)
+│   └── admin/                   # Planned Next.js admin dashboard (v1.5, not scaffolded yet)
 ├── packages/
 │   ├── db/                      # Supabase schema, migrations, types
 │   │   ├── migrations/
+│   │   ├── src/
+│   │   │   ├── index.ts
+│   │   │   └── types.ts         # generated Supabase types
+│   │   ├── tests/
 │   │   ├── seed.sql
-│   │   ├── types.ts             # generated
 │   │   └── package.json
 │   ├── ui/                      # shared component library
 │   │   ├── src/

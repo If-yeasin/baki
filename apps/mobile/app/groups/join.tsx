@@ -15,7 +15,7 @@ const joinSchema = z.object({
     .string()
     .trim()
     .transform((value) => value.toUpperCase())
-    .pipe(z.string().regex(/^[A-Z0-9]{6}$/, "auth.validation.otp_invalid"))
+    .pipe(z.string().regex(/^[A-Z0-9]{6}$/, "groups.validation.invite_code_invalid"))
 });
 
 type JoinForm = z.input<typeof joinSchema>;

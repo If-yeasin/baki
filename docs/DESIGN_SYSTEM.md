@@ -6,7 +6,7 @@
 
 ## Reference boundary
 
-Splitwise is a usability benchmark, not a visual source to clone. Baki should match the clarity of quick balance scanning, concrete next actions, dense ledger rows, and low-friction expense entry. Baki must not copy Splitwise's brand colors, logo marks, exact layouts, icon choices, wording, illustrations, or screen composition. Every borrowed lesson should be translated through Baki's Bengali-first khata metaphor, jade/gold palette, bKash/Nagad settlement model, and offline-first constraints.
+Splitwise-level usability is a benchmark, not a visual source to clone. Baki should match the clarity of quick balance scanning, concrete next actions, dense ledger rows, and low-friction expense entry. Baki must not copy Splitwise's brand colors, logo marks, exact layouts, icon choices, wording, illustrations, or screen composition. Every borrowed lesson should be translated through Baki's Bengali-first khata metaphor, jade/gold palette, bKash/Nagad settlement model, and offline-first constraints.
 
 ## Color tokens
 
@@ -55,7 +55,7 @@ Splitwise is a usability benchmark, not a visual source to clone. Baki should ma
 - **Bengali UI:** `Hind Siliguri` (Google Fonts) — weights 400, 500, 600, 700. Bundle locally in `apps/mobile/assets/fonts/`.
 - **English UI:** `Inter` — weights 400, 500, 600, 700.
 - **Numerals (English):** `Inter` with tabular figures variant
-- **Numerals (Bengali):** rendered in `Hind Siliguri`; convert digits at the formatter level
+- **Numerals (Bengali):** rendered in `Hind Siliguri`; convert digits at the formatter level. Money/tabular numeric text uses the 700 weight for clearer `১` legibility at small sizes and in positive/negative colors.
 
 The `<Text />` component picks the family based on the active locale.
 
@@ -105,7 +105,7 @@ Build these first; every screen composes from them.
 
 ## Motion
 
-- Reanimated 3
+- Reanimated 4
 - Standard transition: 220ms cubic-bezier(0.32, 0.72, 0, 1)
 - Press feedback: 100ms scale to 0.97
 - Pages: native stack default; modals: slide-from-bottom

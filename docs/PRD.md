@@ -2,7 +2,7 @@
 
 ## 1. Problem
 
-In Bangladesh, friends and families constantly share expenses: mess bills, hostel rents, group trips to Sajek or Cox's Bazar, iftar parties, wedding cost-splits between cousins, family utility bills. The status quo is a WhatsApp screenshot, a paper খাতা at the corner shop, or "ভাই পরে দিচ্ছি" — which everyone forgets. Splitwise exists but feels foreign: USD-first, no MFS settlement, English-only, no offline mode for spotty data.
+In Bangladesh, friends and families constantly share expenses: mess bills, hostel rents, group trips to Sajek or Cox's Bazar, iftar parties, wedding cost-splits between cousins, family utility bills. The status quo is a WhatsApp screenshot, a paper খাতা at the corner shop, or "ভাই পরে দিচ্ছি" — which everyone forgets. Global shared-expense apps exist but feel foreign: USD-first, no MFS settlement, English-only, no offline mode for spotty data.
 
 ## 2. Vision
 

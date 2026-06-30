@@ -188,8 +188,18 @@ Given a group, computes net balances and returns the minimum-transaction settlem
 - Validates code, inserts into `group_members`, logs `member_joined` event, returns `group_id`
 - Security definer; bypasses RLS to perform the insert, but checks `invite_code` validity strictly
 
-### `create_expense(...)` (optional, in v1.5)
-Wraps insert into `expenses` + `expense_shares` + `activity_log` in a single transaction with validation.
+### `create_expense(...) returns uuid`
+Atomic expense writer used by the mobile app.
+
+- Signature: `create_expense(p_group_id uuid, p_amount_paisa bigint, p_description text, p_category text, p_paid_by uuid, p_split_method text, p_shares jsonb, p_occurred_at timestamptz default now(), p_note text default null, p_receipt_url text default null) returns uuid`
+- `p_shares` is a JSON object keyed by member UUID: `{ "<user_id>": <share_paisa> }`
+- Requires `auth.uid()`; raises `not_authenticated` (`28000`) for anonymous callers
+- Verifies the caller is a current group member; raises `not_group_member` (`42501`) otherwise
+- Verifies `p_paid_by` is a current group member; raises `paid_by_not_group_member` (`42501`) otherwise
+- Verifies every share user is a current group member; raises `split_user_not_group_member` (`42501`) otherwise
+- Verifies all share values are non-negative integer paisa and sum exactly to `p_amount_paisa`; raises `split_total_mismatch` (`23514`) if the total is wrong
+- Inserts the parent `expenses` row and all `expense_shares` rows in one Postgres transaction. The existing `expenses_log_activity` trigger writes the `activity_log` row in that same transaction.
+- `SECURITY INVOKER`; normal table RLS still applies. `EXECUTE` is revoked from `public`/`anon` and granted only to `authenticated`.
 
 ## Triggers
 
@@ -248,10 +258,11 @@ The doc prose says "UPDATE: only if user is admin of the group". This is enforce
 ### Database functions added since 0001
 
 - `get_group_balances(p_group_id uuid) returns table(user_id uuid, net_paisa bigint)` — added in `0003_balances_helper.sql`. `SECURITY DEFINER`, raises `not_group_member` (SQLSTATE `42501`) if the caller is not a current member. Returns one row per member who has a non-zero net (creditor positive, debtor negative). The mobile app uses this for the per-member balance strip without re-running `simplify_debts`.
+- `create_expense(...) returns uuid` — added in `20260630230837_create_expense_rpc.sql`. `SECURITY INVOKER`, raises `not_authenticated` (`28000`) for anon callers, `not_group_member` / `paid_by_not_group_member` / `split_user_not_group_member` (`42501`) for membership failures, and `split_total_mismatch` (`23514`) when shares do not sum to the expense amount. Returns the inserted expense UUID.
 
 ### Type-generation note
 
-`packages/db/src/types.ts` was regenerated against a local Supabase with `0001`–`0003` applied; `Database["public"]["Functions"].get_group_balances` is now present and typed. `GroupBalanceRow` in `packages/db/src/index.ts` is derived from that generated type, so the mobile app calls `supabase.rpc("get_group_balances", { p_group_id })` against the typed client with no casts. Re-run `pnpm --filter db gen:types` after any new migration that touches the function or its return shape.
+`packages/db/src/types.ts` is regenerated against a local Supabase with all migrations applied (`0001`–`0004` plus `20260630230837_create_expense_rpc` as of 2026-06-30). `Database["public"]["Functions"].get_group_balances`, `Database["public"]["Functions"].delete_my_account`, and `Database["public"]["Functions"].create_expense` are present and typed. `GroupBalanceRow` in `packages/db/src/index.ts` is derived from that generated type, so the mobile app calls `supabase.rpc("get_group_balances", { p_group_id })` against the typed client with no casts. Re-run `pnpm --filter db gen:types` after any new migration that touches a table, enum, relationship, function, or return shape.
 
 ## Account deletion
 

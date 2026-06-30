@@ -1,5 +1,16 @@
 # Release Notes
 
+## 0.2.5 — Repo stabilization pass (2026-06-30)
+
+- Replaced the remaining unsafe product comparison with safer Bengali-first
+  ledger positioning while preserving Splitwise only as a
+  usability benchmark boundary in design docs.
+- Updated stale architecture notes for the current Expo SDK 54 / React Native
+  0.81.5 / Reanimated 4 workspace and the generated Supabase types location.
+- Aligned create-khata validation with the database `groups.name` 50-character
+  constraint and gave invite-code validation its own non-OTP copy.
+- Added deploy documentation for the `delete-account` Supabase Edge Function.
+
 ## 0.2.4 — Account deletion Edge Function (2026-06-25)
 
 - Added the `delete-account` Supabase Edge Function for Apple's in-app

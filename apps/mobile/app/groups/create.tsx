@@ -16,8 +16,8 @@ const createGroupSchema = z.object({
   name: z
     .string()
     .trim()
-    .min(1, "expense.validation.description_required")
-    .max(80, "auth.validation.name_too_long"),
+    .min(1, "groups.validation.name_required")
+    .max(50, "groups.validation.name_too_long"),
   template: z.enum(["mess", "family", "trip", "event", "custom"])
 });
 

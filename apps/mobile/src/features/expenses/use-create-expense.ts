@@ -75,53 +75,34 @@ export function useCreateExpense() {
 
       const shares = computeShares(input);
 
-      const expensePayload = {
-        amount_paisa: input.amountPaisa,
-        category: input.category,
-        created_by: user.id,
-        description: input.description.trim(),
-        group_id: input.groupId,
-        paid_by: input.paidBy,
-        split_method: input.splitMethod
+      const rpcPayload = {
+        p_amount_paisa: input.amountPaisa,
+        p_category: input.category,
+        p_description: input.description.trim(),
+        p_group_id: input.groupId,
+        p_paid_by: input.paidBy,
+        p_shares: shares,
+        p_split_method: input.splitMethod
       };
 
-      const { data: expense, error: expenseError } = await supabase
-        .from("expenses")
-        .insert(expensePayload)
-        .select("id")
-        .single();
+      const { data: expenseId, error } = await supabase.rpc("create_expense", rpcPayload);
 
-      if (expenseError) {
+      if (error) {
+        Sentry.captureException(error, {
+          tags: { feature: "expenses.create", phase: "rpc" }
+        });
         enqueueMutation({
-          payload: { expense: expensePayload, shares },
+          payload: rpcPayload,
           type: "expense.create"
         });
-        throw expenseError;
+        throw error;
       }
 
-      const sharePayload = Object.entries(shares).map(([userId, sharePaisa]) => ({
-        expense_id: expense.id,
-        share_paisa: sharePaisa,
-        user_id: userId
-      }));
-
-      const { error: sharesError } = await supabase.from("expense_shares").insert(sharePayload);
-
-      if (sharesError) {
-        // Best-effort: log to Sentry so we can detect orphan expenses without
-        // shares. The activity-feed wave will add a server-side reconciliation
-        // task; for now this surfaces visibility.
-        Sentry.captureException(sharesError, {
-          tags: { feature: "expenses.create", phase: "shares_insert" }
-        });
-        enqueueMutation({
-          payload: { expenseId: expense.id, shares },
-          type: "expense.update"
-        });
-        throw sharesError;
+      if (!expenseId) {
+        throw new Error("expense.create.empty_result");
       }
 
-      return { expenseId: expense.id };
+      return { expenseId };
     },
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: expensesKeys.list(variables.groupId) });

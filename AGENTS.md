@@ -6,7 +6,7 @@
 
 **Name:** বাকি (Baki)
 **Tagline:** আপনার বাকির ডিজিটাল খাতা — Your digital ledger for shared expenses.
-**One-liner:** A Splitwise-style expense-sharing app built natively for Bangladesh, with bKash/Nagad settlement, Bengali-first UI, and offline-first ledgers.
+**One-liner:** A Bengali-first shared expense ledger for Bangladesh, with bKash/Nagad settlement and offline-first ledgers.
 **Primary platform (v1):** iOS (App Store)
 **Secondary platform (v1.1):** Android (Play Store)
 **Locale:** Bangladesh, Bengali default + English toggle

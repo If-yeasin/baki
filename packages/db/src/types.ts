@@ -403,6 +403,21 @@ export type Database = {
     }
     Functions: {
       accept_invite: { Args: { p_invite_code: string }; Returns: string }
+      create_expense: {
+        Args: {
+          p_amount_paisa: number
+          p_category: string
+          p_description: string
+          p_group_id: string
+          p_note?: string
+          p_occurred_at?: string
+          p_paid_by: string
+          p_receipt_url?: string
+          p_shares: Json
+          p_split_method: string
+        }
+        Returns: string
+      }
       current_user_is_group_admin: {
         Args: { target_group_id: string }
         Returns: boolean
@@ -411,6 +426,7 @@ export type Database = {
         Args: { target_group_id: string }
         Returns: boolean
       }
+      delete_my_account: { Args: never; Returns: undefined }
       get_group_balances: {
         Args: { p_group_id: string }
         Returns: {

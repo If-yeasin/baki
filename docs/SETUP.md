@@ -77,6 +77,11 @@ pnpm --filter mobile dev
       "distribution": "internal",
       "ios": { "simulator": true }
     },
+    "development:device": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": { "simulator": false }
+    },
     "preview": {
       "distribution": "internal",
       "channel": "preview",
@@ -124,7 +129,7 @@ supabase start    # spins up local Postgres, Studio, Auth, etc.
 supabase db reset # apply all migrations + seed
 ```
 
-Local dev env points to `http://localhost:54321` (set in `.env.local` for the `dev` profile).
+Local dev env points to `http://127.0.0.1:55321` for the API and `postgresql://postgres:postgres@127.0.0.1:55322/postgres` for the database, matching the non-default ports in `supabase/config.toml` (set the API URL in `.env.local` for the `dev` profile).
 
 ## Apple App Store prep checklist
 
@@ -263,7 +268,7 @@ The preview build pulls `EXPO_PUBLIC_*` values from **EAS Secrets** (set via `ea
 - [ ] `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm i18n:check`, `pnpm db:check` all green on `main`.
 - [ ] `pnpm --filter @baki/db gen:types` re-run against the **live** Supabase project so `get_group_balances` is in the generated `Database` type (not just the local one).
 - [ ] `supabase db push` against the live project — migrations `0001`, `0002_rls_hardening`, `0003_balances_helper`, and `0004_account_deletion` applied.
-- [ ] `supabase functions deploy delete-account --no-verify-jwt` against the live project — the function verifies the caller by passing the bearer token to `public.delete_my_account()` with the anon key, and keeps Baki's JSON error contract for auth failures.
+- [ ] `supabase functions deploy delete-account` against the live project — `supabase/config.toml` sets `[functions.delete-account].verify_jwt = false` so the function can translate auth failures into Baki's JSON error contract, then call `public.delete_my_account()` with the caller's bearer token and the anon key.
 - [ ] RLS verified end-to-end with two test users (see `packages/db/tests/rls-policies.test.ts`).
 - [ ] `.env.local` on the dev machine is populated for local runs; the EAS build itself picks `EXPO_PUBLIC_*` from EAS Secrets, **not** the local file — confirm via the EAS dashboard before kicking off the build.
 - [ ] App icon (1024×1024 PNG, no alpha channel), splash image, and adaptive icon all present in `apps/mobile/assets/icons/`.

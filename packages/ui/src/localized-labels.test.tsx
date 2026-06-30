@@ -37,6 +37,13 @@ vi.mock("react-native", async () => {
     return React.createElement("TextInput", props, value ?? placeholder ?? null);
   }
 
+  function flattenStyle(style: unknown): unknown {
+    if (Array.isArray(style)) {
+      return Object.assign({}, ...style.map(flattenStyle).filter(Boolean));
+    }
+    return style ?? {};
+  }
+
   class AnimatedValue {
     constructor(private value: number) {}
 
@@ -54,6 +61,7 @@ vi.mock("react-native", async () => {
       timing: () => undefined
     },
     Pressable: makeHost("Pressable"),
+    StyleSheet: { flatten: flattenStyle },
     Text: makeHost("Text"),
     TextInput,
     View: makeHost("View")
