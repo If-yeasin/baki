@@ -36,6 +36,18 @@ type SeedSanity = {
   sharedGroupMemberCount: number;
 };
 
+type SeedFlowSanity = {
+  activityCount: number;
+  expenseCount: number;
+  settlementCount: number;
+  shareCount: number;
+  simplifiedPlan: Array<{
+    amount_paisa: number;
+    from_user: string;
+    to_user: string;
+  }>;
+};
+
 type SqlRunner = "docker" | "psql";
 
 let sqlRunner: SqlRunner = "psql";
@@ -300,5 +312,54 @@ describeIfDatabase(suiteName, () => {
 
   it("hides the shared seed group from an authenticated non-member", () => {
     expect(visibleSeedGroupCountFor(temporaryUser.id)).toBe(0);
+  });
+
+  it("has enough seeded ledger data for the trusted-tester E2E flow", () => {
+    const flowSeed = JSON.parse(
+      runAsAuthenticated(
+        SEED.tanvirId,
+        `
+          select jsonb_build_object(
+            'expenseCount', (
+              select count(*)::int
+              from public.expenses
+              where group_id = ${sqlLiteral(SEED.groupId)}::uuid
+            ),
+            'shareCount', (
+              select count(*)::int
+              from public.expense_shares es
+              join public.expenses e on e.id = es.expense_id
+              where e.group_id = ${sqlLiteral(SEED.groupId)}::uuid
+            ),
+            'settlementCount', (
+              select count(*)::int
+              from public.settlements
+              where group_id = ${sqlLiteral(SEED.groupId)}::uuid
+            ),
+            'activityCount', (
+              select count(*)::int
+              from public.activity_log
+              where group_id = ${sqlLiteral(SEED.groupId)}::uuid
+            ),
+            'simplifiedPlan', (
+              select coalesce(jsonb_agg(to_jsonb(plan) order by amount_paisa desc), '[]'::jsonb)
+              from public.simplify_debts(${sqlLiteral(SEED.groupId)}::uuid) as plan
+            )
+          )::text;
+        `
+      )
+    ) as SeedFlowSanity;
+
+    expect(flowSeed.expenseCount).toBeGreaterThanOrEqual(3);
+    expect(flowSeed.shareCount).toBeGreaterThanOrEqual(6);
+    expect(flowSeed.settlementCount).toBeGreaterThanOrEqual(1);
+    expect(flowSeed.activityCount).toBeGreaterThanOrEqual(4);
+    expect(flowSeed.simplifiedPlan).toEqual([
+      {
+        amount_paisa: 20_000,
+        from_user: SEED.riniId,
+        to_user: SEED.tanvirId
+      }
+    ]);
   });
 });

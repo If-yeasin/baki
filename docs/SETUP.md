@@ -30,6 +30,13 @@ EXPO_PUBLIC_SENTRY_DSN=
 EXPO_PUBLIC_ENABLE_NAGAD=true
 EXPO_PUBLIC_ENABLE_BKASH=true
 
+# E2E preview only (do not enable for production)
+EXPO_PUBLIC_E2E_MODE=false
+EXPO_PUBLIC_APP_CHANNEL=
+EXPO_PUBLIC_E2E_SEED_EMAIL=rini@example.test
+EXPO_PUBLIC_E2E_SEED_PASSWORD=password
+EXPO_PUBLIC_E2E_SEED_USER_ID=22222222-2222-4222-8222-222222222222
+
 # Build
 EAS_PROJECT_ID=
 
@@ -88,6 +95,17 @@ pnpm --filter mobile check:assets
     "preview": {
       "distribution": "internal",
       "channel": "preview",
+      "android": { "buildType": "apk" },
+      "ios": { "resourceClass": "m-medium" }
+    },
+    "preview-e2e": {
+      "distribution": "internal",
+      "channel": "preview",
+      "env": {
+        "EXPO_PUBLIC_APP_CHANNEL": "preview",
+        "EXPO_PUBLIC_E2E_MODE": "true"
+      },
+      "android": { "buildType": "apk" },
       "ios": { "resourceClass": "m-medium" }
     },
     "production": {
@@ -118,12 +136,20 @@ Workflows in `.github/workflows/`:
 
 - `ci.yml` — runs on every PR: install, local Supabase reset, lint, typecheck, tests, i18n parity, DB checks, asset checks, aggregate `pnpm check`, and `git diff --check`
 - `eas-preview.yml` — on PR label `build:preview`: triggers `eas build --profile preview --platform ios`
+- `eas-preview.yml` — on PR label `build:preview-e2e`: triggers `eas build --profile preview-e2e --platform android`
 - `release.yml` — on tag `v*`: triggers production EAS build + submit to App Store
+
+EAS Workflows:
+
+- `.eas/workflows/preview-e2e.yml` — optional `build:preview-e2e`/manual workflow that builds Android with `preview-e2e`, then runs `e2e/maestro/60-preview-trusted-tester.yaml`
 
 Required secrets:
 
 - `EXPO_TOKEN`
 - `EAS_PROJECT_ID`
+- `EXPO_PUBLIC_SUPABASE_URL`
+- `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+- `EXPO_PUBLIC_SENTRY_DSN`
 - `SUPABASE_ACCESS_TOKEN`
 - `APPLE_APP_SPECIFIC_PASSWORD` (for submission)
 
@@ -135,6 +161,16 @@ pnpm --filter @baki/db exec supabase db reset --workdir ../.. # apply all migrat
 ```
 
 Local dev env points to `http://127.0.0.1:55321` for the API and `postgresql://postgres:postgres@127.0.0.1:55322/postgres` for the database, matching the non-default ports in `supabase/config.toml` (set the API URL in `.env.local` for the `dev` profile).
+
+The local seed includes the preview E2E trusted-tester fixture:
+
+- Rini: `rini@example.test`, id `22222222-2222-4222-8222-222222222222`
+- Tanvir: `tanvir@example.test`, id `11111111-1111-4111-8111-111111111111`
+- password fixture: `password`
+- shared group: `33333333-3333-4333-8333-333333333333`
+
+Use this fixture only with `EXPO_PUBLIC_E2E_MODE=true` in local dev or
+`preview-e2e`; `app.config.ts` rejects production-marked E2E builds.
 
 ## Apple App Store prep checklist
 

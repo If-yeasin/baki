@@ -20,6 +20,26 @@
     "preview": {
       "distribution": "internal",
       "channel": "preview",
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "resourceClass": "m-medium"
+      }
+    },
+    "preview-e2e": {
+      "distribution": "internal",
+      "channel": "preview",
+      "env": {
+        "EXPO_PUBLIC_APP_CHANNEL": "preview",
+        "EXPO_PUBLIC_E2E_MODE": "true",
+        "EXPO_PUBLIC_E2E_SEED_EMAIL": "rini@example.test",
+        "EXPO_PUBLIC_E2E_SEED_PASSWORD": "password",
+        "EXPO_PUBLIC_E2E_SEED_USER_ID": "22222222-2222-4222-8222-222222222222"
+      },
+      "android": {
+        "buildType": "apk"
+      },
       "ios": {
         "resourceClass": "m-medium"
       }

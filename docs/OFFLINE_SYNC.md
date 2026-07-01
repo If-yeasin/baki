@@ -49,7 +49,19 @@ The orchestrator keeps an in-memory lock so concurrent triggers share one run in
 
 ## Automated Release Gate
 
-The PR #1 release gate is automated-first. Manual real-device offline replay QA was not performed by project-owner decision. The gate relies on CI plus local automated tests that cover temporary queued-success behavior, permanent failed-item visibility, RPC-only queue replay, idempotent expense/settlement retry, sync indicator state, Settings -> Sync data presentation, and simplified-debt fallback logic.
+The current release gate is automated-first. Manual real-device offline replay QA
+was not performed by project-owner decision. The required gate relies on CI plus
+local automated tests that cover temporary queued-success behavior, permanent
+failed-item visibility, RPC-only queue replay, idempotent expense/settlement
+retry, sync indicator state, Settings -> Sync data presentation, and
+simplified-debt fallback logic.
+
+Preview E2E auth is now available for dev/preview builds through
+`baki://e2e/seed-auth` when `EXPO_PUBLIC_E2E_MODE=true` and the seeded
+trusted-tester fixture is present. The preview flow
+`e2e/maestro/60-preview-trusted-tester.yaml` can exercise authenticated add
+expense, cash settlement, Settings -> Sync, and Activity without SMS OTP. It is
+optional until a real EAS/Maestro run passes.
 
 See `docs/QA/AUTOMATED_RELEASE_GATE.md` for the exact commands, limits, duplicate-ledger SQL, and go/no-go criteria.
 
@@ -66,4 +78,7 @@ See `docs/QA/AUTOMATED_RELEASE_GATE.md` for the exact commands, limits, duplicat
 9. Bring the app to foreground or tap Retry sync.
 10. Confirm the queue clears, balances update, and no duplicate expense/settlement rows appear in Supabase.
 
-This check still requires a Dev Client or TestFlight build. Expo Go is only a UI smoke path because WatermelonDB and persistent native storage are unavailable there. It remains recommended before public beta, but it is not the PR #1 merge gate.
+This check still requires a Dev Client or TestFlight build. Expo Go is only a UI
+smoke path because WatermelonDB and persistent native storage are unavailable
+there. It remains recommended before public beta, but it is not the current
+merge gate.

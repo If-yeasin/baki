@@ -199,7 +199,12 @@ create table public.device_tokens (
 
 ### `simplify_debts(group_id uuid) returns table(...)`
 
-Given a group, computes net balances and returns the minimum-transaction settlement plan. Implemented in PL/pgSQL with a greedy algorithm (creditors and debtors sorted, largest matched first).
+Given a group, computes net balances and returns the minimum-transaction
+settlement plan. Implemented in PL/pgSQL with a greedy algorithm (creditors and
+debtors sorted, largest matched first). The function is `VOLATILE` because it
+uses session-local temporary tables; it is `SECURITY DEFINER`, checks group
+membership before returning data, revokes `anon`, and grants execute to
+`authenticated`.
 
 ### `accept_invite(invite_code text) returns uuid`
 

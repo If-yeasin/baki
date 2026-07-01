@@ -1,7 +1,8 @@
 # Maestro E2E Flows
 
-Critical-path flows for the বাকি (Baki) iOS app. Designed for the iOS Simulator
-running a Dev Client build (or a TestFlight preview build installed on a device).
+Critical-path flows for the Baki mobile app. They target a Dev Client or
+preview build; Expo Go is only useful for light UI smoke because it does not
+exercise the native offline-storage runtime.
 
 ## Install Maestro
 
@@ -9,147 +10,123 @@ running a Dev Client build (or a TestFlight preview build installed on a device)
 brew install maestro-cli
 ```
 
-## Setup before running flows
+## Auth Strategy
 
-These flows assume a signed-in user on the home screen. Run through this list once
-before executing any of the numbered flows.
+Preview/dev E2E builds use a guarded seed-auth route instead of phone OTP:
 
-1. **Install Maestro** (see section above — `brew install maestro-cli`).
-2. **Use the repo's Expo scripts.** The mobile package uses local Expo commands:
-   ```bash
-   pnpm --filter mobile dev:devclient
-   pnpm --filter mobile dev:go
-   ```
-3. **Build and install the iOS Dev Client onto the Simulator.** The Dev Client
-   is required for any flow that touches native modules (camera, contacts,
-   bKash deep links). Pick one of:
+- route: `baki://e2e/seed-auth`
+- required flag: `EXPO_PUBLIC_E2E_MODE=true`
+- allowed variants: local `__DEV__`, `development`, `development:device`, `preview`, or `preview-e2e`
+- blocked variants: `production` / `prod`
+- seeded account: `rini@example.test`, user id `22222222-2222-4222-8222-222222222222`
 
-   ```bash
-   # Full native build via EAS (recommended once per native-deps change)
-   pnpm --filter mobile exec expo prebuild --platform ios
-   eas build --profile development --platform ios --local
+The route signs in through Supabase Auth with the local/test password fixture.
+It does not inject JWTs, does not log OTPs, and does not use a service-role key.
 
-   # Faster JS-only path — opens the Simulator with the bundled Expo Go client.
-   # NOTE: this WILL NOT include custom native modules; Dev Client is required
-   # for flows 20–40 to fully exercise the app.
-   pnpm --filter mobile dev   # then press `i` to open in the iOS Simulator
-   ```
-
-4. **Manual OTP sign-in (first run only).** Phone OTP cannot be automated
-   reliably in CI, so the first time you run these flows you must sign in by
-   hand:
-   - Tap the **+880** phone field on the launch screen.
-   - Enter a test number (e.g. `1700000000`).
-   - Read the one-time code from Supabase Studio under
-     **Authentication → Users → audit logs** for that user, or use a Supabase
-     Auth dev user that has been seeded with a pre-confirmed OTP.
-   - Complete the profile (name + preferred language).
-
-   Flows `10-create-group.yaml` through `40-settle.yaml` all assume you start
-   from the signed-in home screen.
-
-### Reset state between runs
-
-To get back to a clean signed-in baseline (without redoing OTP), launch the app
-fresh and uninstall the binary to wipe local state:
+## Local Setup
 
 ```bash
-maestro test --shard 1 e2e/maestro/00-launch.yaml
-xcrun simctl uninstall booted com.baki.app
+pnpm install --frozen-lockfile
+pnpm --filter @baki/db exec supabase db start --workdir ../..
+pnpm --filter @baki/db exec supabase db reset --workdir ../..
 ```
 
-Reinstall the Dev Client and sign in again as described in step 4.
-
-## Run all flows
+Start the app with E2E mode enabled:
 
 ```bash
-# 1. Start the dev server in another shell
-pnpm --filter mobile dev
-
-# 2. Boot an iOS Simulator with the app already installed (Dev Client),
-#    sign in via phone OTP manually, then:
-maestro test e2e/maestro
+EXPO_PUBLIC_E2E_MODE=true \
+EXPO_PUBLIC_APP_CHANNEL=preview \
+EXPO_PUBLIC_E2E_SEED_EMAIL=rini@example.test \
+EXPO_PUBLIC_E2E_SEED_PASSWORD=password \
+EXPO_PUBLIC_E2E_SEED_USER_ID=22222222-2222-4222-8222-222222222222 \
+pnpm --filter mobile dev:devclient
 ```
 
-## Run a single flow
+Run the authenticated preview flow:
 
 ```bash
-maestro test e2e/maestro/10-create-group.yaml
+maestro test e2e/maestro/60-preview-trusted-tester.yaml
 ```
+
+Run only the auth bootstrap:
+
+```bash
+maestro test e2e/maestro/00-e2e-auth.yaml
+```
+
+## Optional EAS Preview E2E
+
+The optional EAS workflow is `.eas/workflows/preview-e2e.yml`. Trigger it
+manually or by adding the `build:preview-e2e` label to a pull request. It builds
+Android with the `preview-e2e` profile and runs
+`60-preview-trusted-tester.yaml`.
+
+Required preview env/secrets:
+
+- `EAS_PROJECT_ID`
+- `EXPO_PUBLIC_SUPABASE_URL`
+- `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+- `EXPO_PUBLIC_SENTRY_DSN`
+- hosted preview Supabase seeded with the trusted-tester fixture
+
+The GitHub Actions workflow `.github/workflows/eas-preview.yml` also supports
+the `build:preview-e2e` label for an Android preview-E2E build. That path does
+not run Maestro by itself.
 
 ## Offline Sync QA
 
-The saved-offline money-write path is not automated in Maestro yet because it
-needs a signed-in Dev Client/TestFlight build plus controllable network loss.
-For PR #1, project-owner decision is to skip manual device QA and use the
-automated release gate in `docs/QA/AUTOMATED_RELEASE_GATE.md`.
+Real Airplane Mode is not automated in these flows. Maestro/cloud device network
+control is not reliable enough to make that a release claim. Queue/replay logic
+is covered by unit and DB tests, and a Dev Client real-device offline pass is
+still recommended before public beta.
 
-Before public beta, a real-device pass should still verify:
+## Flow Inventory
 
-1. Sign in once with OTP.
-2. Turn on Airplane Mode.
-3. Add an expense or mark a cash settlement.
-4. Confirm the saved-offline notice appears and the sync indicator shows pending work.
-5. Open Settings -> Sync and verify the pending count.
-6. Restore connectivity and tap Retry sync.
-7. Confirm the queue clears and Supabase has no duplicate expense/settlement rows.
+| File                              | What it verifies                                               |
+| --------------------------------- | -------------------------------------------------------------- |
+| `00-launch.yaml`                  | App launches and renders the Bengali brand text                |
+| `00-e2e-auth.yaml`                | E2E seed-auth route signs in and reaches the seeded home screen |
+| `10-create-group.yaml`            | Create-khata flow with trip template                           |
+| `20-add-expense.yaml`             | Add an expense, see Bengali numerals render                    |
+| `30-view-balance.yaml`            | Per-group balances tab shows owe/owed state                    |
+| `40-settle.yaml`                  | bKash deep link local/device smoke only; tagged `ci-skip`      |
+| `50-activity.yaml`                | Real activity feed is reachable from a group                   |
+| `60-preview-trusted-tester.yaml`  | Auth, seeded group, expense, cash settlement, sync, activity   |
 
-## Flow inventory
+## Required App TestIDs
 
-| File                   | What it verifies                                               |
-| ---------------------- | -------------------------------------------------------------- |
-| `00-launch.yaml`       | App launches and renders the Bengali brand text                |
-| `10-create-group.yaml` | Create-khata flow with trip template                           |
-| `20-add-expense.yaml`  | Add an expense, see Bengali numerals render                    |
-| `30-view-balance.yaml` | Per-group balances tab shows owe/owed state                    |
-| `40-settle.yaml`       | bKash settlement deep link (needs bKash installed; skip in CI) |
-| `50-activity.yaml`     | Real activity feed is reachable from a group                   |
-
-## CI
-
-These flows are not run in GitHub Actions today. Full cloud EAS + Maestro is
-blocked by signed-in state: phone OTP is not safely automated and there is no
-seeded authenticated test-mode entry point yet. Run locally or in EAS Workflows
-after adding a safe seeded-auth setup.
-
-**CI must not include `40-settle.yaml` until a bKash mock URL handler is
-added.** The settle flow opens the real bKash native app via a `bkash://`
-deep link (`bkashopen://` in app config), which is non-deterministic in cloud simulators (no bKash binary
-exists there) and depends on a real merchant sandbox account. Until we ship a
-test-only URL interceptor that fakes the bKash callback, this flow is
-local-and-device-only and tagged `ci-skip`.
-
-## Required app testIDs
-
-These testIDs are wired into the app screens so Maestro flows can target
-elements without depending on fragile Bengali copy. When adding new flows,
-prefer `id:` selectors over `text:` selectors and add new testIDs here.
+Prefer `id:` selectors over copy selectors.
 
 | testID                     | Screen                                  | Element                                                  |
 | -------------------------- | --------------------------------------- | -------------------------------------------------------- |
-| `tab-groups`               | `app/(tabs)/_layout.tsx`                | Groups tab (bottom nav)                                  |
-| `tab-balances`             | `app/(tabs)/_layout.tsx`                | Balances tab (bottom nav)                                |
-| `tab-activity`             | `app/(tabs)/_layout.tsx`                | Activity tab (bottom nav)                                |
-| `tab-settings`             | `app/(tabs)/_layout.tsx`                | Settings tab (bottom nav)                                |
+| `e2e-auth-ready`           | `app/e2e/seed-auth.tsx`                 | Seed-auth ready state                                    |
+| `e2e-auth-continue`        | `app/e2e/seed-auth.tsx`                 | Continue to app button                                   |
+| `tab-groups`               | `app/(tabs)/_layout.tsx`                | Groups tab                                               |
+| `tab-balances`             | `app/(tabs)/_layout.tsx`                | Balances tab                                             |
+| `tab-activity`             | `app/(tabs)/_layout.tsx`                | Activity tab                                             |
+| `tab-settings`             | `app/(tabs)/_layout.tsx`                | Settings tab                                             |
 | `group-card-{index}`       | `app/(tabs)/index.tsx`                  | Group card in the groups list                            |
-| `group-name-input`         | `app/groups/create.tsx`                 | Khata name Input on the create-group screen              |
-| `settle-cta`               | `app/group/[id]/index.tsx`              | "Settle up" Pressable on the group detail screen         |
-| `add-expense-fab-floating` | `app/group/[id]/index.tsx`              | "Add expense" Pressable (FAB) on the group detail screen |
+| `group-name-input`         | `app/groups/create.tsx`                 | Khata name input                                         |
+| `group-balance-action-card` | `app/group/[id]/index.tsx`              | Group balance/action card                                |
+| `settle-cta`               | `app/group/[id]/index.tsx`              | Settle action                                            |
+| `add-expense-header-cta`   | `app/group/[id]/index.tsx`              | Add expense action in the balance card                   |
+| `add-expense-fab-floating` | `app/group/[id]/index.tsx`              | Add expense FAB                                          |
 | `group-activity-cta`       | `app/group/[id]/index.tsx`              | Group activity/history row                               |
 | `activity-feed-list`       | `src/components/activity-feed-list.tsx` | Rendered activity feed                                   |
 | `sync-retry-now`           | `app/settings/sync.tsx`                 | Manual sync retry button                                 |
 | `expense-queued-notice`    | `app/group/[id]/add-expense.tsx`        | Saved-offline notice after a queued expense              |
-| `amount-input`             | `app/group/[id]/add-expense.tsx`        | Amount AmountInput on the add-expense form               |
-| `description-input`        | `app/group/[id]/add-expense.tsx`        | Description Input on the add-expense form                |
-| `expense-save-cta`         | `app/group/[id]/add-expense.tsx`        | Save Button on the add-expense form                      |
-| `settle-row-{index}`       | `app/group/[id]/settle.tsx`             | Creditor card wrapper on the settle screen               |
-| `settle-bkash-{index}`     | `app/group/[id]/settle.tsx`             | bKash settlement row wrapper                             |
-| `settle-nagad-{index}`     | `app/group/[id]/settle.tsx`             | Nagad settlement row wrapper                             |
-| `settle-cash-{index}`      | `app/group/[id]/settle.tsx`             | Cash settlement row wrapper                              |
-| `settle-other-{index}`     | `app/group/[id]/settle.tsx`             | "Other" settlement row wrapper                           |
-| `settle-mark-paid-cta`     | `app/group/[id]/settle.tsx`             | "Mark as paid" confirmation Button                       |
+| `amount-input`             | `app/group/[id]/add-expense.tsx`        | Amount input                                             |
+| `description-input`        | `app/group/[id]/add-expense.tsx`        | Description input                                        |
+| `expense-save-cta`         | `app/group/[id]/add-expense.tsx`        | Save button                                              |
+| `settle-row-{index}`       | `app/group/[id]/settle.tsx`             | Settlement card wrapper                                  |
+| `settle-bkash-{index}`     | `app/group/[id]/settle.tsx`             | bKash settlement tile                                    |
+| `settle-nagad-{index}`     | `app/group/[id]/settle.tsx`             | Nagad settlement tile                                    |
+| `settle-cash-{index}`      | `app/group/[id]/settle.tsx`             | Cash settlement tile                                     |
+| `settle-other-{index}`     | `app/group/[id]/settle.tsx`             | Other settlement tile                                    |
+| `settle-mark-paid-cta`     | `app/group/[id]/settle.tsx`             | MFS mark-paid confirmation button                        |
 
-Note: the `settle-*-{index}` testIDs live on a wrapper `<View>` around the
-shared `MFSSettlementRow` component (owned by `packages/ui`). Maestro's hit
-testing falls through to the inner pressable, so this indirection is invisible
-to flows.
+## CI Status
+
+The GitHub `CI` workflow does not run Maestro. The optional EAS Workflow can run
+Maestro after a preview build, but it is not a required release gate until the
+team has a passing run on hosted preview infrastructure.
