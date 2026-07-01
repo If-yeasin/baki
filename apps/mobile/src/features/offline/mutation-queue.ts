@@ -16,6 +16,8 @@ export type QueuedMutationType =
   | "settlement.create"
   | "profile.update";
 
+export type MoneyQueuedMutationType = "expense.create" | "settlement.create";
+
 export type QueuedMutation = {
   createdAt: string;
   failedAt?: string;
@@ -201,6 +203,36 @@ export function isPermanentQueuedMutationError(error: unknown) {
   return details.status >= 400 && details.status < 500;
 }
 
+export function enqueueMoneyMutationFromRpcError({
+  error,
+  payload,
+  type
+}: {
+  error: unknown;
+  payload: Record<string, unknown>;
+  type: MoneyQueuedMutationType;
+}): { kind: "permanent"; queuedMutationId: string } | { kind: "queued"; queuedMutationId: string } {
+  const errorDetails = getQueuedMutationErrorDetails(error);
+  const isPermanent = isPermanentQueuedMutationError(error);
+  const mutation = enqueueMutation({
+    payload,
+    type,
+    ...(isPermanent
+      ? {
+          failedAt: new Date().toISOString(),
+          lastErrorCode: errorDetails.code,
+          lastErrorMessage: errorDetails.message,
+          status: "failed" as const
+        }
+      : {})
+  });
+
+  return {
+    kind: isPermanent ? "permanent" : "queued",
+    queuedMutationId: mutation.id
+  };
+}
+
 export async function processQueuedMutations(): Promise<ProcessQueuedMutationsResult> {
   const result: ProcessQueuedMutationsResult = {
     attempted: 0,
@@ -255,7 +287,7 @@ export async function processQueuedMutations(): Promise<ProcessQueuedMutationsRe
   return result;
 }
 
-function getQueuedMutationErrorDetails(error: unknown): {
+export function getQueuedMutationErrorDetails(error: unknown): {
   code?: string;
   message: string;
   status?: number;

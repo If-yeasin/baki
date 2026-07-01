@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { balancesKeys } from "@/features/balances/use-balances";
-import { enqueueMutation } from "@/features/offline/mutation-queue";
+import { enqueueMoneyMutationFromRpcError } from "@/features/offline/mutation-queue";
 import { Sentry } from "@/lib/sentry";
 import { supabase } from "@/lib/supabase";
 
@@ -23,9 +23,15 @@ export type CreateExpenseInput = {
   splitValues?: Record<string, number>;
 };
 
-export type CreateExpenseResult = {
-  expenseId: string;
-};
+export type CreateExpenseResult =
+  | {
+      expenseId: string;
+      status: "synced";
+    }
+  | {
+      queuedMutationId: string;
+      status: "queued";
+    };
 
 function computeShares(input: CreateExpenseInput): Record<string, number> {
   const { amountPaisa, paidBy, splitMethod, splitMembers, splitValues } = input;
@@ -66,15 +72,15 @@ export function useCreateExpense() {
   return useMutation({
     mutationFn: async (input: CreateExpenseInput): Promise<CreateExpenseResult> => {
       const {
-        data: { user },
-        error: userError
-      } = await supabase.auth.getUser();
+        data: { session },
+        error: sessionError
+      } = await supabase.auth.getSession();
 
-      if (userError) {
-        throw userError;
+      if (sessionError) {
+        throw sessionError;
       }
 
-      if (!user) {
+      if (!session?.user) {
         throw new Error("auth.error.session_failed");
       }
 
@@ -98,10 +104,17 @@ export function useCreateExpense() {
         Sentry.captureException(error, {
           tags: { feature: "expenses.create", phase: "rpc" }
         });
-        enqueueMutation({
+        const queued = enqueueMoneyMutationFromRpcError({
+          error,
           payload: rpcPayload,
           type: "expense.create"
         });
+        if (queued.kind === "queued") {
+          return {
+            queuedMutationId: queued.queuedMutationId,
+            status: "queued"
+          };
+        }
         throw error;
       }
 
@@ -109,7 +122,7 @@ export function useCreateExpense() {
         throw new Error("expense.create.empty_result");
       }
 
-      return { expenseId };
+      return { expenseId, status: "synced" };
     },
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: expensesKeys.list(variables.groupId) });

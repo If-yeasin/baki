@@ -265,7 +265,7 @@ export default function SettleScreen() {
     if (!session.userId) return;
 
     try {
-      await createSettlement.mutateAsync({
+      const result = await createSettlement.mutateAsync({
         amountPaisa: creditor.amountPaisa,
         fromUser: creditor.fromUser,
         groupId,
@@ -274,6 +274,15 @@ export default function SettleScreen() {
       });
 
       setPendingCreditor(null);
+      if (result.status === "queued") {
+        setSettlementNotice({
+          bodyKey: "sync.offline.saved.body",
+          titleKey: "sync.offline.saved.title",
+          variant: "success"
+        });
+        return;
+      }
+
       router.back();
     } catch (error) {
       Sentry.captureException(error, { tags: { feature: "settle.markPaid" } });

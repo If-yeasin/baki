@@ -308,6 +308,8 @@
   "sync.status.failed": "Sync failed",
   "sync.offline.banner": "You're offline. Khata changes will be saved locally.",
   "sync.offline.expense_saved": "Expense saved offline",
+  "sync.offline.saved.title": "Saved offline",
+  "sync.offline.saved.body": "Will sync automatically when Baki is online.",
   "sync.action.retry": "Retry sync",
   "sync.action.openDetails": "Open sync details",
   "sync.details.title": "Sync",

@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { balancesKeys } from "@/features/balances/use-balances";
 import { simplifiedDebtsKeys } from "@/features/balances/use-simplified-debts";
 import { activityKeys } from "@/features/activity/use-activity-log";
-import { enqueueMutation } from "@/features/offline/mutation-queue";
+import { enqueueMoneyMutationFromRpcError } from "@/features/offline/mutation-queue";
 import { expensesKeys } from "@/features/expenses/use-expenses";
 import { Sentry } from "@/lib/sentry";
 import { supabase } from "@/lib/supabase";
@@ -19,6 +19,16 @@ export type CreateSettlementInput = {
   method: SettlementMethod;
   toUser: string;
 };
+
+export type CreateSettlementResult =
+  | {
+      settlementId: string;
+      status: "synced";
+    }
+  | {
+      queuedMutationId: string;
+      status: "queued";
+    };
 
 function createClientMutationId() {
   return `settlement:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 12)}`;
@@ -42,7 +52,7 @@ export function useCreateSettlement() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (input: CreateSettlementInput) => {
+    mutationFn: async (input: CreateSettlementInput): Promise<CreateSettlementResult> => {
       const rpcPayload = buildCreateSettlementRpcPayload(input);
 
       const { data: settlementId, error } = await supabase.rpc("create_settlement", rpcPayload);
@@ -51,10 +61,17 @@ export function useCreateSettlement() {
         Sentry.captureException(error, {
           tags: { feature: "settlement.create", phase: "rpc" }
         });
-        enqueueMutation({
+        const queued = enqueueMoneyMutationFromRpcError({
+          error,
           payload: rpcPayload,
           type: "settlement.create"
         });
+        if (queued.kind === "queued") {
+          return {
+            queuedMutationId: queued.queuedMutationId,
+            status: "queued"
+          };
+        }
         throw error;
       }
 
@@ -62,7 +79,7 @@ export function useCreateSettlement() {
         throw new Error("settlement.create.empty_result");
       }
 
-      return { settlementId };
+      return { settlementId, status: "synced" };
     },
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: balancesKeys.group(variables.groupId) });

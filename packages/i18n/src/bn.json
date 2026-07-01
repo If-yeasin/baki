@@ -308,6 +308,8 @@
   "sync.status.failed": "সিঙ্ক হয়নি",
   "sync.offline.banner": "ইন্টারনেট নেই, খাতা লোকালি সেভ হবে।",
   "sync.offline.expense_saved": "অফলাইনে খরচ সেভ হয়েছে",
+  "sync.offline.saved.title": "অফলাইনে সেভ হয়েছে",
+  "sync.offline.saved.body": "ইন্টারনেট ফিরলেই নিজে নিজে সিঙ্ক হবে।",
   "sync.action.retry": "সিঙ্ক আবার চেষ্টা করো",
   "sync.action.openDetails": "সিঙ্কের বিস্তারিত দেখো",
   "sync.details.title": "সিঙ্ক",

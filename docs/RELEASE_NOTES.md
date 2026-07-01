@@ -6,6 +6,9 @@
   documented the selected Baki monogram in `docs/BRAND.md`.
 - Wired queued expense/settlement replay into authenticated startup,
   foreground, interval, and manual retry via Settings -> Sync.
+- Temporary money-write RPC failures now show saved-offline copy and remain
+  pending for automatic replay, while permanent failures stay visible as failed
+  sync items.
 - Added WatermelonDB local cache scaffolding for groups, expenses, balances,
   settlements, and activity, with local balance fallback tests.
 - Switched the settle screen to the typed `simplify_debts` plan with raw

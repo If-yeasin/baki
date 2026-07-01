@@ -77,6 +77,20 @@ maestro test e2e/maestro
 maestro test e2e/maestro/10-create-group.yaml
 ```
 
+## Manual Offline Sync QA
+
+The saved-offline money-write path is not automated in Maestro yet because it
+needs a signed-in Dev Client/TestFlight build plus controllable network loss.
+Before trusted-tester merge, manually verify:
+
+1. Sign in once with OTP.
+2. Turn on Airplane Mode.
+3. Add an expense or mark a cash settlement.
+4. Confirm the saved-offline notice appears and the sync indicator shows pending work.
+5. Open Settings -> Sync and verify the pending count.
+6. Restore connectivity and tap Retry sync.
+7. Confirm the queue clears and Supabase has no duplicate expense/settlement rows.
+
 ## Flow inventory
 
 | File                   | What it verifies                                               |
@@ -120,6 +134,7 @@ prefer `id:` selectors over `text:` selectors and add new testIDs here.
 | `group-activity-cta`       | `app/group/[id]/index.tsx`              | Group activity/history row                               |
 | `activity-feed-list`       | `src/components/activity-feed-list.tsx` | Rendered activity feed                                   |
 | `sync-retry-now`           | `app/settings/sync.tsx`                 | Manual sync retry button                                 |
+| `expense-queued-notice`    | `app/group/[id]/add-expense.tsx`        | Saved-offline notice after a queued expense              |
 | `amount-input`             | `app/group/[id]/add-expense.tsx`        | Amount AmountInput on the add-expense form               |
 | `description-input`        | `app/group/[id]/add-expense.tsx`        | Description Input on the add-expense form                |
 | `expense-save-cta`         | `app/group/[id]/add-expense.tsx`        | Save Button on the add-expense form                      |

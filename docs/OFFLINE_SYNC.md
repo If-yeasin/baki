@@ -27,6 +27,8 @@ Permanent failures are marked `failed` and are skipped by automatic replay. Exam
 
 Failed mutations are not silently deleted. They remain visible on Settings -> Sync until the user taps retry, or until a future repair/dismiss path is added.
 
+When an expense or settlement RPC fails for a temporary reason, the mobile app now keeps the payload in the queue and returns a queued-success result to the screen. The user sees "অফলাইনে সেভ হয়েছে" / "Saved offline" with copy explaining that Baki will sync automatically. Permanent money-writing failures are queued with `failed` status for visibility, but the form still treats them as errors.
+
 ## Replay Triggers
 
 `useQueuedMutationProcessor()` runs only after the session is ready and a user id exists. It triggers replay:
@@ -51,8 +53,11 @@ The orchestrator keeps an in-memory lock so concurrent triggers share one run in
 2. Open or create a khata with at least two members.
 3. Turn on Airplane Mode.
 4. Add an expense or record a cash settlement.
-5. Confirm the header sync indicator shows pending work.
-6. Open Settings -> Sync and confirm pending/failed counts are visible.
-7. Turn Airplane Mode off.
-8. Bring the app to foreground or tap Retry sync.
-9. Confirm the queue clears, balances update, and no duplicate expense/settlement rows appear in Supabase.
+5. Confirm the screen shows the saved-offline message.
+6. Confirm the header sync indicator shows pending work.
+7. Open Settings -> Sync and confirm pending/failed counts are visible.
+8. Turn Airplane Mode off.
+9. Bring the app to foreground or tap Retry sync.
+10. Confirm the queue clears, balances update, and no duplicate expense/settlement rows appear in Supabase.
+
+This manual test still requires a Dev Client or TestFlight build. Expo Go is only a UI smoke path because WatermelonDB and persistent native storage are unavailable there.

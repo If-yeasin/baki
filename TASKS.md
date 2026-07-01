@@ -7,6 +7,8 @@
 - Unused icon experiments moved out of bundled mobile assets.
 - `pnpm --filter mobile check:assets` verifies active icon files.
 - Queued expense/settlement replay is wired into app startup, foreground, interval, and manual retry.
+- Temporary expense/settlement RPC failures now save as pending offline changes instead of hard-failing the form.
+- Permanent expense/settlement errors remain visible as failed sync items and are not shown as success.
 - Settings -> Sync shows pending/failed counts, last sync time, retry, and failed item details.
 - Local WatermelonDB schema, migrations, models, and repositories are scaffolded.
 - Groups and expenses hydrate from local cache and revalidate Supabase.
@@ -17,6 +19,7 @@
 ## In Progress
 
 - Full device QA for offline replay on a Dev Client.
+- GitHub Actions verification after the merge PR is opened.
 - Maestro coverage for authenticated trusted-tester flow.
 - Remote/local cache breadth beyond the core read paths.
 
@@ -28,7 +31,7 @@
 
 ## Next 5 Tasks
 
-1. Run the full quality gate suite on a machine with local Supabase available.
+1. Wait for PR GitHub Actions and fix any CI-only failure.
 2. Walk the manual offline replay test on a physical iPhone Dev Client.
 3. Add seeded authenticated-state Maestro setup so flows can run without OTP.
 4. Add a repair/dismiss UX for permanently failed queued mutations.
