@@ -1,0 +1,15 @@
+appId: com.baki.app
+name: Seed E2E authenticated state
+tags:
+  - auth
+  - preview-e2e
+---
+- launchApp:
+    clearState: true
+- openLink: "baki://e2e/seed-auth"
+- assertVisible:
+    id: "e2e-auth-ready"
+- tapOn:
+    id: "e2e-auth-continue"
+- assertVisible:
+    id: "group-card-0"

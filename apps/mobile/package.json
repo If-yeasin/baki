@@ -13,6 +13,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest --run --passWithNoTests",
+    "build:android:preview:e2e": "eas build --profile preview-e2e --platform android",
     "build:ios:preview": "eas build --profile preview --platform ios",
     "build:ios:devclient": "eas build --profile development:device --platform ios",
     "build:ios:devclient:sim": "eas build --profile development --platform ios",

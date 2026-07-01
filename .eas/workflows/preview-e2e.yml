@@ -1,0 +1,42 @@
+name: Preview E2E
+
+on:
+  workflow_dispatch: {}
+  pull_request_labeled:
+    labels:
+      - build:preview-e2e
+
+defaults:
+  tools:
+    node: "24"
+    pnpm: "9.12.0"
+  run:
+    working_directory: /apps/mobile
+
+jobs:
+  android_preview_e2e_build:
+    name: Build Android preview E2E
+    type: build
+    environment: preview
+    params:
+      platform: android
+      profile: preview-e2e
+
+  android_preview_e2e_maestro:
+    name: Run Android Maestro preview E2E
+    type: maestro
+    needs:
+      - android_preview_e2e_build
+    environment: preview
+    params:
+      build_id: ${{ needs.android_preview_e2e_build.outputs.build_id }}
+      flow_path:
+        - ../../e2e/maestro/60-preview-trusted-tester.yaml
+      include_tags:
+        - preview-e2e
+      exclude_tags:
+        - ci-skip
+      record_screen: true
+      retries: 1
+      device_identifier:
+        android: pixel_6

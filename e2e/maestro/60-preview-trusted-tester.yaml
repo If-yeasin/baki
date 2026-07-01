@@ -1,0 +1,34 @@
+appId: com.baki.app
+name: Trusted-tester preview ledger gate
+tags:
+  - preview-e2e
+---
+- runFlow: 00-e2e-auth.yaml
+- openLink: "baki://group/33333333-3333-4333-8333-333333333333"
+- assertVisible:
+    id: "group-balance-action-card"
+- tapOn:
+    id: "add-expense-header-cta"
+- tapOn:
+    id: "amount-input"
+- inputText: "100"
+- tapOn:
+    id: "description-input"
+- inputText: "চা-নাস্তা"
+- tapOn:
+    id: "expense-save-cta"
+- assertVisible: "চা-নাস্তা"
+- openLink: "baki://group/33333333-3333-4333-8333-333333333333/settle"
+- assertVisible:
+    id: "settle-row-0"
+- tapOn:
+    id: "settle-cash-0"
+- openLink: "baki://settings/sync"
+- assertVisible:
+    id: "sync-retry-now"
+- tapOn:
+    id: "sync-retry-now"
+- openLink: "baki://group/33333333-3333-4333-8333-333333333333/activity"
+- assertVisible:
+    id: "activity-feed-list"
+- assertVisible: "চা-নাস্তা"

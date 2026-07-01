@@ -129,6 +129,7 @@ function RootStack() {
       <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="e2e/seed-auth" options={{ headerShown: false }} />
       <Stack.Screen name="groups/create" options={{ title: t("groups.create.title") }} />
       <Stack.Screen name="groups/join" options={{ title: t("groups.join.title") }} />
       <Stack.Screen name="settings/sync" options={{ title: t("sync.details.title") }} />
