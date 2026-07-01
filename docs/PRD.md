@@ -16,13 +16,15 @@ In Bangladesh, friends and families constantly share expenses: mess bills, hoste
 - **Friend groups planning trips** (Sajek, Bandarban, Cox's, Sundarbans, abroad)
 
 Personas:
-- *Tanvir, 22, BUET hostel:* tracks mess bill across 8 boys, gets paid back via bKash
-- *Rini, 28, Dhanmondi flat:* splits rent, gas, internet with 2 flatmates monthly
-- *Ahsan, 35, Chattogram:* coordinates 4 siblings sharing father's medical costs
+
+- _Tanvir, 22, BUET hostel:_ tracks mess bill across 8 boys, gets paid back via bKash
+- _Rini, 28, Dhanmondi flat:_ splits rent, gas, internet with 2 flatmates monthly
+- _Ahsan, 35, Chattogram:_ coordinates 4 siblings sharing father's medical costs
 
 ## 4. Goals & non-goals (v1)
 
 ### Goals
+
 - Add an expense in under 15 seconds
 - See "who owes whom" with one tap
 - Settle via bKash/Nagad with one tap (deep link)
@@ -31,6 +33,7 @@ Personas:
 - Ship to App Store first, Play Store within 6 weeks of iOS launch
 
 ### Non-goals (v1)
+
 - Receipt OCR (v2)
 - Recurring expenses (v2)
 - Multi-currency (v2)
@@ -63,10 +66,10 @@ Personas:
 
 ## 8. Risk register
 
-| Risk | Mitigation |
-|---|---|
-| bKash deep-link API changes | Wrap in `packages/payments`, version-pinned, fall back to copy-to-clipboard |
-| Apple rejects for "financial app" classification | Position as "expense tracker", not "payments app"; no money custody language |
-| Bengali font rendering inconsistent on older iPhones | Bundle Hind Siliguri locally, test on iPhone SE 2 minimum |
-| Cross-group data leak via RLS gap | Mandatory two-user RLS test in every PR touching the schema |
-| Sync conflicts when two users edit offline | Last-write-wins with audit trail; show "edited by X" in activity feed |
+| Risk                                                 | Mitigation                                                                   |
+| ---------------------------------------------------- | ---------------------------------------------------------------------------- |
+| bKash deep-link API changes                          | Wrap in `packages/payments`, version-pinned, fall back to copy-to-clipboard  |
+| Apple rejects for "financial app" classification     | Position as "expense tracker", not "payments app"; no money custody language |
+| Bengali font rendering inconsistent on older iPhones | Bundle Hind Siliguri locally, test on iPhone SE 2 minimum                    |
+| Cross-group data leak via RLS gap                    | Mandatory two-user RLS test in every PR touching the schema                  |
+| Sync conflicts when two users edit offline           | Last-write-wins with audit trail; show "edited by X" in activity feed        |

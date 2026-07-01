@@ -52,9 +52,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error(
-    "delete-account: missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY"
-  );
+  throw new Error("delete-account: missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
 }
 
 function json(body: DeleteAccountResponse, status: number): Response {
@@ -144,9 +142,7 @@ curl -X POST \
 - [ ] App Store reviewer notes updated to describe the demo path
       (see `docs/SETUP.md`).
 - [ ] Confirm `SUPABASE_SERVICE_ROLE_KEY` does not appear in any
-      `apps/**` or `packages/**` source. It exists only in:
-        - Supabase project secrets (set via `supabase secrets set`)
-        - the Deno runtime env of this Edge Function
+      `apps/**` or `packages/**` source. It exists only in: - Supabase project secrets (set via `supabase secrets set`) - the Deno runtime env of this Edge Function
 
 ## Future wave: deployment automation
 

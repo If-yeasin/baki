@@ -108,10 +108,7 @@ export function splitEqual(
  * Exact split — the caller specifies the paisa per member. Throws if the
  * sum doesn't match `amountPaisa`.
  */
-export function splitExact(
-  amountPaisa: number,
-  perMember: SplitShares
-): Record<string, number> {
+export function splitExact(amountPaisa: number, perMember: SplitShares): Record<string, number> {
   assertPositiveInteger(amountPaisa, "amount_must_be_positive_integer");
 
   const entries = Object.entries(perMember);

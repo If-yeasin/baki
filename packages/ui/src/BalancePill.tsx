@@ -55,7 +55,8 @@ export function BalancePill({
   const labelText = i18next.t(labelKey);
   const showAmount = netPaisa !== 0;
   const amountPaisa = netPaisa < 0 ? -netPaisa : netPaisa;
-  const moneyVariant = tone === "positive" ? "positive" : tone === "negative" ? "negative" : "neutral";
+  const moneyVariant =
+    tone === "positive" ? "positive" : tone === "negative" ? "negative" : "neutral";
 
   return (
     <View

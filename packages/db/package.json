@@ -9,9 +9,9 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest --run --passWithNoTests",
-    "migrate": "supabase db push",
-    "migrate:local": "supabase db reset",
-    "gen:types": "supabase gen types typescript --local > src/types.ts"
+    "migrate": "supabase db push --workdir ../..",
+    "migrate:local": "supabase db reset --workdir ../..",
+    "gen:types": "supabase gen types typescript --local --workdir ../.. > src/types.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.4",

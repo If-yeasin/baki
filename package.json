@@ -6,7 +6,10 @@
   "expo": {
     "doctor": {
       "reactNativeDirectoryCheck": {
-        "exclude": ["@nozbe/watermelondb", "@nozbe/simdjson"],
+        "exclude": [
+          "@nozbe/watermelondb",
+          "@nozbe/simdjson"
+        ],
         "listUnknownPackages": true
       }
     }
@@ -20,7 +23,7 @@
     "i18n:check": "pnpm --filter @baki/i18n check",
     "db:check": "pnpm --filter @baki/db test",
     "e2e": "echo \"Run \\`maestro test e2e/maestro\\` manually after starting the dev server\"",
-    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm i18n:check"
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm i18n:check && pnpm db:check && pnpm --filter mobile check:assets"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.47.0",

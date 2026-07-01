@@ -17,8 +17,15 @@ export type MoneyProps = Omit<TextProps, "children" | "variant"> & {
  *   - forces tabular numerals so digits don't jitter between rows
  *   - tints by variant: positive (owed to you), negative (you owe), neutral
  */
-export function Money({ amountPaisa, locale = "bn", style, variant = "neutral", ...props }: MoneyProps) {
-  const tone = variant === "positive" ? "positive" : variant === "negative" ? "negative" : "primary";
+export function Money({
+  amountPaisa,
+  locale = "bn",
+  style,
+  variant = "neutral",
+  ...props
+}: MoneyProps) {
+  const tone =
+    variant === "positive" ? "positive" : variant === "negative" ? "negative" : "primary";
   const formatted = formatMoney(amountPaisa, locale);
 
   return (

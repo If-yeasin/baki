@@ -2,6 +2,7 @@ import { formatMoney, formatRelativeDhakaDate, toBengaliNumerals } from "@baki/i
 import * as Clipboard from "expo-clipboard";
 import { Stack, useLocalSearchParams, useRouter, type Href } from "expo-router";
 import {
+  Activity,
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
@@ -330,6 +331,32 @@ export default function GroupDetailScreen() {
                 />
               </View>
             ) : null}
+
+            <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
+              <Pressable
+                accessibilityLabel={t("groups.detail.activity.title")}
+                accessibilityRole="button"
+                onPress={() => router.push(`/group/${groupId}/activity` as Href)}
+                style={({ pressed }) => ({
+                  alignItems: "center",
+                  backgroundColor: pressed ? colors.bgSubtle : colors.bgSurface,
+                  borderColor: colors.borderSubtle,
+                  borderRadius: radii.md,
+                  borderWidth: 1,
+                  flexDirection: "row",
+                  gap: spacing.md,
+                  minHeight: 56,
+                  paddingHorizontal: spacing.md
+                })}
+                testID="group-activity-cta"
+              >
+                <Activity color={colors.brandPrimary} size={19} />
+                <Text style={{ color: colors.inkPrimary, flex: 1 }} variant="bodyStrong">
+                  {t("groups.detail.activity.title")}
+                </Text>
+                <ArrowRight color={colors.inkMuted} size={18} />
+              </Pressable>
+            </View>
 
             {expenses.length > 0 ? (
               <View

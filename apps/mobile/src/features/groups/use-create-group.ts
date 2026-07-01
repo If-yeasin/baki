@@ -37,11 +37,7 @@ export function useCreateGroup() {
         template: input.template
       };
 
-      const { data, error } = await supabase
-        .from("groups")
-        .insert(payload)
-        .select("*")
-        .single();
+      const { data, error } = await supabase.from("groups").insert(payload).select("*").single();
 
       if (error) {
         // Persist the intent locally so the user's effort isn't lost when

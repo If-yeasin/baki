@@ -36,7 +36,11 @@ export {
   PhoneInput,
   validateBdPhoneNumber
 } from "./PhoneInput";
-export type { BdPhoneValidationError, BdPhoneValidationResult, PhoneInputProps } from "./PhoneInput";
+export type {
+  BdPhoneValidationError,
+  BdPhoneValidationResult,
+  PhoneInputProps
+} from "./PhoneInput";
 export { Sheet } from "./Sheet";
 export type { SheetProps, SheetSnapPoint } from "./Sheet";
 export { Skeleton } from "./Skeleton";

@@ -1,7 +1,10 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Sentry } from "@/lib/sentry";
 import { supabase } from "@/lib/supabase";
+import { readLocalGroups, upsertRemoteGroups } from "@/watermelon/repositories/groups";
 
 import { toGroupSummary, type GroupSummary } from "./types";
 
@@ -11,26 +14,48 @@ export const groupsKeys = {
   list: () => [...groupsKeys.all, "list"] as const
 };
 
-async function fetchGroups(): Promise<GroupSummary[]> {
-  const { data, error } = await supabase
-    .from("groups")
-    .select("*")
-    .is("deleted_at", null)
-    .order("updated_at", { ascending: false });
+export async function fetchGroups(): Promise<GroupSummary[]> {
+  const localGroups = await readLocalGroups();
 
-  if (error) {
+  try {
+    const { data, error } = await supabase
+      .from("groups")
+      .select("*")
+      .is("deleted_at", null)
+      .order("updated_at", { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    await upsertRemoteGroups(data ?? []);
+    return (data ?? []).map(toGroupSummary);
+  } catch (error) {
     Sentry.captureException(error, { tags: { feature: "groups.list" } });
+    if (localGroups.length > 0) {
+      return localGroups;
+    }
     throw error;
   }
-
-  // TODO(offline-watermelon): hydrate from WatermelonDB groups table before
-  // this network call resolves, so the UI shows a list instantly on cold
-  // start. Until the sync engine is wired up, TanStack Query's cache + the
-  // placeholder below cover the warm-cache case.
-  return (data ?? []).map(toGroupSummary);
 }
 
 export function useGroups() {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void readLocalGroups().then((groups) => {
+      if (!cancelled && groups.length > 0) {
+        queryClient.setQueryData(groupsKeys.list(), groups);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [queryClient]);
+
   return useQuery({
     placeholderData: keepPreviousData,
     queryFn: fetchGroups,

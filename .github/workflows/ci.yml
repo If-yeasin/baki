@@ -19,7 +19,13 @@ jobs:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @baki/db exec supabase db start --workdir ../..
+      - run: pnpm --filter @baki/db exec supabase db reset --workdir ../..
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm i18n:check
+      - run: pnpm db:check
+      - run: pnpm --filter mobile check:assets
+      - run: pnpm check
+      - run: git diff --check

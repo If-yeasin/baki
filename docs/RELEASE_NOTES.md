@@ -1,5 +1,33 @@
 # Release Notes
 
+## 0.2.7 — Automated trusted-tester gate (2026-07-01)
+
+- Converted PR #1 from a manual-device merge gate to an automated-first gate by
+  project-owner decision; real-device offline replay remains recommended before
+  public beta.
+- Added tests for temporary expense/settlement RPC failures returning queued
+  success, permanent failures remaining visible, sync status priority, and
+  Settings -> Sync presentation logic.
+- Updated CI to start/reset local Supabase, run DB checks, run mobile asset
+  checks, run aggregate `pnpm check`, and run `git diff --check`.
+- Documented the automated gate, EAS Preview trigger, known limitations, and
+  duplicate-ledger SQL in `docs/QA/AUTOMATED_RELEASE_GATE.md`.
+
+## 0.2.6 — Trusted tester MVP hardening (2026-07-01)
+
+- Moved unused icon explorations out of the Expo-bundled mobile assets and
+  documented the selected Baki monogram in `docs/BRAND.md`.
+- Wired queued expense/settlement replay into authenticated startup,
+  foreground, interval, and manual retry via Settings -> Sync.
+- Temporary money-write RPC failures now show saved-offline copy and remain
+  pending for automatic replay, while permanent failures stay visible as failed
+  sync items.
+- Added WatermelonDB local cache scaffolding for groups, expenses, balances,
+  settlements, and activity, with local balance fallback tests.
+- Switched the settle screen to the typed `simplify_debts` plan with raw
+  balance fallback only when the simplified RPC fails.
+- Added real `activity_log` rendering for group history and the Activity tab.
+
 ## 0.2.5 — Repo stabilization pass (2026-06-30)
 
 - Replaced the remaining unsafe product comparison with safer Bengali-first

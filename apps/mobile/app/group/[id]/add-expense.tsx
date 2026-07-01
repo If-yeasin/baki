@@ -15,6 +15,7 @@ import {
   NumericInput,
   Tabs,
   Text,
+  Toast,
   radii,
   spacing,
   useTheme
@@ -116,6 +117,7 @@ export default function AddExpenseScreen() {
   }, [memberIds, session.userId]);
   const [splitError, setSplitError] = useState<string | null>(null);
   const [splitMembersTouched, setSplitMembersTouched] = useState(false);
+  const [queuedNoticeVisible, setQueuedNoticeVisible] = useState(false);
   const initializedSplitMembers = useRef(false);
   const selectedSplitMembers = splitMembersTouched ? splitMembers : memberIds;
   const selectedPaidBy = paidBy || defaultPayerId;
@@ -128,12 +130,11 @@ export default function AddExpenseScreen() {
     const countLabel = formatMemberCount(splitMemberCount, locale);
     const splitCountLabel = t("expense.review.splitWithCount", { count: countLabel });
     const methodLabel = t(`expense.add.splitMethod.${splitMethod}`);
-    const readyForEqualPreview =
-      amountPaisa > 0 && splitMemberCount > 0 && splitMethod === "equal";
+    const readyForEqualPreview = amountPaisa > 0 && splitMemberCount > 0 && splitMethod === "equal";
     const equalShare = readyForEqualPreview
-      ? splitEqual(amountPaisa, selectedSplitMembers, { payerId: selectedPaidBy })[
+      ? (splitEqual(amountPaisa, selectedSplitMembers, { payerId: selectedPaidBy })[
           selectedSplitMembers[0] ?? ""
-        ] ?? 0
+        ] ?? 0)
       : 0;
 
     return {
@@ -315,7 +316,7 @@ export default function AddExpenseScreen() {
             submissionValues.splitValues ?? {}
           );
 
-    await createExpense.mutateAsync({
+    const result = await createExpense.mutateAsync({
       amountPaisa: submissionValues.amountPaisa,
       category: submissionValues.category,
       description: submissionValues.description,
@@ -325,6 +326,11 @@ export default function AddExpenseScreen() {
       splitMethod: submissionValues.splitMethod,
       splitValues: preparedSplitValues
     });
+
+    if (result.status === "queued") {
+      setQueuedNoticeVisible(true);
+      return;
+    }
 
     router.back();
   });
@@ -411,6 +417,17 @@ export default function AddExpenseScreen() {
             {t("expense.add.with_group", { name: groupName })}
           </Text>
         </View>
+
+        {queuedNoticeVisible ? (
+          <Toast
+            dismissLabel={t("common.dismiss")}
+            message={t("sync.offline.saved.body")}
+            onDismiss={() => setQueuedNoticeVisible(false)}
+            testID="expense-queued-notice"
+            title={t("sync.offline.saved.title")}
+            variant="success"
+          />
+        ) : null}
 
         <View
           style={{

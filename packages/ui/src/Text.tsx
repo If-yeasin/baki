@@ -9,14 +9,7 @@ import {
 import { typography, type TypographyVariant } from "./theme/typography";
 import { useTheme, type ThemeColors } from "./theme/useTheme";
 
-type TextTone =
-  | "primary"
-  | "secondary"
-  | "muted"
-  | "positive"
-  | "negative"
-  | "brand"
-  | "onBrand";
+type TextTone = "primary" | "secondary" | "muted" | "positive" | "negative" | "brand" | "onBrand";
 
 export type TextProps = RNTextProps & {
   tone?: TextTone;
@@ -85,8 +78,7 @@ export function Text({
     (variant === "monoAmount" || styleUsesTabularNumerals(style))
       ? "700"
       : type.fontWeight;
-  const fontFamily =
-    locale === "bn" ? bnFontByWeight[fontWeight] : enFontByWeight[fontWeight];
+  const fontFamily = locale === "bn" ? bnFontByWeight[fontWeight] : enFontByWeight[fontWeight];
 
   const textStyle: TextStyle = {
     color: colorForTone(colors, tone),

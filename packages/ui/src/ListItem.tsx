@@ -20,7 +20,14 @@ export type ListItemProps = {
   trailing?: ReactNode;
 };
 
-export function ListItem({ divider = false, leading, style, subtitle, title, trailing }: ListItemProps) {
+export function ListItem({
+  divider = false,
+  leading,
+  style,
+  subtitle,
+  title,
+  trailing
+}: ListItemProps) {
   const { colors } = useTheme();
 
   return (
@@ -62,9 +69,7 @@ export function ListItem({ divider = false, leading, style, subtitle, title, tra
           </Text>
         ) : null}
       </View>
-      {trailing ? (
-        <View style={{ alignItems: "flex-end", flexShrink: 0 }}>{trailing}</View>
-      ) : null}
+      {trailing ? <View style={{ alignItems: "flex-end", flexShrink: 0 }}>{trailing}</View> : null}
     </View>
   );
 }

@@ -3,11 +3,13 @@
 ## Phases
 
 ### Phase 0 — Bootstrap (Week 0)
+
 Codex executes the bootstrap prompt; project scaffolds, dependencies install, Supabase project created, schema migrated, subagents wired, first build runs locally.
 
 **Deliverable:** `pnpm --filter mobile dev` opens the app on the iOS Simulator showing a placeholder home screen.
 
 ### Phase 1 — Foundations (Weeks 1–2)
+
 - Design system: tokens, typography, base components (`packages/ui`)
 - i18n scaffolding with `bn` and `en` catalogs
 - Auth (F1): phone OTP, profile creation, persisted session
@@ -17,6 +19,7 @@ Codex executes the bootstrap prompt; project scaffolds, dependencies install, Su
 **Exit criteria:** new user can sign up via phone OTP, see an empty home with a "Create your first khata" CTA.
 
 ### Phase 2 — Groups & Expenses (Weeks 3–4)
+
 - F2 Groups: create, join via invite, list
 - F3 Expenses: add, edit, delete, all four split methods
 - F8 Offline: end-to-end offline create-expense path
@@ -25,6 +28,7 @@ Codex executes the bootstrap prompt; project scaffolds, dependencies install, Su
 **Exit criteria:** two devices can join one group, both add expenses offline, sync converges correctly when online.
 
 ### Phase 3 — Balances & Settlement (Weeks 5–6)
+
 - F4 Balances: per-group and all-groups views, simplification algorithm
 - F5 Settlement: bKash and Nagad deep links, cash fallback
 - F6 Activity feed UI
@@ -32,6 +36,7 @@ Codex executes the bootstrap prompt; project scaffolds, dependencies install, Su
 **Exit criteria:** a friend group can run a real Sajek trip through the app end-to-end (add expenses, see balances, settle via bKash deep link, verify ledger zeros out).
 
 ### Phase 4 — Notifications & Polish (Week 7)
+
 - F7 Push notifications wired
 - F9 Localization sweep — all copy reviewed by native Bengali speaker
 - F10 Settings screen
@@ -42,6 +47,7 @@ Codex executes the bootstrap prompt; project scaffolds, dependencies install, Su
 **Exit criteria:** TestFlight beta to 20 invited users (friends, family, mess-mates).
 
 ### Phase 5 — iOS launch (Week 8)
+
 - Bug bash from beta feedback
 - App Store metadata (BN + EN), screenshots in both languages, preview video
 - Privacy nutrition labels filled accurately
@@ -51,6 +57,7 @@ Codex executes the bootstrap prompt; project scaffolds, dependencies install, Su
 **Exit criteria:** ✅ Live on the App Store.
 
 ### Phase 6 — Android (Weeks 9–12)
+
 - Test on a range of Android devices (Xiaomi, Samsung mid-range, Oppo, Walton — common in BD)
 - Fix Android-specific issues (back-button behavior, deep-link intents for bKash, Material elevation tuning)
 - Play Console setup, internal testing track → closed testing → production
@@ -59,6 +66,7 @@ Codex executes the bootstrap prompt; project scaffolds, dependencies install, Su
 **Exit criteria:** ✅ Live on the Play Store.
 
 ### Phase 7 — Post-launch v1.1+
+
 - Receipt OCR (Google ML Kit / Vision)
 - Recurring expenses
 - bKash merchant API (requires business onboarding)

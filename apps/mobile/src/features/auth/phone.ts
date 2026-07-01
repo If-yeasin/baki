@@ -8,7 +8,10 @@ export const bdPhoneSchema = z
   .refine((value) => /^\+8801[3-9]\d{8}$/.test(value), "auth.validation.phone_invalid");
 
 export const otpSchema = z.object({
-  otp: z.string().trim().regex(/^\d{6}$/, "auth.validation.otp_invalid"),
+  otp: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, "auth.validation.otp_invalid"),
   phone: bdPhoneSchema
 });
 

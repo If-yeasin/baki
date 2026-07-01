@@ -29,6 +29,7 @@ vi.mock("@/lib/supabase", () => ({
 
 import {
   enqueueMutation,
+  enqueueMoneyMutationFromRpcError,
   getQueueStats,
   listQueuedMutations,
   processQueuedMutations
@@ -139,5 +140,57 @@ describe("processQueuedMutations", () => {
       skipped: 1,
       succeeded: 0
     });
+  });
+});
+
+describe("enqueueMoneyMutationFromRpcError", () => {
+  beforeEach(() => {
+    mocks.values.clear();
+    mocks.rpc.mockReset();
+  });
+
+  it("queues temporary money-write failures as pending success", () => {
+    const result = enqueueMoneyMutationFromRpcError({
+      error: new Error("Network request failed"),
+      payload: expensePayload,
+      type: "expense.create"
+    });
+    const [mutation] = listQueuedMutations();
+
+    expect(result).toEqual({
+      kind: "queued",
+      queuedMutationId: mutation?.id
+    });
+    expect(mutation).toMatchObject({
+      payload: expensePayload,
+      retryCount: 0,
+      status: "pending",
+      type: "expense.create"
+    });
+    expect(getQueueStats()).toEqual({ failedCount: 0, pendingCount: 1, totalCount: 1 });
+  });
+
+  it("keeps permanent money-write failures visible as failed", () => {
+    const result = enqueueMoneyMutationFromRpcError({
+      error: { code: "42501", message: "not_group_member" },
+      payload: settlementPayload,
+      type: "settlement.create"
+    });
+    const [mutation] = listQueuedMutations();
+
+    expect(result).toEqual({
+      kind: "permanent",
+      queuedMutationId: mutation?.id
+    });
+    expect(mutation).toMatchObject({
+      failedAt: expect.any(String),
+      lastErrorCode: "42501",
+      lastErrorMessage: "not_group_member",
+      payload: settlementPayload,
+      retryCount: 0,
+      status: "failed",
+      type: "settlement.create"
+    });
+    expect(getQueueStats()).toEqual({ failedCount: 1, pendingCount: 0, totalCount: 1 });
   });
 });

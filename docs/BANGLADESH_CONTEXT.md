@@ -3,19 +3,23 @@
 ## Localization
 
 ### Languages
+
 - `bn` (Bengali) — default, all copy reviewed by native speaker
 - `en` (English) — secondary, used by international users and bilingual segments
 
 ### Numerals
+
 - When locale is `bn`, render digits in Bengali: ০১২৩৪৫৬৭৮৯
 - Helper: `toBengaliNumerals(str)` and `toLatinNumerals(str)` — always store in Latin, convert at render
 
 ### Currency formatting
+
 - Symbol: ৳ (Bengali) or BDT (English context where ৳ doesn't render)
 - Format: `৳ 1,23,450` (Indian-style grouping: lakh, crore — NOT thousands)
 - Negative: prefix with minus, or wrap in parentheses; never red text alone (accessibility)
 
 ### Date/time
+
 - Display timezone: Asia/Dhaka (UTC+6)
 - Relative dates in Bengali:
   - 0 days: "আজ"
@@ -25,6 +29,7 @@
 - Use `dayjs` with `bn` locale + custom Bengali numerals formatter
 
 ### Phone numbers
+
 - BD format: `+880 1XXX-XXXXXX` (11 digits after +880)
 - Validate: must start with `01[3-9]` after country code
 - Display in groups: `+880 17XX-XXXXXX`
@@ -46,6 +51,7 @@ Investigate and lock the exact scheme — schemes have changed historically. As 
 3. Fall back to copy-the-number-to-clipboard with a toast: "bKash app not found, number copied"
 
 **Prefill data possible:**
+
 - Recipient number
 - Amount (BDT)
 - Reference/note (limited characters)
@@ -54,6 +60,7 @@ Investigate and lock the exact scheme — schemes have changed historically. As 
 
 **Merchant API (v1.5+):**
 Requires bKash merchant onboarding (corporate registration, TIN, trade license, BIN). Out of scope for v1. When in scope:
+
 - Tokenized checkout for in-app settlement
 - Webhook to auto-confirm settlements
 - Reconciliation via `external_ref` in `settlements` table
@@ -61,7 +68,7 @@ Requires bKash merchant onboarding (corporate registration, TIN, trade license, 
 ### Nagad
 
 - Deep link support is more limited than bKash; default to USSD copy:
-- Provide a "copy *167# command with prefilled number" affordance
+- Provide a "copy \*167# command with prefilled number" affordance
 - Same fallback pattern as bKash
 
 ### Rocket / Upay / Other

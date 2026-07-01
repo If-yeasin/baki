@@ -103,3 +103,18 @@ The dependency-aware build sequence the agents should follow:
 9. **F9 Localization polish** — final copy review
 10. **F10 Settings** — finishing touches
 11. **Hardening** — RLS audit, accessibility, App Store metadata
+
+## Trusted tester status — 2026-07-01
+
+| Area             | Status                     | Notes                                                                                                                                                                                         |
+| ---------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F1 Auth          | Implemented                | Phone OTP/profile path exists; OTP remains manual for Maestro.                                                                                                                                |
+| F2 Groups        | Partial                    | Create/join/list exist; offline group-create replay is queued but not drained yet.                                                                                                            |
+| F3 Expenses      | Partial                    | Add expense uses `create_expense` with idempotency; temporary RPC failures queue as pending offline saves.                                                                                    |
+| F4 Balances      | Implemented for group view | `get_group_balances` remains source of truth, with local ledger fallback.                                                                                                                     |
+| F5 Settlement    | Partial                    | `simplify_debts` drives the settle plan; settlement writes queue on temporary failure and record outside-app payment.                                                                         |
+| F6 Activity feed | Partial                    | Group and tab activity read real `activity_log`; pagination/pull-to-refresh remain pending.                                                                                                   |
+| F7 Notifications | Pending                    | Expo Notifications configured, product notification flows not shipped.                                                                                                                        |
+| F8 Offline-first | Partial                    | Expense/settlement mutations queue and replay; temporary failures show saved-offline UX. PR #1 uses an automated-only gate; real-device Dev Client QA remains recommended before public beta. |
+| F9 Localization  | Partial                    | BN/EN parity enforced; native Bengali review still required.                                                                                                                                  |
+| F10 Settings     | Partial                    | Language/theme/delete-account/sync details exist; export/support/legal links pending.                                                                                                         |

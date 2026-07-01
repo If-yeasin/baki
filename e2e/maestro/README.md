@@ -15,17 +15,15 @@ These flows assume a signed-in user on the home screen. Run through this list on
 before executing any of the numbered flows.
 
 1. **Install Maestro** (see section above — `brew install maestro-cli`).
-2. **Install Expo CLI.** If you don't already have it globally, use one of:
+2. **Use the repo's Expo scripts.** The mobile package uses local Expo commands:
    ```bash
-   # Global install (only if not already present)
-   npm i -g expo-cli
-
-   # Or invoke without installing globally
-   pnpm dlx expo --version
+   pnpm --filter mobile dev:devclient
+   pnpm --filter mobile dev:go
    ```
 3. **Build and install the iOS Dev Client onto the Simulator.** The Dev Client
    is required for any flow that touches native modules (camera, contacts,
    bKash deep links). Pick one of:
+
    ```bash
    # Full native build via EAS (recommended once per native-deps change)
    pnpm --filter mobile exec expo prebuild --platform ios
@@ -36,6 +34,7 @@ before executing any of the numbered flows.
    # for flows 20–40 to fully exercise the app.
    pnpm --filter mobile dev   # then press `i` to open in the iOS Simulator
    ```
+
 4. **Manual OTP sign-in (first run only).** Phone OTP cannot be automated
    reliably in CI, so the first time you run these flows you must sign in by
    hand:
@@ -78,25 +77,44 @@ maestro test e2e/maestro
 maestro test e2e/maestro/10-create-group.yaml
 ```
 
+## Offline Sync QA
+
+The saved-offline money-write path is not automated in Maestro yet because it
+needs a signed-in Dev Client/TestFlight build plus controllable network loss.
+For PR #1, project-owner decision is to skip manual device QA and use the
+automated release gate in `docs/QA/AUTOMATED_RELEASE_GATE.md`.
+
+Before public beta, a real-device pass should still verify:
+
+1. Sign in once with OTP.
+2. Turn on Airplane Mode.
+3. Add an expense or mark a cash settlement.
+4. Confirm the saved-offline notice appears and the sync indicator shows pending work.
+5. Open Settings -> Sync and verify the pending count.
+6. Restore connectivity and tap Retry sync.
+7. Confirm the queue clears and Supabase has no duplicate expense/settlement rows.
+
 ## Flow inventory
 
-| File | What it verifies |
-| --- | --- |
-| `00-launch.yaml` | App launches and renders the Bengali brand text |
-| `10-create-group.yaml` | Create-khata flow with trip template |
-| `20-add-expense.yaml` | Add an expense, see Bengali numerals render |
-| `30-view-balance.yaml` | Per-group balances tab shows owe/owed state |
-| `40-settle.yaml` | bKash settlement deep link (needs bKash installed; skip in CI) |
+| File                   | What it verifies                                               |
+| ---------------------- | -------------------------------------------------------------- |
+| `00-launch.yaml`       | App launches and renders the Bengali brand text                |
+| `10-create-group.yaml` | Create-khata flow with trip template                           |
+| `20-add-expense.yaml`  | Add an expense, see Bengali numerals render                    |
+| `30-view-balance.yaml` | Per-group balances tab shows owe/owed state                    |
+| `40-settle.yaml`       | bKash settlement deep link (needs bKash installed; skip in CI) |
+| `50-activity.yaml`     | Real activity feed is reachable from a group                   |
 
 ## CI
 
-These flows are not run in GitHub Actions today — Maestro Cloud or a macOS
-runner with the simulator preconfigured is required. Run locally before
-tagging a release.
+These flows are not run in GitHub Actions today. Full cloud EAS + Maestro is
+blocked by signed-in state: phone OTP is not safely automated and there is no
+seeded authenticated test-mode entry point yet. Run locally or in EAS Workflows
+after adding a safe seeded-auth setup.
 
 **CI must not include `40-settle.yaml` until a bKash mock URL handler is
 added.** The settle flow opens the real bKash native app via a `bkash://`
-deep link, which is non-deterministic in cloud simulators (no bKash binary
+deep link (`bkashopen://` in app config), which is non-deterministic in cloud simulators (no bKash binary
 exists there) and depends on a real merchant sandbox account. Until we ship a
 test-only URL interceptor that fakes the bKash callback, this flow is
 local-and-device-only and tagged `ci-skip`.
@@ -107,25 +125,29 @@ These testIDs are wired into the app screens so Maestro flows can target
 elements without depending on fragile Bengali copy. When adding new flows,
 prefer `id:` selectors over `text:` selectors and add new testIDs here.
 
-| testID | Screen | Element |
-| --- | --- | --- |
-| `tab-groups` | `app/(tabs)/_layout.tsx` | Groups tab (bottom nav) |
-| `tab-balances` | `app/(tabs)/_layout.tsx` | Balances tab (bottom nav) |
-| `tab-activity` | `app/(tabs)/_layout.tsx` | Activity tab (bottom nav) |
-| `tab-settings` | `app/(tabs)/_layout.tsx` | Settings tab (bottom nav) |
-| `group-card-{index}` | `app/(tabs)/index.tsx` | Group card in the groups list |
-| `group-name-input` | `app/groups/create.tsx` | Khata name Input on the create-group screen |
-| `settle-cta` | `app/group/[id]/index.tsx` | "Settle up" Pressable on the group detail screen |
-| `add-expense-fab` | `app/group/[id]/index.tsx` | "Add expense" Pressable (FAB) on the group detail screen |
-| `amount-input` | `app/group/[id]/add-expense.tsx` | Amount AmountInput on the add-expense form |
-| `description-input` | `app/group/[id]/add-expense.tsx` | Description Input on the add-expense form |
-| `expense-save-cta` | `app/group/[id]/add-expense.tsx` | Save Button on the add-expense form |
-| `settle-row-{index}` | `app/group/[id]/settle.tsx` | Creditor card wrapper on the settle screen |
-| `settle-bkash-{index}` | `app/group/[id]/settle.tsx` | bKash settlement row wrapper |
-| `settle-nagad-{index}` | `app/group/[id]/settle.tsx` | Nagad settlement row wrapper |
-| `settle-cash-{index}` | `app/group/[id]/settle.tsx` | Cash settlement row wrapper |
-| `settle-other-{index}` | `app/group/[id]/settle.tsx` | "Other" settlement row wrapper |
-| `settle-mark-paid-cta` | `app/group/[id]/settle.tsx` | "Mark as paid" confirmation Button |
+| testID                     | Screen                                  | Element                                                  |
+| -------------------------- | --------------------------------------- | -------------------------------------------------------- |
+| `tab-groups`               | `app/(tabs)/_layout.tsx`                | Groups tab (bottom nav)                                  |
+| `tab-balances`             | `app/(tabs)/_layout.tsx`                | Balances tab (bottom nav)                                |
+| `tab-activity`             | `app/(tabs)/_layout.tsx`                | Activity tab (bottom nav)                                |
+| `tab-settings`             | `app/(tabs)/_layout.tsx`                | Settings tab (bottom nav)                                |
+| `group-card-{index}`       | `app/(tabs)/index.tsx`                  | Group card in the groups list                            |
+| `group-name-input`         | `app/groups/create.tsx`                 | Khata name Input on the create-group screen              |
+| `settle-cta`               | `app/group/[id]/index.tsx`              | "Settle up" Pressable on the group detail screen         |
+| `add-expense-fab-floating` | `app/group/[id]/index.tsx`              | "Add expense" Pressable (FAB) on the group detail screen |
+| `group-activity-cta`       | `app/group/[id]/index.tsx`              | Group activity/history row                               |
+| `activity-feed-list`       | `src/components/activity-feed-list.tsx` | Rendered activity feed                                   |
+| `sync-retry-now`           | `app/settings/sync.tsx`                 | Manual sync retry button                                 |
+| `expense-queued-notice`    | `app/group/[id]/add-expense.tsx`        | Saved-offline notice after a queued expense              |
+| `amount-input`             | `app/group/[id]/add-expense.tsx`        | Amount AmountInput on the add-expense form               |
+| `description-input`        | `app/group/[id]/add-expense.tsx`        | Description Input on the add-expense form                |
+| `expense-save-cta`         | `app/group/[id]/add-expense.tsx`        | Save Button on the add-expense form                      |
+| `settle-row-{index}`       | `app/group/[id]/settle.tsx`             | Creditor card wrapper on the settle screen               |
+| `settle-bkash-{index}`     | `app/group/[id]/settle.tsx`             | bKash settlement row wrapper                             |
+| `settle-nagad-{index}`     | `app/group/[id]/settle.tsx`             | Nagad settlement row wrapper                             |
+| `settle-cash-{index}`      | `app/group/[id]/settle.tsx`             | Cash settlement row wrapper                              |
+| `settle-other-{index}`     | `app/group/[id]/settle.tsx`             | "Other" settlement row wrapper                           |
+| `settle-mark-paid-cta`     | `app/group/[id]/settle.tsx`             | "Mark as paid" confirmation Button                       |
 
 Note: the `settle-*-{index}` testIDs live on a wrapper `<View>` around the
 shared `MFSSettlementRow` component (owned by `packages/ui`). Maestro's hit

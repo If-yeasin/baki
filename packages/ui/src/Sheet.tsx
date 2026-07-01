@@ -16,7 +16,10 @@ import { useTheme } from "./theme/useTheme";
 
 export type SheetSnapPoint = DimensionValue;
 
-export type SheetProps = Omit<ModalProps, "children" | "onRequestClose" | "transparent" | "visible"> & {
+export type SheetProps = Omit<
+  ModalProps,
+  "children" | "onRequestClose" | "transparent" | "visible"
+> & {
   children: ReactNode;
   closeLabel?: string;
   contentStyle?: StyleProp<ViewStyle>;

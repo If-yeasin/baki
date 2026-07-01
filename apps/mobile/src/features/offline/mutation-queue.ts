@@ -16,6 +16,8 @@ export type QueuedMutationType =
   | "settlement.create"
   | "profile.update";
 
+export type MoneyQueuedMutationType = "expense.create" | "settlement.create";
+
 export type QueuedMutation = {
   createdAt: string;
   failedAt?: string;
@@ -44,6 +46,7 @@ export type ProcessQueuedMutationsResult = {
 };
 
 const queueKey = "offline.mutationQueue.v1";
+const queueListeners = new Set<() => void>();
 const permanentErrorCodes = new Set([
   "22023",
   "22P02",
@@ -74,6 +77,20 @@ function readQueue(): QueuedMutation[] {
 
 function writeQueue(queue: QueuedMutation[]) {
   storage.set(queueKey, JSON.stringify(queue));
+  notifyQueueListeners();
+}
+
+function notifyQueueListeners() {
+  for (const listener of queueListeners) {
+    listener();
+  }
+}
+
+export function subscribeToQueuedMutations(listener: () => void) {
+  queueListeners.add(listener);
+  return () => {
+    queueListeners.delete(listener);
+  };
 }
 
 export function enqueueMutation(input: Omit<QueuedMutation, "createdAt" | "id" | "retryCount">) {
@@ -146,6 +163,29 @@ export function markQueuedMutationFailed(id: string, error?: unknown) {
   );
 }
 
+export function retryFailedQueuedMutations() {
+  const now = new Date().toISOString();
+  let resetCount = 0;
+
+  writeQueue(
+    readQueue().map((mutation) => {
+      if (mutation.status !== "failed") {
+        return mutation;
+      }
+
+      resetCount += 1;
+      return {
+        ...mutation,
+        failedAt: undefined,
+        lastRetriedAt: now,
+        status: "pending"
+      };
+    })
+  );
+
+  return resetCount;
+}
+
 export function isPermanentQueuedMutationError(error: unknown) {
   const details = getQueuedMutationErrorDetails(error);
   if (details.code && permanentErrorCodes.has(details.code)) {
@@ -161,6 +201,36 @@ export function isPermanentQueuedMutationError(error: unknown) {
   }
 
   return details.status >= 400 && details.status < 500;
+}
+
+export function enqueueMoneyMutationFromRpcError({
+  error,
+  payload,
+  type
+}: {
+  error: unknown;
+  payload: Record<string, unknown>;
+  type: MoneyQueuedMutationType;
+}): { kind: "permanent"; queuedMutationId: string } | { kind: "queued"; queuedMutationId: string } {
+  const errorDetails = getQueuedMutationErrorDetails(error);
+  const isPermanent = isPermanentQueuedMutationError(error);
+  const mutation = enqueueMutation({
+    payload,
+    type,
+    ...(isPermanent
+      ? {
+          failedAt: new Date().toISOString(),
+          lastErrorCode: errorDetails.code,
+          lastErrorMessage: errorDetails.message,
+          status: "failed" as const
+        }
+      : {})
+  });
+
+  return {
+    kind: isPermanent ? "permanent" : "queued",
+    queuedMutationId: mutation.id
+  };
 }
 
 export async function processQueuedMutations(): Promise<ProcessQueuedMutationsResult> {
@@ -217,7 +287,7 @@ export async function processQueuedMutations(): Promise<ProcessQueuedMutationsRe
   return result;
 }
 
-function getQueuedMutationErrorDetails(error: unknown): {
+export function getQueuedMutationErrorDetails(error: unknown): {
   code?: string;
   message: string;
   status?: number;

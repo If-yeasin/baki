@@ -8,7 +8,7 @@ tags:
     clearState: false
 - tapOn: "সাজেক ট্রিপ"
 - tapOn:
-    id: "add-expense-fab"
+    id: "add-expense-fab-floating"
 - tapOn:
     id: "amount-input"
 - inputText: "450"
