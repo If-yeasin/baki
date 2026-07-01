@@ -12,6 +12,12 @@ import { PaymentInputError, isValidBdPhone } from "@baki/payments";
 import { BakiEmptyState } from "@/components/baki-empty-state";
 import { SettlementMethodTile } from "@/components/settlement-method-tile";
 import { useSession } from "@/features/auth/use-session";
+import {
+  buildRawBalanceFallbackPlan,
+  buildUserSettlementPlan,
+  useSimplifiedDebts,
+  type UserSettlementTransfer
+} from "@/features/balances/use-simplified-debts";
 import { useGroupBalances } from "@/features/balances/use-balances";
 import { useGroupDetail } from "@/features/groups/use-group-detail";
 import { openSettlement } from "@/features/settlement/open-settlement";
@@ -23,9 +29,12 @@ import { usePreferencesStore } from "@/stores/preferences";
 type Creditor = {
   amountPaisa: number;
   bkashNumber: string | null;
+  direction: "pay" | "receive";
   displayName: string;
+  fromUser: string;
   nagadNumber: string | null;
   phone: string;
+  toUser: string;
   userId: string;
 };
 
@@ -133,77 +142,61 @@ export default function SettleScreen() {
 
   const detailQuery = useGroupDetail(groupId);
   const balancesQuery = useGroupBalances(groupId);
+  const simplifiedDebtsQuery = useSimplifiedDebts(groupId);
   const createSettlement = useCreateSettlement();
 
-  const creditorIds = useMemo(() => {
-    if (!session.userId) return [] as string[];
-    const selfRow = balancesQuery.data?.find((row) => row.user_id === session.userId);
-    if (!selfRow || selfRow.net_paisa >= 0) return [] as string[];
-    return (balancesQuery.data ?? [])
-      .filter((row) => row.user_id !== session.userId && row.net_paisa > 0)
-      .map((row) => row.user_id);
+  const simplifiedTransfers = useMemo(() => {
+    if (!session.userId) return [] as UserSettlementTransfer[];
+    return buildUserSettlementPlan(simplifiedDebtsQuery.data ?? [], session.userId);
+  }, [session.userId, simplifiedDebtsQuery.data]);
+
+  const fallbackTransfers = useMemo(() => {
+    if (!session.userId) return [] as UserSettlementTransfer[];
+    return buildRawBalanceFallbackPlan(balancesQuery.data ?? [], session.userId);
   }, [balancesQuery.data, session.userId]);
 
+  const usingRawBalanceFallback = simplifiedDebtsQuery.isError;
+  const settlementTransfers = usingRawBalanceFallback ? fallbackTransfers : simplifiedTransfers;
+  const profileIds = useMemo(
+    () =>
+      Array.from(new Set(settlementTransfers.map((transfer) => transfer.counterpartyId))).sort(),
+    [settlementTransfers]
+  );
+
   const profilesQuery = useQuery({
-    enabled: creditorIds.length > 0,
+    enabled: profileIds.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
         .select("id, display_name, phone, bkash_number, nagad_number")
-        .in("id", creditorIds);
+        .in("id", profileIds);
 
       if (error) throw error;
 
       return data ?? [];
     },
-    queryKey: ["profiles", "byIds", creditorIds]
+    queryKey: ["profiles", "byIds", profileIds]
   });
 
   const creditors: Creditor[] = useMemo(() => {
-    if (!session.userId) return [];
-    const balances = balancesQuery.data ?? [];
-    const selfRow = balances.find((row) => row.user_id === session.userId);
-    if (!selfRow || selfRow.net_paisa >= 0) return [];
+    const profileMap = new Map((profilesQuery.data ?? []).map((profile) => [profile.id, profile]));
 
-    const totalCredit = balances
-      .filter((row) => row.user_id !== session.userId && row.net_paisa > 0)
-      .reduce((sum, row) => sum + row.net_paisa, 0);
-
-    if (totalCredit <= 0) return [];
-
-    const selfDebt = -selfRow.net_paisa;
-
-    // Allocate the caller's debt proportionally to each creditor's credit.
-    // Floor each share, then assign the rounding remainder to the largest
-    // creditor so the per-row sum equals selfDebt exactly (no drift paisa).
-    const draft = (profilesQuery.data ?? []).map((profile) => {
-      const balanceRow = balances.find((row) => row.user_id === profile.id);
-      const credit = balanceRow?.net_paisa ?? 0;
+    return settlementTransfers.map((transfer) => {
+      const profile = profileMap.get(transfer.counterpartyId);
 
       return {
-        amountPaisa: Math.floor((credit / totalCredit) * selfDebt),
-        bkashNumber: profile.bkash_number,
-        credit,
-        displayName: profile.display_name,
-        nagadNumber: profile.nagad_number,
-        phone: profile.phone,
-        userId: profile.id
+        amountPaisa: transfer.amountPaisa,
+        bkashNumber: profile?.bkash_number ?? null,
+        direction: transfer.direction,
+        displayName: profile?.display_name ?? t("common.unknown_user"),
+        fromUser: transfer.fromUser,
+        nagadNumber: profile?.nagad_number ?? null,
+        phone: profile?.phone ?? "",
+        toUser: transfer.toUser,
+        userId: transfer.counterpartyId
       };
     });
-
-    const allocated = draft.reduce((sum, row) => sum + row.amountPaisa, 0);
-    const remainder = selfDebt - allocated;
-    if (remainder > 0 && draft.length > 0) {
-      let largestIdx = 0;
-      for (let i = 1; i < draft.length; i++) {
-        if ((draft[i]?.credit ?? 0) > (draft[largestIdx]?.credit ?? 0)) largestIdx = i;
-      }
-      const target = draft[largestIdx];
-      if (target) target.amountPaisa += remainder;
-    }
-
-    return draft.map(({ credit: _credit, ...row }) => row);
-  }, [balancesQuery.data, profilesQuery.data, session.userId]);
+  }, [profilesQuery.data, settlementTransfers, t]);
 
   const totalOwedPaisa = useMemo(
     () => creditors.reduce((sum, creditor) => sum + creditor.amountPaisa, 0),
@@ -211,6 +204,15 @@ export default function SettleScreen() {
   );
 
   async function handleOpenProvider(creditor: Creditor, provider: "bkash" | "nagad") {
+    if (creditor.direction === "receive") {
+      setSettlementNotice({
+        bodyKey: "settle.notice.receiveMfs.body",
+        titleKey: "settle.notice.receiveMfs.title",
+        variant: "info"
+      });
+      return;
+    }
+
     const number = provider === "bkash" ? creditor.bkashNumber : creditor.nagadNumber;
     const targetNumber = number ?? creditor.phone;
 
@@ -265,10 +267,10 @@ export default function SettleScreen() {
     try {
       await createSettlement.mutateAsync({
         amountPaisa: creditor.amountPaisa,
-        fromUser: session.userId,
+        fromUser: creditor.fromUser,
         groupId,
         method,
-        toUser: creditor.userId
+        toUser: creditor.toUser
       });
 
       setPendingCreditor(null);
@@ -279,7 +281,14 @@ export default function SettleScreen() {
     }
   }
 
-  if (balancesQuery.isPending || detailQuery.isPending) {
+  const profilesPending = profileIds.length > 0 && profilesQuery.isPending;
+
+  if (
+    balancesQuery.isPending ||
+    detailQuery.isPending ||
+    simplifiedDebtsQuery.isPending ||
+    profilesPending
+  ) {
     return (
       <ScrollView
         contentContainerStyle={{ gap: spacing.lg, padding: spacing.xl }}
@@ -444,7 +453,7 @@ export default function SettleScreen() {
             {formatMoney(totalOwedPaisa, locale)}
           </Text>
           <Text style={{ color: colors.inkOnBrand, opacity: 0.86 }} variant="body">
-            {t("settle.hero.subtitle")}
+            {t("settle.plan.body")}
           </Text>
         </View>
       </View>
@@ -466,6 +475,28 @@ export default function SettleScreen() {
             variant={settlementNotice.variant}
           />
         ) : null}
+        <View
+          style={{
+            backgroundColor: usingRawBalanceFallback ? colors.tintWarning : colors.tintBrand,
+            borderRadius: radii.md,
+            gap: spacing.xs,
+            padding: spacing.md
+          }}
+        >
+          <Text
+            style={{ color: usingRawBalanceFallback ? colors.warning : colors.brandPrimary }}
+            variant="label"
+          >
+            {t(
+              usingRawBalanceFallback ? "settle.plan.fallback.title" : "settle.plan.optimized.title"
+            )}
+          </Text>
+          <Text style={{ color: colors.inkSecondary }} variant="caption">
+            {t(
+              usingRawBalanceFallback ? "settle.plan.fallback.body" : "settle.plan.optimized.body"
+            )}
+          </Text>
+        </View>
         {creditors.map((creditor, idx) => (
           <View key={creditor.userId} testID={`settle-row-${idx}`}>
             <View
@@ -482,7 +513,7 @@ export default function SettleScreen() {
                 <Avatar name={creditor.displayName} size="lg" />
                 <View style={{ flex: 1, gap: spacing.xs, minWidth: 0 }}>
                   <Text style={{ color: colors.inkMuted }} variant="label">
-                    {t("settle.due_to")}
+                    {t(creditor.direction === "pay" ? "settle.due_to" : "settle.receive_from")}
                   </Text>
                   <Text
                     ellipsizeMode="tail"
@@ -495,14 +526,18 @@ export default function SettleScreen() {
                 </View>
                 <View style={{ alignItems: "flex-end", gap: spacing.xs, maxWidth: 128 }}>
                   <Text style={{ color: colors.inkMuted }} variant="label">
-                    {t("settle.amount_due")}
+                    {t(
+                      creditor.direction === "pay"
+                        ? "settle.amount_due"
+                        : "settle.amount_receivable"
+                    )}
                   </Text>
                   <Text
                     accessibilityLabel={formatMoney(creditor.amountPaisa, locale)}
                     ellipsizeMode="tail"
                     numberOfLines={1}
                     style={{
-                      color: colors.negative,
+                      color: creditor.direction === "pay" ? colors.negative : colors.positive,
                       fontVariant: ["tabular-nums"],
                       textAlign: "right"
                     }}
@@ -523,7 +558,7 @@ export default function SettleScreen() {
                 }}
               >
                 <Text style={{ color: colors.warning }} variant="caption">
-                  {t("settle.summary", {
+                  {t(creditor.direction === "pay" ? "settle.summary" : "settle.summary.receive", {
                     amount: formatMoney(creditor.amountPaisa, locale),
                     name: creditor.displayName
                   })}
@@ -599,14 +634,14 @@ export default function SettleScreen() {
                     "bkash",
                     idx,
                     () => handleOpenProvider(creditor, "bkash"),
-                    !creditor.bkashNumber && !creditor.phone
+                    creditor.direction === "receive" || (!creditor.bkashNumber && !creditor.phone)
                   )}
                   {renderProviderTile(
                     creditor,
                     "nagad",
                     idx,
                     () => handleOpenProvider(creditor, "nagad"),
-                    !creditor.nagadNumber && !creditor.phone
+                    creditor.direction === "receive" || (!creditor.nagadNumber && !creditor.phone)
                   )}
                 </View>
               </View>

@@ -26,6 +26,7 @@ import { ThemeProvider, lightColors, useTheme } from "@baki/ui";
 
 import { i18n } from "@/lib/i18n";
 import { SyncStatusIndicator } from "@/components/SyncStatusIndicator";
+import { useQueuedMutationProcessor } from "@/features/offline/use-queued-mutation-processor";
 import { queryClient } from "@/lib/query-client";
 import { Sentry } from "@/lib/sentry";
 import { usePreferencesStore } from "@/stores/preferences";
@@ -63,6 +64,7 @@ function RootLayout() {
       <RootErrorBoundary>
         <AppThemeProvider>
           <QueryClientProvider client={queryClient}>
+            <QueuedMutationProcessor />
             <RootStack />
           </QueryClientProvider>
         </AppThemeProvider>
@@ -129,14 +131,24 @@ function RootStack() {
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="groups/create" options={{ title: t("groups.create.title") }} />
       <Stack.Screen name="groups/join" options={{ title: t("groups.join.title") }} />
+      <Stack.Screen name="settings/sync" options={{ title: t("sync.details.title") }} />
       <Stack.Screen
         name="group/[id]/index"
         options={{ title: t("groups.detail.fallback_title") }}
       />
       <Stack.Screen name="group/[id]/add-expense" options={{ title: t("expense.add.title") }} />
+      <Stack.Screen
+        name="group/[id]/activity"
+        options={{ title: t("groups.detail.activity.title") }}
+      />
       <Stack.Screen name="group/[id]/settle" options={{ title: t("settle.title") }} />
     </Stack>
   );
+}
+
+function QueuedMutationProcessor() {
+  useQueuedMutationProcessor();
+  return null;
 }
 
 function AppThemeProvider({ children }: { children: ReactNode }) {

@@ -15,17 +15,15 @@ These flows assume a signed-in user on the home screen. Run through this list on
 before executing any of the numbered flows.
 
 1. **Install Maestro** (see section above — `brew install maestro-cli`).
-2. **Install Expo CLI.** If you don't already have it globally, use one of:
+2. **Use the repo's Expo scripts.** The mobile package uses local Expo commands:
    ```bash
-   # Global install (only if not already present)
-   npm i -g expo-cli
-
-   # Or invoke without installing globally
-   pnpm dlx expo --version
+   pnpm --filter mobile dev:devclient
+   pnpm --filter mobile dev:go
    ```
 3. **Build and install the iOS Dev Client onto the Simulator.** The Dev Client
    is required for any flow that touches native modules (camera, contacts,
    bKash deep links). Pick one of:
+
    ```bash
    # Full native build via EAS (recommended once per native-deps change)
    pnpm --filter mobile exec expo prebuild --platform ios
@@ -36,6 +34,7 @@ before executing any of the numbered flows.
    # for flows 20–40 to fully exercise the app.
    pnpm --filter mobile dev   # then press `i` to open in the iOS Simulator
    ```
+
 4. **Manual OTP sign-in (first run only).** Phone OTP cannot be automated
    reliably in CI, so the first time you run these flows you must sign in by
    hand:
@@ -80,13 +79,14 @@ maestro test e2e/maestro/10-create-group.yaml
 
 ## Flow inventory
 
-| File | What it verifies |
-| --- | --- |
-| `00-launch.yaml` | App launches and renders the Bengali brand text |
-| `10-create-group.yaml` | Create-khata flow with trip template |
-| `20-add-expense.yaml` | Add an expense, see Bengali numerals render |
-| `30-view-balance.yaml` | Per-group balances tab shows owe/owed state |
-| `40-settle.yaml` | bKash settlement deep link (needs bKash installed; skip in CI) |
+| File                   | What it verifies                                               |
+| ---------------------- | -------------------------------------------------------------- |
+| `00-launch.yaml`       | App launches and renders the Bengali brand text                |
+| `10-create-group.yaml` | Create-khata flow with trip template                           |
+| `20-add-expense.yaml`  | Add an expense, see Bengali numerals render                    |
+| `30-view-balance.yaml` | Per-group balances tab shows owe/owed state                    |
+| `40-settle.yaml`       | bKash settlement deep link (needs bKash installed; skip in CI) |
+| `50-activity.yaml`     | Real activity feed is reachable from a group                   |
 
 ## CI
 
@@ -96,7 +96,7 @@ tagging a release.
 
 **CI must not include `40-settle.yaml` until a bKash mock URL handler is
 added.** The settle flow opens the real bKash native app via a `bkash://`
-deep link, which is non-deterministic in cloud simulators (no bKash binary
+deep link (`bkashopen://` in app config), which is non-deterministic in cloud simulators (no bKash binary
 exists there) and depends on a real merchant sandbox account. Until we ship a
 test-only URL interceptor that fakes the bKash callback, this flow is
 local-and-device-only and tagged `ci-skip`.
@@ -107,25 +107,28 @@ These testIDs are wired into the app screens so Maestro flows can target
 elements without depending on fragile Bengali copy. When adding new flows,
 prefer `id:` selectors over `text:` selectors and add new testIDs here.
 
-| testID | Screen | Element |
-| --- | --- | --- |
-| `tab-groups` | `app/(tabs)/_layout.tsx` | Groups tab (bottom nav) |
-| `tab-balances` | `app/(tabs)/_layout.tsx` | Balances tab (bottom nav) |
-| `tab-activity` | `app/(tabs)/_layout.tsx` | Activity tab (bottom nav) |
-| `tab-settings` | `app/(tabs)/_layout.tsx` | Settings tab (bottom nav) |
-| `group-card-{index}` | `app/(tabs)/index.tsx` | Group card in the groups list |
-| `group-name-input` | `app/groups/create.tsx` | Khata name Input on the create-group screen |
-| `settle-cta` | `app/group/[id]/index.tsx` | "Settle up" Pressable on the group detail screen |
-| `add-expense-fab` | `app/group/[id]/index.tsx` | "Add expense" Pressable (FAB) on the group detail screen |
-| `amount-input` | `app/group/[id]/add-expense.tsx` | Amount AmountInput on the add-expense form |
-| `description-input` | `app/group/[id]/add-expense.tsx` | Description Input on the add-expense form |
-| `expense-save-cta` | `app/group/[id]/add-expense.tsx` | Save Button on the add-expense form |
-| `settle-row-{index}` | `app/group/[id]/settle.tsx` | Creditor card wrapper on the settle screen |
-| `settle-bkash-{index}` | `app/group/[id]/settle.tsx` | bKash settlement row wrapper |
-| `settle-nagad-{index}` | `app/group/[id]/settle.tsx` | Nagad settlement row wrapper |
-| `settle-cash-{index}` | `app/group/[id]/settle.tsx` | Cash settlement row wrapper |
-| `settle-other-{index}` | `app/group/[id]/settle.tsx` | "Other" settlement row wrapper |
-| `settle-mark-paid-cta` | `app/group/[id]/settle.tsx` | "Mark as paid" confirmation Button |
+| testID                     | Screen                                  | Element                                                  |
+| -------------------------- | --------------------------------------- | -------------------------------------------------------- |
+| `tab-groups`               | `app/(tabs)/_layout.tsx`                | Groups tab (bottom nav)                                  |
+| `tab-balances`             | `app/(tabs)/_layout.tsx`                | Balances tab (bottom nav)                                |
+| `tab-activity`             | `app/(tabs)/_layout.tsx`                | Activity tab (bottom nav)                                |
+| `tab-settings`             | `app/(tabs)/_layout.tsx`                | Settings tab (bottom nav)                                |
+| `group-card-{index}`       | `app/(tabs)/index.tsx`                  | Group card in the groups list                            |
+| `group-name-input`         | `app/groups/create.tsx`                 | Khata name Input on the create-group screen              |
+| `settle-cta`               | `app/group/[id]/index.tsx`              | "Settle up" Pressable on the group detail screen         |
+| `add-expense-fab-floating` | `app/group/[id]/index.tsx`              | "Add expense" Pressable (FAB) on the group detail screen |
+| `group-activity-cta`       | `app/group/[id]/index.tsx`              | Group activity/history row                               |
+| `activity-feed-list`       | `src/components/activity-feed-list.tsx` | Rendered activity feed                                   |
+| `sync-retry-now`           | `app/settings/sync.tsx`                 | Manual sync retry button                                 |
+| `amount-input`             | `app/group/[id]/add-expense.tsx`        | Amount AmountInput on the add-expense form               |
+| `description-input`        | `app/group/[id]/add-expense.tsx`        | Description Input on the add-expense form                |
+| `expense-save-cta`         | `app/group/[id]/add-expense.tsx`        | Save Button on the add-expense form                      |
+| `settle-row-{index}`       | `app/group/[id]/settle.tsx`             | Creditor card wrapper on the settle screen               |
+| `settle-bkash-{index}`     | `app/group/[id]/settle.tsx`             | bKash settlement row wrapper                             |
+| `settle-nagad-{index}`     | `app/group/[id]/settle.tsx`             | Nagad settlement row wrapper                             |
+| `settle-cash-{index}`      | `app/group/[id]/settle.tsx`             | Cash settlement row wrapper                              |
+| `settle-other-{index}`     | `app/group/[id]/settle.tsx`             | "Other" settlement row wrapper                           |
+| `settle-mark-paid-cta`     | `app/group/[id]/settle.tsx`             | "Mark as paid" confirmation Button                       |
 
 Note: the `settle-*-{index}` testIDs live on a wrapper `<View>` around the
 shared `MFSSettlementRow` component (owned by `packages/ui`). Maestro's hit

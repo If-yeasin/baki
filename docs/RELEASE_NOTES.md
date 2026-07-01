@@ -1,5 +1,17 @@
 # Release Notes
 
+## 0.2.6 — Trusted tester MVP hardening (2026-07-01)
+
+- Moved unused icon explorations out of the Expo-bundled mobile assets and
+  documented the selected Baki monogram in `docs/BRAND.md`.
+- Wired queued expense/settlement replay into authenticated startup,
+  foreground, interval, and manual retry via Settings -> Sync.
+- Added WatermelonDB local cache scaffolding for groups, expenses, balances,
+  settlements, and activity, with local balance fallback tests.
+- Switched the settle screen to the typed `simplify_debts` plan with raw
+  balance fallback only when the simplified RPC fails.
+- Added real `activity_log` rendering for group history and the Activity tab.
+
 ## 0.2.5 — Repo stabilization pass (2026-06-30)
 
 - Replaced the remaining unsafe product comparison with safer Bengali-first

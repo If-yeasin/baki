@@ -44,6 +44,7 @@ export type ProcessQueuedMutationsResult = {
 };
 
 const queueKey = "offline.mutationQueue.v1";
+const queueListeners = new Set<() => void>();
 const permanentErrorCodes = new Set([
   "22023",
   "22P02",
@@ -74,6 +75,20 @@ function readQueue(): QueuedMutation[] {
 
 function writeQueue(queue: QueuedMutation[]) {
   storage.set(queueKey, JSON.stringify(queue));
+  notifyQueueListeners();
+}
+
+function notifyQueueListeners() {
+  for (const listener of queueListeners) {
+    listener();
+  }
+}
+
+export function subscribeToQueuedMutations(listener: () => void) {
+  queueListeners.add(listener);
+  return () => {
+    queueListeners.delete(listener);
+  };
 }
 
 export function enqueueMutation(input: Omit<QueuedMutation, "createdAt" | "id" | "retryCount">) {
@@ -144,6 +159,29 @@ export function markQueuedMutationFailed(id: string, error?: unknown) {
         : mutation
     )
   );
+}
+
+export function retryFailedQueuedMutations() {
+  const now = new Date().toISOString();
+  let resetCount = 0;
+
+  writeQueue(
+    readQueue().map((mutation) => {
+      if (mutation.status !== "failed") {
+        return mutation;
+      }
+
+      resetCount += 1;
+      return {
+        ...mutation,
+        failedAt: undefined,
+        lastRetriedAt: now,
+        status: "pending"
+      };
+    })
+  );
+
+  return resetCount;
 }
 
 export function isPermanentQueuedMutationError(error: unknown) {

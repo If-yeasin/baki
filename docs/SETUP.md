@@ -64,6 +64,9 @@ eas init   # creates EAS project, writes EAS_PROJECT_ID
 # 5. Start the dev server
 cd ../..
 pnpm --filter mobile dev
+
+# Optional: verify active app icon assets
+pnpm --filter mobile check:assets
 ```
 
 ## EAS build profiles (`apps/mobile/eas.json`)
@@ -113,11 +116,12 @@ pnpm --filter mobile dev
 
 Workflows in `.github/workflows/`:
 
-- `ci.yml` — runs on every PR: lint, typecheck, unit tests, i18n parity check, Supabase migration dry-run
+- `ci.yml` — runs on every PR: install, lint, typecheck, unit tests, and i18n parity check
 - `eas-preview.yml` — on PR label `build:preview`: triggers `eas build --profile preview --platform ios`
 - `release.yml` — on tag `v*`: triggers production EAS build + submit to App Store
 
 Required secrets:
+
 - `EXPO_TOKEN`
 - `SUPABASE_ACCESS_TOKEN`
 - `APPLE_APP_SPECIFIC_PASSWORD` (for submission)
@@ -174,13 +178,13 @@ Local dev env points to `http://127.0.0.1:55321` for the API and `postgresql://p
 
 Before TestFlight is wired up, contributors and stakeholders can preview the app on a physical iPhone via two paths. Pick the one that matches the kind of feedback you need.
 
-| Feature | Expo Go (Option A) | Dev Client (Option B) |
-|---|---|---|
-| MMKV persistence | In-memory shim only | Real native MMKV |
-| Sentry capture | No-op (console only) | Full native capture |
-| WatermelonDB | Not available | Available |
-| Setup cost | None (App Store download) | Apple Dev account + EAS build |
-| Best for | UI / layout / i18n smoke | End-to-end behavioural QA |
+| Feature          | Expo Go (Option A)        | Dev Client (Option B)         |
+| ---------------- | ------------------------- | ----------------------------- |
+| MMKV persistence | In-memory shim only       | Real native MMKV              |
+| Sentry capture   | No-op (console only)      | Full native capture           |
+| WatermelonDB     | Not available             | Available                     |
+| Setup cost       | None (App Store download) | Apple Dev account + EAS build |
+| Best for         | UI / layout / i18n smoke  | End-to-end behavioural QA     |
 
 ### Option A — Expo Go (lite preview)
 
@@ -251,14 +255,14 @@ This is the gate to flip the app from "runs on Simulator" to "goes to TestFlight
 
 The preview build pulls `EXPO_PUBLIC_*` values from **EAS Secrets** (set via `eas secret:create` or the EAS dashboard), not from the local `.env.local`. Set the following on the EAS project before running `eas build`:
 
-| Name | Example value | Notes |
-|---|---|---|
-| `EXPO_PUBLIC_SUPABASE_URL` | `https://abcd1234.supabase.co` | Live (not local) Supabase project URL |
-| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | `eyJhbGciOi...` | Anon key only — **never** the service role |
-| `EXPO_PUBLIC_SENTRY_DSN` | `https://xxx@o123.ingest.sentry.io/456` | Optional but strongly recommended for beta |
-| `EXPO_PUBLIC_ENABLE_BKASH` | `true` | Feature flag |
-| `EXPO_PUBLIC_ENABLE_NAGAD` | `true` | Feature flag |
-| `EAS_PROJECT_ID` | UUID returned by `eas init` | Picked up by `app.config.ts → extra.eas.projectId` |
+| Name                            | Example value                           | Notes                                              |
+| ------------------------------- | --------------------------------------- | -------------------------------------------------- |
+| `EXPO_PUBLIC_SUPABASE_URL`      | `https://abcd1234.supabase.co`          | Live (not local) Supabase project URL              |
+| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | `eyJhbGciOi...`                         | Anon key only — **never** the service role         |
+| `EXPO_PUBLIC_SENTRY_DSN`        | `https://xxx@o123.ingest.sentry.io/456` | Optional but strongly recommended for beta         |
+| `EXPO_PUBLIC_ENABLE_BKASH`      | `true`                                  | Feature flag                                       |
+| `EXPO_PUBLIC_ENABLE_NAGAD`      | `true`                                  | Feature flag                                       |
+| `EAS_PROJECT_ID`                | UUID returned by `eas init`             | Picked up by `app.config.ts → extra.eas.projectId` |
 
 **Hard rule:** `SUPABASE_SERVICE_ROLE_KEY` is **only** consumed by Supabase Edge Functions and is configured inside the Supabase dashboard. It must never appear in `apps/mobile/.env.local`, in EAS Secrets for the mobile app, or in any committed file. Shipping it to the client would bypass every RLS policy in `packages/db/migrations/`.
 
@@ -267,13 +271,14 @@ The preview build pulls `EXPO_PUBLIC_*` values from **EAS Secrets** (set via `ea
 - [ ] `pnpm install --frozen-lockfile` runs clean on a fresh clone.
 - [ ] `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm i18n:check`, `pnpm db:check` all green on `main`.
 - [ ] `pnpm --filter @baki/db gen:types` re-run against the **live** Supabase project so `get_group_balances` is in the generated `Database` type (not just the local one).
-- [ ] `supabase db push` against the live project — migrations `0001`, `0002_rls_hardening`, `0003_balances_helper`, and `0004_account_deletion` applied.
+- [ ] `supabase db push` against the live project — all migrations in `packages/db/migrations/` applied, including the idempotent expense/settlement RPC migrations.
 - [ ] `supabase functions deploy delete-account` against the live project — `supabase/config.toml` sets `[functions.delete-account].verify_jwt = false` so the function can translate auth failures into Baki's JSON error contract, then call `public.delete_my_account()` with the caller's bearer token and the anon key.
 - [ ] RLS verified end-to-end with two test users (see `packages/db/tests/rls-policies.test.ts`).
 - [ ] `.env.local` on the dev machine is populated for local runs; the EAS build itself picks `EXPO_PUBLIC_*` from EAS Secrets, **not** the local file — confirm via the EAS dashboard before kicking off the build.
-- [ ] App icon (1024×1024 PNG, no alpha channel), splash image, and adaptive icon all present in `apps/mobile/assets/icons/`.
+- [ ] App icon (1024×1024 PNG, no alpha channel), adaptive icon, and notification icon all present in `apps/mobile/assets/icons/`.
 - [ ] `LSApplicationQueriesSchemes` includes `bkashopen` and `nagad` (already in `app.config.ts` — verify it survived any merge).
 - [ ] Phone OTP provider configured in Supabase Auth (SSL Wireless or Twilio with Bangladesh coverage). A test phone number is allow-listed.
+- [ ] `pnpm --filter mobile check:assets` passes.
 
 ### 3. Build & submit commands
 
@@ -311,6 +316,6 @@ eas submit --platform ios --profile production
 
 - **Account deletion (Apple Guideline 5.1.1(v)):** Settings → "Delete account" calls the `delete-account` Supabase Edge Function, which invokes `public.delete_my_account()` with the user's JWT, reassigns ledger rows to the tombstone profile where needed, deletes the `auth.users` row, and signs the client out locally. This must be deployed to the live Supabase project and verified with the reviewer test account before public App Store submission. Demo path for the App Store reviewer: sign in with the test account → Settings → Delete account → confirm; the account is removed within 30 days per Apple's policy. See "Account deletion" in docs/DATA_MODEL.md for the cascade strategy and Edge Function contract.
 - **Privacy nutrition labels** — declare exactly: phone number (linked to identity), display name (linked to identity), optional bKash/Nagad numbers (linked to identity), Sentry telemetry (crash data, not linked).
-- **"Sign in with Apple"** is not strictly required because we use only phone OTP (no other third-party social login). Apple sometimes pushes back regardless — keep this reviewer note ready: *"Baki authenticates via SMS OTP only. No third-party social login is offered, so Guideline 4.8 does not apply."*
+- **"Sign in with Apple"** is not strictly required because we use only phone OTP (no other third-party social login). Apple sometimes pushes back regardless — keep this reviewer note ready: _"Baki authenticates via SMS OTP only. No third-party social login is offered, so Guideline 4.8 does not apply."_
 - **Reviewer notes:** explicitly state that Baki is an expense ledger; it does not process payments, hold funds, or authorize transactions. bKash/Nagad actions only open the user's own installed app or surface a copy fallback. Provide a demo phone number and pre-loaded test data plus an OTP bypass account (Apple reviewers cannot complete real SMS OTP).
 - **Age rating:** 4+. **Category:** Finance.

@@ -11,6 +11,7 @@ import {
   LogOut,
   Moon,
   Phone,
+  RefreshCw,
   ShieldCheck,
   Trash2
 } from "lucide-react-native";
@@ -286,6 +287,14 @@ export default function SettingsScreen() {
       </SettingsSection>
 
       <SettingsSection title={t("settings.section.data")}>
+        <SettingsRow
+          icon={<RefreshCw color={colors.brandPrimary} size={19} />}
+          onPress={() => router.push("/settings/sync" as Href)}
+          subtitle={t("settings.sync.subtitle")}
+          testID="settings-sync-row"
+          title={t("settings.sync.title")}
+          trailing={<ChevronRight color={colors.inkMuted} size={18} />}
+        />
         <SettingsRow
           icon={<Bell color={colors.brandPrimary} size={19} />}
           onPress={() =>

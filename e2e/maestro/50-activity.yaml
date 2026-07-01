@@ -1,0 +1,14 @@
+appId: com.baki.app
+name: View real activity feed
+tags:
+  - activity
+# Pre-condition: signed-in state and at least one group with an expense or settlement.
+---
+- launchApp:
+    clearState: false
+- tapOn:
+    id: "group-card-0"
+- tapOn:
+    id: "group-activity-cta"
+- assertVisible:
+    id: "activity-feed-list"

@@ -1,10 +1,12 @@
 import { appSchema, tableSchema } from "@nozbe/watermelondb";
 
+import { watermelonTables } from "./tables";
+
 export const bakiSchema = appSchema({
-  version: 1,
+  version: 2,
   tables: [
     tableSchema({
-      name: "groups",
+      name: watermelonTables.groups,
       columns: [
         { name: "name", type: "string" },
         { name: "template", type: "string" },
@@ -12,11 +14,11 @@ export const bakiSchema = appSchema({
         { name: "created_by", type: "string", isIndexed: true },
         { name: "archived_at", type: "number", isOptional: true },
         { name: "deleted_at", type: "number", isOptional: true },
-        { name: "updated_at", type: "number" }
+        { name: "updated_at", type: "number", isOptional: true }
       ]
     }),
     tableSchema({
-      name: "group_members",
+      name: watermelonTables.groupMembers,
       columns: [
         { name: "group_id", type: "string", isIndexed: true },
         { name: "user_id", type: "string", isIndexed: true },
@@ -26,7 +28,7 @@ export const bakiSchema = appSchema({
       ]
     }),
     tableSchema({
-      name: "expenses",
+      name: watermelonTables.expenses,
       columns: [
         { name: "group_id", type: "string", isIndexed: true },
         { name: "amount_paisa", type: "number" },
@@ -37,13 +39,15 @@ export const bakiSchema = appSchema({
         { name: "occurred_at", type: "number" },
         { name: "note", type: "string", isOptional: true },
         { name: "receipt_url", type: "string", isOptional: true },
+        { name: "client_mutation_id", type: "string", isOptional: true },
         { name: "created_by", type: "string", isIndexed: true },
         { name: "deleted_at", type: "number", isOptional: true },
+        { name: "sync_status", type: "string", isOptional: true },
         { name: "updated_at", type: "number" }
       ]
     }),
     tableSchema({
-      name: "expense_shares",
+      name: watermelonTables.expenseShares,
       columns: [
         { name: "expense_id", type: "string", isIndexed: true },
         { name: "user_id", type: "string", isIndexed: true },
@@ -51,7 +55,7 @@ export const bakiSchema = appSchema({
       ]
     }),
     tableSchema({
-      name: "settlements",
+      name: watermelonTables.settlements,
       columns: [
         { name: "group_id", type: "string", isIndexed: true },
         { name: "from_user", type: "string", isIndexed: true },
@@ -59,11 +63,14 @@ export const bakiSchema = appSchema({
         { name: "amount_paisa", type: "number" },
         { name: "method", type: "string" },
         { name: "external_ref", type: "string", isOptional: true },
-        { name: "occurred_at", type: "number" }
+        { name: "client_mutation_id", type: "string", isOptional: true },
+        { name: "occurred_at", type: "number" },
+        { name: "sync_status", type: "string", isOptional: true },
+        { name: "updated_at", type: "number" }
       ]
     }),
     tableSchema({
-      name: "activity_log",
+      name: watermelonTables.activityLog,
       columns: [
         { name: "group_id", type: "string", isIndexed: true },
         { name: "actor_id", type: "string", isIndexed: true },

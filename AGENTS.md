@@ -26,6 +26,9 @@ In Bangladesh, বাকি is the everyday word for outstanding balance. The co
 6. `docs/BANGLADESH_CONTEXT.md` — bKash/Nagad, Bengali, cultural patterns
 7. `docs/ROADMAP.md` — phased delivery iOS → Android
 8. `docs/SETUP.md` — environment, secrets, build pipeline
+9. `docs/BRAND.md` — selected icon and brand-asset rules
+10. `docs/OFFLINE_SYNC.md` — queue replay and offline testing contract
+11. `docs/RELEASE_NOTES.md` — shipped changes and current release context
 
 ## 4. Operating principles for AI agents
 
@@ -41,13 +44,13 @@ In Bangladesh, বাকি is the everyday word for outstanding balance. The co
 
 This project uses Claude Code subagents defined in `.claude/agents/`. Each subagent owns a slice of the codebase. The orchestrator (the main Claude Code session) delegates by topic:
 
-| Subagent | Owns |
-|---|---|
-| `mobile-engineer` | React Native / Expo app, screens, navigation, hooks |
-| `backend-engineer` | Supabase schema, migrations, RLS, edge functions |
-| `payments-engineer` | bKash, Nagad, Stripe integration, settlement flows |
+| Subagent                 | Owns                                                       |
+| ------------------------ | ---------------------------------------------------------- |
+| `mobile-engineer`        | React Native / Expo app, screens, navigation, hooks        |
+| `backend-engineer`       | Supabase schema, migrations, RLS, edge functions           |
+| `payments-engineer`      | bKash, Nagad, Stripe integration, settlement flows         |
 | `design-system-engineer` | Theme tokens, NativeWind config, reusable components, i18n |
-| `release-engineer` | EAS build/submit, App Store Connect, Play Console, CI |
+| `release-engineer`       | EAS build/submit, App Store Connect, Play Console, CI      |
 
 When a task spans multiple domains, the orchestrator decomposes it and dispatches in sequence (backend schema → mobile UI → release plumbing).
 

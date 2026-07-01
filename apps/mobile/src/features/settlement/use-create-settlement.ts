@@ -1,6 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { balancesKeys } from "@/features/balances/use-balances";
+import { simplifiedDebtsKeys } from "@/features/balances/use-simplified-debts";
+import { activityKeys } from "@/features/activity/use-activity-log";
 import { enqueueMutation } from "@/features/offline/mutation-queue";
 import { expensesKeys } from "@/features/expenses/use-expenses";
 import { Sentry } from "@/lib/sentry";
@@ -22,22 +24,26 @@ function createClientMutationId() {
   return `settlement:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 12)}`;
 }
 
+export function buildCreateSettlementRpcPayload(input: CreateSettlementInput) {
+  const clientMutationId = input.clientMutationId?.trim() || createClientMutationId();
+
+  return {
+    p_amount_paisa: input.amountPaisa,
+    p_client_mutation_id: clientMutationId,
+    ...(input.externalRef === undefined ? {} : { p_external_ref: input.externalRef }),
+    p_from_user: input.fromUser,
+    p_group_id: input.groupId,
+    p_method: input.method,
+    p_to_user: input.toUser
+  };
+}
+
 export function useCreateSettlement() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (input: CreateSettlementInput) => {
-      const clientMutationId = input.clientMutationId?.trim() || createClientMutationId();
-
-      const rpcPayload = {
-        p_amount_paisa: input.amountPaisa,
-        p_client_mutation_id: clientMutationId,
-        ...(input.externalRef === undefined ? {} : { p_external_ref: input.externalRef }),
-        p_from_user: input.fromUser,
-        p_group_id: input.groupId,
-        p_method: input.method,
-        p_to_user: input.toUser
-      };
+      const rpcPayload = buildCreateSettlementRpcPayload(input);
 
       const { data: settlementId, error } = await supabase.rpc("create_settlement", rpcPayload);
 
@@ -60,6 +66,10 @@ export function useCreateSettlement() {
     },
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: balancesKeys.group(variables.groupId) });
+      void queryClient.invalidateQueries({
+        queryKey: simplifiedDebtsKeys.group(variables.groupId)
+      });
+      void queryClient.invalidateQueries({ queryKey: activityKeys.group(variables.groupId) });
       void queryClient.invalidateQueries({ queryKey: expensesKeys.list(variables.groupId) });
     }
   });

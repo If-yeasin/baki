@@ -10,8 +10,8 @@ import { Skeleton, Text, radii, spacing, useTheme } from "@baki/ui";
 
 import { ActivityFeedList, type ActivityFeedSection } from "@/components/activity-feed-list";
 import { BakiEmptyState } from "@/components/baki-empty-state";
+import { activityKeys, fetchGroupActivity } from "@/features/activity/use-activity-log";
 import { useSession } from "@/features/auth/use-session";
-import { expensesKeys, fetchExpenses } from "@/features/expenses/use-expenses";
 import { useGroups } from "@/features/groups/use-groups";
 import { tabScreenBottomInset } from "@/lib/layout";
 import { usePreferencesStore } from "@/stores/preferences";
@@ -37,8 +37,8 @@ export default function ActivityScreen() {
   const expenseQueries = useQueries({
     queries: groups.map((group) => ({
       enabled: Boolean(session.userId),
-      queryFn: () => fetchExpenses(group.id),
-      queryKey: expensesKeys.list(group.id),
+      queryFn: () => fetchGroupActivity(group.id),
+      queryKey: activityKeys.group(group.id),
       staleTime: 1000 * 30
     }))
   });
@@ -47,13 +47,13 @@ export default function ActivityScreen() {
     () =>
       groups
         .flatMap((group, groupIndex) =>
-          (expenseQueries[groupIndex]?.data ?? []).map((expense) => ({
-            ...expense,
+          (expenseQueries[groupIndex]?.data ?? []).map((activity) => ({
+            ...activity,
             groupId: group.id,
             groupName: group.name
           }))
         )
-        .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime())
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         .slice(0, 20),
     [expenseQueries, groups]
   );
@@ -65,8 +65,8 @@ export default function ActivityScreen() {
       const searchableText = [
         item.description,
         item.groupName,
-        t(`expense.category.${item.category}`),
-        formatMoney(item.amountPaisa, locale)
+        t(`activity.event.${item.eventType}`),
+        typeof item.amountPaisa === "number" ? formatMoney(item.amountPaisa, locale) : ""
       ]
         .join(" ")
         .toLowerCase();
@@ -78,21 +78,34 @@ export default function ActivityScreen() {
     const sections = new Map<string, ActivityFeedSection>();
 
     for (const item of filteredActivityItems) {
-      const title = formatRelativeDhakaDate(item.occurredAt, locale);
+      const title = formatRelativeDhakaDate(item.createdAt, locale);
       const existing = sections.get(title);
-      const selfPaid = item.paidBy === session.userId;
+      const selfActor = item.actorId === session.userId;
+      const amountLabel =
+        typeof item.amountPaisa === "number" ? formatMoney(item.amountPaisa, locale) : undefined;
+      const methodLabel = item.method
+        ? t(`settle.via.${item.method}`, { defaultValue: item.method })
+        : undefined;
       const feedItem = {
-        amountAccessibilityLabel: formatMoney(item.amountPaisa, locale),
-        amountLabel: formatMoney(item.amountPaisa, locale),
-        category: item.category,
-        categoryLabel: t(`expense.category.${item.category}`),
-        description: item.description,
-        eventLabel: t("activity.event.expense_added"),
+        amountAccessibilityLabel: amountLabel,
+        amountLabel,
+        category: item.eventType.startsWith("expense_") ? ("other" as const) : undefined,
+        categoryLabel: methodLabel,
+        description: item.description ?? t(`activity.event.${item.eventType}`),
+        eventLabel: t(`activity.event.${item.eventType}`),
         groupName: item.groupName,
         id: `${item.groupId}-${item.id}`,
+        leadingTone:
+          item.eventType === "settled"
+            ? ("settlement" as const)
+            : item.eventType.startsWith("member_")
+              ? ("member" as const)
+              : item.eventType === "group_renamed"
+                ? ("group" as const)
+                : ("expense" as const),
         onPress: () => router.push(`/group/${item.groupId}` as Href),
-        paidBySelf: selfPaid,
-        payerLabel: selfPaid ? t("expense.list.you_paid") : t("activity.list.someone_paid")
+        paidBySelf: selfActor,
+        payerLabel: selfActor ? t("activity.actor.you") : item.actorName
       };
 
       if (existing) {
@@ -120,15 +133,15 @@ export default function ActivityScreen() {
   );
   const activitySummaryMetrics = useMemo(() => {
     const selfPaidPaisa = filteredActivityItems.reduce(
-      (total, item) => total + (item.paidBy === session.userId ? item.amountPaisa : 0),
+      (total, item) => total + (item.actorId === session.userId ? (item.amountPaisa ?? 0) : 0),
       0
     );
     const othersPaidPaisa = filteredActivityItems.reduce(
-      (total, item) => total + (item.paidBy === session.userId ? 0 : item.amountPaisa),
+      (total, item) => total + (item.actorId === session.userId ? 0 : (item.amountPaisa ?? 0)),
       0
     );
     const latestLabel = filteredActivityItems[0]
-      ? formatRelativeDhakaDate(filteredActivityItems[0].occurredAt, locale)
+      ? formatRelativeDhakaDate(filteredActivityItems[0].createdAt, locale)
       : "-";
 
     return [
@@ -276,8 +289,7 @@ export default function ActivityScreen() {
                           minimumFontScale={0.72}
                           numberOfLines={1}
                           style={{
-                            color:
-                              metric.tone === "positive" ? colors.positive : colors.inkPrimary,
+                            color: metric.tone === "positive" ? colors.positive : colors.inkPrimary,
                             fontVariant: ["tabular-nums"]
                           }}
                           variant="bodyStrong"

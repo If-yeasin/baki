@@ -1,6 +1,7 @@
-import { CircleAlert, Cloud, CloudOff } from "lucide-react-native";
+import { useRouter, type Href } from "expo-router";
+import { CircleAlert, Cloud, CloudOff, RefreshCw } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
-import { View } from "react-native";
+import { Pressable } from "react-native";
 
 import { Text, lightColors, spacing } from "@baki/ui";
 
@@ -8,29 +9,38 @@ import { useSyncStatus } from "@/features/offline/use-sync-status";
 
 export function SyncStatusIndicator() {
   const { t } = useTranslation();
+  const router = useRouter();
   const sync = useSyncStatus();
   const isFailed = sync.state === "failed";
   const isPending = sync.state === "pending";
+  const isSyncing = sync.state === "syncing";
   const label = isFailed
     ? t("sync.status.failed")
-    : isPending
-      ? t("sync.status.pending", { count: sync.pendingCount })
-      : t("sync.status.synced");
+    : isSyncing
+      ? t("sync.status.syncing")
+      : isPending
+        ? t("sync.status.pending", { count: sync.pendingCount })
+        : t("sync.status.synced");
 
   return (
-    <View
+    <Pressable
       accessibilityLabel={label}
-      accessibilityRole="summary"
-      style={{
+      accessibilityHint={t("sync.action.openDetails")}
+      accessibilityRole="button"
+      onPress={() => router.push("/settings/sync" as Href)}
+      style={({ pressed }) => ({
         alignItems: "center",
         flexDirection: "row",
         gap: spacing.xs,
         minHeight: 44,
+        opacity: pressed ? 0.64 : 1,
         paddingHorizontal: spacing.md
-      }}
+      })}
     >
       {isFailed ? (
         <CircleAlert color={lightColors.negative} size={18} />
+      ) : isSyncing ? (
+        <RefreshCw color={lightColors.brandPrimary} size={18} />
       ) : isPending ? (
         <CloudOff color={lightColors.warning} size={18} />
       ) : (
@@ -39,6 +49,6 @@ export function SyncStatusIndicator() {
       <Text tone="secondary" variant="caption">
         {label}
       </Text>
-    </View>
+    </Pressable>
   );
 }

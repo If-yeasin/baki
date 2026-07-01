@@ -4,6 +4,11 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { storage } from "@/lib/mmkv";
 import { Sentry } from "@/lib/sentry";
 import { supabase } from "@/lib/supabase";
+import {
+  computeLocalGroupBalances,
+  hasLocalLedgerRows,
+  upsertRemoteSettlements
+} from "@/watermelon/repositories/balances";
 
 export const balancesKeys = {
   all: ["balances"] as const,
@@ -38,11 +43,30 @@ export async function fetchGroupBalances(groupId: string): Promise<GroupBalanceR
 
     const rows: GroupBalanceRow[] = data ?? [];
     storage.set(balanceCacheKey(groupId), JSON.stringify(rows));
-    // TODO(offline-watermelon): compute balances locally from the cached
-    // expenses + expense_shares + settlements tables when offline.
-    // Persisted-cache fallback covers the gap until WatermelonDB hydration lands.
+
+    const settlementsResult = await supabase
+      .from("settlements")
+      .select("*")
+      .eq("group_id", groupId)
+      .order("occurred_at", { ascending: false });
+
+    if (!settlementsResult.error) {
+      await upsertRemoteSettlements(settlementsResult.data ?? []);
+    }
+
     return rows;
   } catch (error) {
+    const [localBalances, hasLocalRows] = await Promise.all([
+      computeLocalGroupBalances(groupId),
+      hasLocalLedgerRows(groupId)
+    ]);
+    if (hasLocalRows) {
+      Sentry.captureException(error, {
+        tags: { feature: "balances.local_fallback" }
+      });
+      return localBalances;
+    }
+
     const cached = readCachedBalances(groupId);
     if (cached) {
       Sentry.captureException(error, {

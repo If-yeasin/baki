@@ -1,4 +1,5 @@
 import type { ExpenseCategory } from "@/features/expenses/types";
+import { HandCoins, NotebookPen, ReceiptText, UserRound } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 
 import { Text, radii, spacing, useTheme } from "@baki/ui";
@@ -6,14 +7,15 @@ import { Text, radii, spacing, useTheme } from "@baki/ui";
 import { ExpenseCategoryMark } from "./ledger-marks";
 
 export type ActivityFeedItem = {
-  amountAccessibilityLabel: string;
-  amountLabel: string;
-  category: ExpenseCategory;
-  categoryLabel: string;
+  amountAccessibilityLabel?: string;
+  amountLabel?: string;
+  category?: ExpenseCategory;
+  categoryLabel?: string;
   description: string;
   eventLabel: string;
   groupName: string;
   id: string;
+  leadingTone?: "expense" | "group" | "member" | "settlement";
   onPress: () => void;
   payerLabel: string;
   paidBySelf: boolean;
@@ -32,6 +34,36 @@ type ActivityFeedListProps = {
 
 export function ActivityFeedList({ sections }: ActivityFeedListProps) {
   const { colors } = useTheme();
+
+  const renderLeading = (item: ActivityFeedItem) => {
+    if (item.category) {
+      return <ExpenseCategoryMark category={item.category} />;
+    }
+
+    const Icon =
+      item.leadingTone === "settlement"
+        ? HandCoins
+        : item.leadingTone === "member"
+          ? UserRound
+          : item.leadingTone === "group"
+            ? NotebookPen
+            : ReceiptText;
+
+    return (
+      <View
+        style={{
+          alignItems: "center",
+          backgroundColor: colors.bgSubtle,
+          borderRadius: radii.pill,
+          height: 36,
+          justifyContent: "center",
+          width: 36
+        }}
+      >
+        <Icon color={colors.brandPrimary} size={18} />
+      </View>
+    );
+  };
 
   return (
     <View style={{ gap: spacing.lg }} testID="activity-feed-list">
@@ -81,7 +113,7 @@ export function ActivityFeedList({ sections }: ActivityFeedListProps) {
                   paddingVertical: spacing.sm
                 })}
               >
-                <ExpenseCategoryMark category={item.category} />
+                {renderLeading(item)}
                 <View style={{ flex: 1, gap: spacing.xs, minWidth: 0 }}>
                   <View style={{ alignItems: "center", flexDirection: "row", gap: spacing.xs }}>
                     <Text
@@ -115,27 +147,31 @@ export function ActivityFeedList({ sections }: ActivityFeedListProps) {
                     </View>
                   </View>
                   <Text ellipsizeMode="tail" numberOfLines={1} tone="muted" variant="caption">
-                    {`${item.groupName} · ${item.categoryLabel}`}
+                    {item.categoryLabel
+                      ? `${item.groupName} · ${item.categoryLabel}`
+                      : item.groupName}
                   </Text>
                   <Text ellipsizeMode="tail" numberOfLines={1} tone="muted" variant="caption">
                     {item.eventLabel}
                   </Text>
                 </View>
-                <Text
-                  accessibilityLabel={item.amountAccessibilityLabel}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.76}
-                  numberOfLines={1}
-                  style={{
-                    color: colors.inkPrimary,
-                    fontVariant: ["tabular-nums"],
-                    maxWidth: 112,
-                    textAlign: "right"
-                  }}
-                  variant="bodyStrong"
-                >
-                  {item.amountLabel}
-                </Text>
+                {item.amountLabel ? (
+                  <Text
+                    accessibilityLabel={item.amountAccessibilityLabel}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.76}
+                    numberOfLines={1}
+                    style={{
+                      color: colors.inkPrimary,
+                      fontVariant: ["tabular-nums"],
+                      maxWidth: 112,
+                      textAlign: "right"
+                    }}
+                    variant="bodyStrong"
+                  >
+                    {item.amountLabel}
+                  </Text>
+                ) : null}
               </Pressable>
             ))}
           </View>

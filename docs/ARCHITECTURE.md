@@ -169,5 +169,5 @@ baki/
 - Typecheck (`tsc --noEmit`)
 - Unit tests
 - i18n key parity check (every `bn` key has an `en` key and vice versa)
-- Supabase migration dry-run
+- Database verification (`pnpm db:check`, backed by the DB test suite)
 - (Pre-release only) EAS preview build

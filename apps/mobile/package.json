@@ -9,6 +9,7 @@
     "dev:tunnel": "expo start --go --tunnel --port 8081",
     "dev:go": "expo start --go --host lan --port 8081",
     "dev:devclient": "expo start --dev-client --host lan --port 8081",
+    "check:assets": "node scripts/check-assets.mjs",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest --run --passWithNoTests",

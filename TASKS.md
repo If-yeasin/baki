@@ -1,64 +1,35 @@
-# Phase 1 Tasks
+# Trusted Tester MVP Hardening Checklist
 
-These tasks come from `docs/ROADMAP.md` Phase 1. Work through them in order and keep `docs/` updated before changing product behavior.
+## Done
 
-## 1. Design System Foundation
+- Branch created: `codex/trusted-tester-mvp-hardening`
+- Selected Baki monogram kept as the app icon source of truth.
+- Unused icon experiments moved out of bundled mobile assets.
+- `pnpm --filter mobile check:assets` verifies active icon files.
+- Queued expense/settlement replay is wired into app startup, foreground, interval, and manual retry.
+- Settings -> Sync shows pending/failed counts, last sync time, retry, and failed item details.
+- Local WatermelonDB schema, migrations, models, and repositories are scaffolded.
+- Groups and expenses hydrate from local cache and revalidate Supabase.
+- Balances fall back to local ledger math before MMKV cache.
+- Settle screen uses `simplify_debts` first and raw balance allocation only as fallback.
+- Group and tab activity read real `activity_log` rows.
 
-**Owner:** `design-system-engineer`
+## In Progress
 
-- Expand `packages/ui` tokens, typography, and component variants.
-- Add `Input`, `NumericInput`, `PhoneInput`, `Sheet`, `Toast`, `EmptyState`, `Skeleton`, `Tabs`, `Chip`, `Badge`, and `DatePicker`.
-- Add component tests for Bengali and English labels.
-- Add the dev-only component demo route under `apps/mobile/app/dev/components.tsx`.
+- Full device QA for offline replay on a Dev Client.
+- Maestro coverage for authenticated trusted-tester flow.
+- Remote/local cache breadth beyond the core read paths.
 
-## 2. i18n Foundation
+## Blockers
 
-**Owner:** `design-system-engineer`
+- OTP cannot be automated reliably in Maestro; tester must sign in once manually.
+- NetInfo is not installed, so replay is lifecycle/interval driven.
+- `group.create` is queued but not replayed until a safe idempotent group-create path exists.
 
-- Fill out `bn` and `en` catalogs for F1 auth and the empty home flow.
-- Keep catalog parity enforced by `pnpm i18n:check`.
-- Add locale-aware date helpers for Asia/Dhaka.
-- Add Bengali numeral tests for money, dates, and counters.
+## Next 5 Tasks
 
-## 3. Auth Flow
-
-**Owner:** `mobile-engineer`
-
-- Build phone-number entry with `+880` locked and Bangladesh validation.
-- Build OTP verification with Supabase Auth.
-- Persist session through MMKV-backed Supabase storage.
-- Build first-run profile creation for display name and optional avatar.
-
-## 4. Supabase Schema Verification
-
-**Owner:** `backend-engineer`
-
-- Run local migrations and seed data.
-- Generate `packages/db/src/types.ts`.
-- Add RLS tests with two users in separate groups.
-- Verify no cross-group profile, group, expense, settlement, or activity leakage.
-
-## 5. Offline Store Skeleton
-
-**Owner:** `mobile-engineer`
-
-- Expand WatermelonDB models for groups, members, expenses, expense shares, settlements, and activity.
-- Add the mutation queue skeleton.
-- Hydrate reads from WatermelonDB before remote revalidation.
-- Show a localized sync indicator in the app header.
-
-## 6. Release Plumbing
-
-**Owner:** `release-engineer`
-
-- Confirm EAS project configuration after the human runs `eas init`.
-- Add preview build workflow once `EXPO_TOKEN` exists.
-- Document TestFlight setup and Apple reviewer notes.
-
-## Exit Criteria
-
-- New user can sign up via phone OTP.
-- User lands on an empty home screen with a localized "Create your first khata" CTA.
-- Supabase RLS tests pass with two users.
-- Offline store is wired for empty entities.
-- `pnpm lint`, `pnpm typecheck`, `pnpm test`, and `pnpm i18n:check` pass.
+1. Run the full quality gate suite on a machine with local Supabase available.
+2. Walk the manual offline replay test on a physical iPhone Dev Client.
+3. Add seeded authenticated-state Maestro setup so flows can run without OTP.
+4. Add a repair/dismiss UX for permanently failed queued mutations.
+5. Add richer local profile/member caching for offline activity actor names.
