@@ -48,39 +48,43 @@ export function buildCreateSettlementRpcPayload(input: CreateSettlementInput) {
   };
 }
 
+export async function createSettlementWithOfflineQueue(
+  input: CreateSettlementInput
+): Promise<CreateSettlementResult> {
+  const rpcPayload = buildCreateSettlementRpcPayload(input);
+
+  const { data: settlementId, error } = await supabase.rpc("create_settlement", rpcPayload);
+
+  if (error) {
+    Sentry.captureException(error, {
+      tags: { feature: "settlement.create", phase: "rpc" }
+    });
+    const queued = enqueueMoneyMutationFromRpcError({
+      error,
+      payload: rpcPayload,
+      type: "settlement.create"
+    });
+    if (queued.kind === "queued") {
+      return {
+        queuedMutationId: queued.queuedMutationId,
+        status: "queued"
+      };
+    }
+    throw error;
+  }
+
+  if (!settlementId) {
+    throw new Error("settlement.create.empty_result");
+  }
+
+  return { settlementId, status: "synced" };
+}
+
 export function useCreateSettlement() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (input: CreateSettlementInput): Promise<CreateSettlementResult> => {
-      const rpcPayload = buildCreateSettlementRpcPayload(input);
-
-      const { data: settlementId, error } = await supabase.rpc("create_settlement", rpcPayload);
-
-      if (error) {
-        Sentry.captureException(error, {
-          tags: { feature: "settlement.create", phase: "rpc" }
-        });
-        const queued = enqueueMoneyMutationFromRpcError({
-          error,
-          payload: rpcPayload,
-          type: "settlement.create"
-        });
-        if (queued.kind === "queued") {
-          return {
-            queuedMutationId: queued.queuedMutationId,
-            status: "queued"
-          };
-        }
-        throw error;
-      }
-
-      if (!settlementId) {
-        throw new Error("settlement.create.empty_result");
-      }
-
-      return { settlementId, status: "synced" };
-    },
+    mutationFn: createSettlementWithOfflineQueue,
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: balancesKeys.group(variables.groupId) });
       void queryClient.invalidateQueries({

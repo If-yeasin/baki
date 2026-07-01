@@ -116,21 +116,22 @@ pnpm --filter mobile check:assets
 
 Workflows in `.github/workflows/`:
 
-- `ci.yml` — runs on every PR: install, lint, typecheck, unit tests, and i18n parity check
+- `ci.yml` — runs on every PR: install, local Supabase reset, lint, typecheck, tests, i18n parity, DB checks, asset checks, aggregate `pnpm check`, and `git diff --check`
 - `eas-preview.yml` — on PR label `build:preview`: triggers `eas build --profile preview --platform ios`
 - `release.yml` — on tag `v*`: triggers production EAS build + submit to App Store
 
 Required secrets:
 
 - `EXPO_TOKEN`
+- `EAS_PROJECT_ID`
 - `SUPABASE_ACCESS_TOKEN`
 - `APPLE_APP_SPECIFIC_PASSWORD` (for submission)
 
 ## Supabase local development
 
 ```bash
-supabase start    # spins up local Postgres, Studio, Auth, etc.
-supabase db reset # apply all migrations + seed
+pnpm --filter @baki/db exec supabase db start --workdir ../.. # spins up local Postgres
+pnpm --filter @baki/db exec supabase db reset --workdir ../.. # apply all migrations + seed
 ```
 
 Local dev env points to `http://127.0.0.1:55321` for the API and `postgresql://postgres:postgres@127.0.0.1:55322/postgres` for the database, matching the non-default ports in `supabase/config.toml` (set the API URL in `.env.local` for the `dev` profile).

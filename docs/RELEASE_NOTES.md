@@ -1,5 +1,18 @@
 # Release Notes
 
+## 0.2.7 — Automated trusted-tester gate (2026-07-01)
+
+- Converted PR #1 from a manual-device merge gate to an automated-first gate by
+  project-owner decision; real-device offline replay remains recommended before
+  public beta.
+- Added tests for temporary expense/settlement RPC failures returning queued
+  success, permanent failures remaining visible, sync status priority, and
+  Settings -> Sync presentation logic.
+- Updated CI to start/reset local Supabase, run DB checks, run mobile asset
+  checks, run aggregate `pnpm check`, and run `git diff --check`.
+- Documented the automated gate, EAS Preview trigger, known limitations, and
+  duplicate-ledger SQL in `docs/QA/AUTOMATED_RELEASE_GATE.md`.
+
 ## 0.2.6 — Trusted tester MVP hardening (2026-07-01)
 
 - Moved unused icon explorations out of the Expo-bundled mobile assets and

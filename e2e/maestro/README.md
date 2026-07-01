@@ -77,11 +77,14 @@ maestro test e2e/maestro
 maestro test e2e/maestro/10-create-group.yaml
 ```
 
-## Manual Offline Sync QA
+## Offline Sync QA
 
 The saved-offline money-write path is not automated in Maestro yet because it
 needs a signed-in Dev Client/TestFlight build plus controllable network loss.
-Before trusted-tester merge, manually verify:
+For PR #1, project-owner decision is to skip manual device QA and use the
+automated release gate in `docs/QA/AUTOMATED_RELEASE_GATE.md`.
+
+Before public beta, a real-device pass should still verify:
 
 1. Sign in once with OTP.
 2. Turn on Airplane Mode.
@@ -104,9 +107,10 @@ Before trusted-tester merge, manually verify:
 
 ## CI
 
-These flows are not run in GitHub Actions today — Maestro Cloud or a macOS
-runner with the simulator preconfigured is required. Run locally before
-tagging a release.
+These flows are not run in GitHub Actions today. Full cloud EAS + Maestro is
+blocked by signed-in state: phone OTP is not safely automated and there is no
+seeded authenticated test-mode entry point yet. Run locally or in EAS Workflows
+after adding a safe seeded-auth setup.
 
 **CI must not include `40-settle.yaml` until a bKash mock URL handler is
 added.** The settle flow opens the real bKash native app via a `bkash://`

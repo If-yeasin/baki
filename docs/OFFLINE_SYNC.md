@@ -47,7 +47,13 @@ The orchestrator keeps an in-memory lock so concurrent triggers share one run in
 - Conflict resolution is remote-wins after successful fetch. Conflicts that fail RPC validation remain visible as failed sync items.
 - Expo Go uses in-memory storage and cannot validate the full WatermelonDB offline path; use a Dev Client for trusted-tester QA.
 
-## Manual Test
+## Automated Release Gate
+
+The PR #1 release gate is automated-first. Manual real-device offline replay QA was not performed by project-owner decision. The gate relies on CI plus local automated tests that cover temporary queued-success behavior, permanent failed-item visibility, RPC-only queue replay, idempotent expense/settlement retry, sync indicator state, Settings -> Sync data presentation, and simplified-debt fallback logic.
+
+See `docs/QA/AUTOMATED_RELEASE_GATE.md` for the exact commands, limits, duplicate-ledger SQL, and go/no-go criteria.
+
+## Recommended Real-Device Check
 
 1. Sign in on a Dev Client build.
 2. Open or create a khata with at least two members.
@@ -60,4 +66,4 @@ The orchestrator keeps an in-memory lock so concurrent triggers share one run in
 9. Bring the app to foreground or tap Retry sync.
 10. Confirm the queue clears, balances update, and no duplicate expense/settlement rows appear in Supabase.
 
-This manual test still requires a Dev Client or TestFlight build. Expo Go is only a UI smoke path because WatermelonDB and persistent native storage are unavailable there.
+This check still requires a Dev Client or TestFlight build. Expo Go is only a UI smoke path because WatermelonDB and persistent native storage are unavailable there. It remains recommended before public beta, but it is not the PR #1 merge gate.

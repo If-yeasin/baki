@@ -1,4 +1,5 @@
 import { useSyncSnapshot } from "./use-queued-mutation-processor";
+import type { QueuedMutationSyncSnapshot } from "./sync-orchestrator";
 
 export type SyncStatus = {
   failedCount: number;
@@ -6,9 +7,9 @@ export type SyncStatus = {
   state: "failed" | "idle" | "pending" | "syncing";
 };
 
-export function useSyncStatus(): SyncStatus {
-  const snapshot = useSyncSnapshot();
-
+export function deriveSyncStatus(
+  snapshot: Pick<QueuedMutationSyncSnapshot, "failedCount" | "isSyncing" | "pendingCount">
+): SyncStatus {
   return {
     failedCount: snapshot.failedCount,
     pendingCount: snapshot.pendingCount,
@@ -20,4 +21,8 @@ export function useSyncStatus(): SyncStatus {
           ? "pending"
           : "idle"
   };
+}
+
+export function useSyncStatus(): SyncStatus {
+  return deriveSyncStatus(useSyncSnapshot());
 }

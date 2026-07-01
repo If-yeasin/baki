@@ -66,64 +66,72 @@ function createClientMutationId() {
   return `expense:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 12)}`;
 }
 
+export function buildCreateExpenseRpcPayload(input: CreateExpenseInput) {
+  const shares = computeShares(input);
+  const clientMutationId = input.clientMutationId?.trim() || createClientMutationId();
+
+  return {
+    p_amount_paisa: input.amountPaisa,
+    p_category: input.category,
+    p_client_mutation_id: clientMutationId,
+    p_description: input.description.trim(),
+    p_group_id: input.groupId,
+    p_paid_by: input.paidBy,
+    p_shares: shares,
+    p_split_method: input.splitMethod
+  };
+}
+
+export async function createExpenseWithOfflineQueue(
+  input: CreateExpenseInput
+): Promise<CreateExpenseResult> {
+  const {
+    data: { session },
+    error: sessionError
+  } = await supabase.auth.getSession();
+
+  if (sessionError) {
+    throw sessionError;
+  }
+
+  if (!session?.user) {
+    throw new Error("auth.error.session_failed");
+  }
+
+  const rpcPayload = buildCreateExpenseRpcPayload(input);
+
+  const { data: expenseId, error } = await supabase.rpc("create_expense", rpcPayload);
+
+  if (error) {
+    Sentry.captureException(error, {
+      tags: { feature: "expenses.create", phase: "rpc" }
+    });
+    const queued = enqueueMoneyMutationFromRpcError({
+      error,
+      payload: rpcPayload,
+      type: "expense.create"
+    });
+    if (queued.kind === "queued") {
+      return {
+        queuedMutationId: queued.queuedMutationId,
+        status: "queued"
+      };
+    }
+    throw error;
+  }
+
+  if (!expenseId) {
+    throw new Error("expense.create.empty_result");
+  }
+
+  return { expenseId, status: "synced" };
+}
+
 export function useCreateExpense() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (input: CreateExpenseInput): Promise<CreateExpenseResult> => {
-      const {
-        data: { session },
-        error: sessionError
-      } = await supabase.auth.getSession();
-
-      if (sessionError) {
-        throw sessionError;
-      }
-
-      if (!session?.user) {
-        throw new Error("auth.error.session_failed");
-      }
-
-      const shares = computeShares(input);
-      const clientMutationId = input.clientMutationId?.trim() || createClientMutationId();
-
-      const rpcPayload = {
-        p_amount_paisa: input.amountPaisa,
-        p_category: input.category,
-        p_client_mutation_id: clientMutationId,
-        p_description: input.description.trim(),
-        p_group_id: input.groupId,
-        p_paid_by: input.paidBy,
-        p_shares: shares,
-        p_split_method: input.splitMethod
-      };
-
-      const { data: expenseId, error } = await supabase.rpc("create_expense", rpcPayload);
-
-      if (error) {
-        Sentry.captureException(error, {
-          tags: { feature: "expenses.create", phase: "rpc" }
-        });
-        const queued = enqueueMoneyMutationFromRpcError({
-          error,
-          payload: rpcPayload,
-          type: "expense.create"
-        });
-        if (queued.kind === "queued") {
-          return {
-            queuedMutationId: queued.queuedMutationId,
-            status: "queued"
-          };
-        }
-        throw error;
-      }
-
-      if (!expenseId) {
-        throw new Error("expense.create.empty_result");
-      }
-
-      return { expenseId, status: "synced" };
-    },
+    mutationFn: createExpenseWithOfflineQueue,
     onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: expensesKeys.list(variables.groupId) });
       void queryClient.invalidateQueries({ queryKey: balancesKeys.group(variables.groupId) });

@@ -1,4 +1,3 @@
-import { formatRelativeDhakaDate, toBengaliNumerals, type AppLocale } from "@baki/i18n";
 import { Stack } from "expo-router";
 import { AlertCircle, CheckCircle2, Clock3, RefreshCw } from "lucide-react-native";
 import { useMemo, useState } from "react";
@@ -11,19 +10,13 @@ import { BakiEmptyState } from "@/components/baki-empty-state";
 import { SettingsRow, SettingsSection } from "@/components/settings-section";
 import { listQueuedMutations } from "@/features/offline/mutation-queue";
 import {
-  runQueuedMutationSync,
-  type QueuedMutationSyncSnapshot
-} from "@/features/offline/sync-orchestrator";
+  buildSyncDetailMetrics,
+  formatSyncCount,
+  selectFailedQueuedMutations
+} from "@/features/offline/sync-details-view-model";
+import { runQueuedMutationSync } from "@/features/offline/sync-orchestrator";
 import { useSyncSnapshot } from "@/features/offline/use-queued-mutation-processor";
 import { usePreferencesStore } from "@/stores/preferences";
-
-function formatCount(value: number, locale: string) {
-  return locale === "bn" ? toBengaliNumerals(value) : String(value);
-}
-
-function formatLastSync(snapshot: QueuedMutationSyncSnapshot, locale: AppLocale, fallback: string) {
-  return snapshot.lastSyncAt ? formatRelativeDhakaDate(snapshot.lastSyncAt, locale) : fallback;
-}
 
 export default function SyncDetailsScreen() {
   const { t } = useTranslation();
@@ -36,27 +29,19 @@ export default function SyncDetailsScreen() {
     variant: "error" | "info" | "success";
   } | null>(null);
   const queuedMutations = listQueuedMutations();
-  const failedMutations = queuedMutations.filter((mutation) => mutation.status === "failed");
+  const failedMutations = selectFailedQueuedMutations(queuedMutations);
   const hasQueue = queuedMutations.length > 0;
 
   const metrics = useMemo(
-    () => [
-      {
-        label: t("sync.details.pending"),
-        tone: "warning" as const,
-        value: formatCount(snapshot.pendingCount, locale)
-      },
-      {
-        label: t("sync.details.failed"),
-        tone: "negative" as const,
-        value: formatCount(snapshot.failedCount, locale)
-      },
-      {
-        label: t("sync.details.lastSync"),
-        tone: "neutral" as const,
-        value: formatLastSync(snapshot, locale, t("sync.details.never"))
-      }
-    ],
+    () =>
+      buildSyncDetailMetrics({
+        failedLabel: t("sync.details.failed"),
+        lastSyncLabel: t("sync.details.lastSync"),
+        locale,
+        neverLabel: t("sync.details.never"),
+        pendingLabel: t("sync.details.pending"),
+        snapshot
+      }),
     [locale, snapshot, t]
   );
 
@@ -65,9 +50,9 @@ export default function SyncDetailsScreen() {
       const result = await runQueuedMutationSync({ reason: "manual", retryFailed: true });
       setNotice({
         body: t("sync.details.retryComplete.body", {
-          failed: formatCount(result.failed, locale),
-          retried: formatCount(result.retried, locale),
-          succeeded: formatCount(result.succeeded, locale)
+          failed: formatSyncCount(result.failed, locale),
+          retried: formatSyncCount(result.retried, locale),
+          succeeded: formatSyncCount(result.succeeded, locale)
         }),
         title: t("sync.details.retryComplete.title"),
         variant: result.failed > 0 ? "info" : "success"
@@ -185,7 +170,7 @@ export default function SyncDetailsScreen() {
         <SettingsRow
           icon={<Clock3 color={colors.warning} size={19} />}
           subtitle={t("sync.details.pendingSubtitle", {
-            count: formatCount(snapshot.pendingCount, locale)
+            count: formatSyncCount(snapshot.pendingCount, locale)
           })}
           title={t("sync.details.pending")}
         />
@@ -193,7 +178,7 @@ export default function SyncDetailsScreen() {
           icon={<AlertCircle color={colors.negative} size={19} />}
           showDivider={false}
           subtitle={t("sync.details.failedSubtitle", {
-            count: formatCount(snapshot.failedCount, locale)
+            count: formatSyncCount(snapshot.failedCount, locale)
           })}
           title={t("sync.details.failed")}
         />
