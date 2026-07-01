@@ -3,8 +3,9 @@ import { useState, type ReactNode } from "react";
 import renderer, { act } from "react-test-renderer";
 import { describe, expect, it, vi } from "vitest";
 
-(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT =
-  true;
+(
+  globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true;
 
 vi.mock("react-native", async () => {
   const React = await import("react");
@@ -179,11 +180,7 @@ describe("MFSSettlementRow", () => {
   });
 });
 
-function AmountInputHarness({
-  onCapture
-}: {
-  onCapture: (paisa: number) => void;
-}) {
+function AmountInputHarness({ onCapture }: { onCapture: (paisa: number) => void }) {
   const [paisa, setPaisa] = useState(0);
 
   return (

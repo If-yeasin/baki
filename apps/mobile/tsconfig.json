@@ -3,27 +3,13 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "src/*"
-      ],
-      "@baki/db": [
-        "../../packages/db/src/index.ts"
-      ],
-      "@baki/i18n": [
-        "../../packages/i18n/src/index.ts"
-      ],
-      "@baki/payments": [
-        "../../packages/payments/src/index.ts"
-      ],
-      "@baki/ui": [
-        "../../packages/ui/src/index.ts"
-      ]
+      "@/*": ["src/*"],
+      "@baki/db": ["../../packages/db/src/index.ts"],
+      "@baki/i18n": ["../../packages/i18n/src/index.ts"],
+      "@baki/payments": ["../../packages/payments/src/index.ts"],
+      "@baki/ui": ["../../packages/ui/src/index.ts"]
     },
-    "types": [
-      "nativewind/types",
-      "node",
-      "react"
-    ]
+    "types": ["nativewind/types", "node", "react"]
   },
   "include": [
     "app/**/*.ts",

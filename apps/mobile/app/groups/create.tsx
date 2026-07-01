@@ -128,7 +128,10 @@ export default function CreateGroupScreen() {
               </Text>
             </View>
           </View>
-          <View style={{ flexDirection: "row", gap: spacing.sm }} testID="group-create-preview-meta">
+          <View
+            style={{ flexDirection: "row", gap: spacing.sm }}
+            testID="group-create-preview-meta"
+          >
             <PreviewMetaCell
               icon={UsersRound}
               label={t("groups.create.preview.members")}
@@ -350,7 +353,12 @@ function PreviewMetaCell({
           {label}
         </Text>
       </View>
-      <Text ellipsizeMode="tail" numberOfLines={1} style={{ color: colors.inkPrimary }} variant="caption">
+      <Text
+        ellipsizeMode="tail"
+        numberOfLines={1}
+        style={{ color: colors.inkPrimary }}
+        variant="caption"
+      >
         {value}
       </Text>
     </View>

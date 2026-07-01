@@ -7,8 +7,9 @@ import { Button } from "./Button";
 import { Input } from "./Input";
 import { PhoneInput } from "./PhoneInput";
 
-(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT =
-  true;
+(
+  globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true;
 
 vi.mock("react-native", async () => {
   const React = await import("react");

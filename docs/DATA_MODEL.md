@@ -14,6 +14,7 @@
 ## Tables
 
 ### `profiles`
+
 Mirrors `auth.users` with public-safe fields.
 
 ```sql
@@ -32,6 +33,7 @@ create table public.profiles (
 ```
 
 ### `groups`
+
 A খাতা.
 
 ```sql
@@ -50,6 +52,7 @@ create table public.groups (
 ```
 
 ### `group_members`
+
 Join table.
 
 ```sql
@@ -93,6 +96,7 @@ create unique index on public.expenses (group_id, created_by, client_mutation_id
 ```
 
 ### `expense_shares`
+
 One row per (expense, member) describing how the expense splits.
 
 ```sql
@@ -107,6 +111,7 @@ create table public.expense_shares (
 Invariant (enforced by trigger): `sum(share_paisa) for an expense = expenses.amount_paisa`.
 
 ### `settlements`
+
 A payment between two members that zeroes or reduces a balance.
 
 ```sql
@@ -125,6 +130,7 @@ create table public.settlements (
 ```
 
 ### `activity_log`
+
 Append-only feed.
 
 ```sql
@@ -144,6 +150,7 @@ create index on public.activity_log (group_id, created_at desc);
 ```
 
 ### `device_tokens`
+
 For Expo push.
 
 ```sql
@@ -162,37 +169,45 @@ create table public.device_tokens (
 **Every table has RLS enabled.** Default deny.
 
 ### `profiles`
+
 - SELECT: a user can read their own profile, and profiles of users who share at least one group with them
 - INSERT/UPDATE: only own row
 
 ### `groups`
+
 - SELECT: only groups where the user is in `group_members` and `left_at is null`
 - INSERT: any authenticated user (creator)
 - UPDATE: only if user is admin of the group
 - DELETE: only if user is creator AND no unsettled balances exist (enforced by edge function, not raw delete)
 
 ### `group_members`
+
 - SELECT: users can see members of groups they belong to
 - INSERT: only via `accept_invite` edge function (which validates invite_code)
 - UPDATE: only own row (to set `left_at`)
 
 ### `expenses`, `expense_shares`, `settlements`, `activity_log`
+
 - SELECT: only if user is a current member of the expense's `group_id`
 - INSERT/UPDATE: only by current group members; `created_by` must equal `auth.uid()`
 
 ### `device_tokens`
+
 - ALL: only own rows
 
 ## Database functions
 
 ### `simplify_debts(group_id uuid) returns table(...)`
+
 Given a group, computes net balances and returns the minimum-transaction settlement plan. Implemented in PL/pgSQL with a greedy algorithm (creditors and debtors sorted, largest matched first).
 
 ### `accept_invite(invite_code text) returns uuid`
+
 - Validates code, inserts into `group_members`, logs `member_joined` event, returns `group_id`
 - Security definer; bypasses RLS to perform the insert, but checks `invite_code` validity strictly
 
 ### `create_expense(...) returns uuid`
+
 Atomic expense writer used by the mobile app.
 
 - Signature: `create_expense(p_group_id uuid, p_amount_paisa bigint, p_description text, p_category text, p_paid_by uuid, p_split_method text, p_shares jsonb, p_occurred_at timestamptz default now(), p_note text default null, p_receipt_url text default null, p_client_mutation_id text default null) returns uuid`
@@ -207,6 +222,7 @@ Atomic expense writer used by the mobile app.
 - `SECURITY INVOKER`; normal table RLS still applies. `EXECUTE` is revoked from `public`/`anon` and granted only to `authenticated`.
 
 ### `create_settlement(...) returns uuid`
+
 Atomic settlement writer used by the mobile app.
 
 - Signature: `create_settlement(p_group_id uuid, p_from_user uuid, p_to_user uuid, p_amount_paisa bigint, p_method text, p_external_ref text default null, p_occurred_at timestamptz default now(), p_client_mutation_id text default null) returns uuid`
@@ -228,6 +244,7 @@ Atomic settlement writer used by the mobile app.
 ## Realtime
 
 Enable Supabase Realtime on:
+
 - `expenses`
 - `expense_shares`
 - `settlements`
@@ -299,12 +316,12 @@ Apple Guideline 5.1.1(v) requires an in-app deletion path before the App Store s
 
 ### Error codes
 
-| Code | HTTP | Meaning |
-|---|---|---|
-| `not_authenticated` | 401 | No valid JWT was attached. The client must redirect to the OTP flow. |
-| `method_not_allowed` | 405 | A caller used anything other than `POST`. The mobile app should never hit this. |
-| `unsettled_balances` | 409 | The user has a non-zero net balance in at least one active group. The client surfaces "settle up first" and lists the offending groups (the client already has balances locally). |
-| `internal_error` | 500 | Catch-all. The function logs the raw error to its own Deno logs (never phone numbers or MFS numbers — `maskMfsNumber` from `@baki/payments` is used if anything resembling a phone is logged). |
+| Code                 | HTTP | Meaning                                                                                                                                                                                        |
+| -------------------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `not_authenticated`  | 401  | No valid JWT was attached. The client must redirect to the OTP flow.                                                                                                                           |
+| `method_not_allowed` | 405  | A caller used anything other than `POST`. The mobile app should never hit this.                                                                                                                |
+| `unsettled_balances` | 409  | The user has a non-zero net balance in at least one active group. The client surfaces "settle up first" and lists the offending groups (the client already has balances locally).              |
+| `internal_error`     | 500  | Catch-all. The function logs the raw error to its own Deno logs (never phone numbers or MFS numbers — `maskMfsNumber` from `@baki/payments` is used if anything resembling a phone is logged). |
 
 ### Cascade behavior
 

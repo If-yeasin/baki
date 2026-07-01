@@ -2,7 +2,7 @@
 
 ## Design philosophy
 
-বাকি should feel like a modern interpretation of a corner-shop খাতা — warm, trustworthy, slightly handcrafted, never sterile. The visual identity borrows from accountant's ledger paper, the green of crisp new ৳500 notes, and the gold of family heirloom jewelry. It is decisively *not* a generic SaaS blue.
+বাকি should feel like a modern interpretation of a corner-shop খাতা — warm, trustworthy, slightly handcrafted, never sterile. The visual identity borrows from accountant's ledger paper, the green of crisp new ৳500 notes, and the gold of family heirloom jewelry. It is decisively _not_ a generic SaaS blue.
 
 ## Reference boundary
 
@@ -11,42 +11,44 @@ Splitwise-level usability is a benchmark, not a visual source to clone. Baki sho
 ## Color tokens
 
 ### Light theme
-| Token | Hex | Use |
-|---|---|---|
-| `bg.canvas` | `#faf6ef` | App background — warm cream, ledger paper |
-| `bg.surface` | `#ffffff` | Cards, modals |
-| `bg.subtle` | `#f1ece1` | Section dividers, input backgrounds |
-| `ink.primary` | `#0d1b1e` | Primary text |
-| `ink.secondary` | `#4a5b5e` | Secondary text |
-| `ink.muted` | `#8a9395` | Captions, placeholders |
-| `brand.primary` | `#0d7c66` | Primary actions, brand — deep jade |
-| `brand.primary-pressed` | `#0a5f4f` | Pressed state |
-| `accent.gold` | `#b8860b` | Highlights, gilded details |
-| `positive` | `#16a34a` | Credits, "owed to you" |
-| `negative` | `#dc2626` | Debits, "you owe" |
-| `warning` | `#d97706` | Warnings |
-| `info` | `#0369a1` | Info banners |
-| `border.subtle` | `#e7e1d3` | Subtle dividers |
-| `border.strong` | `#c8bfaa` | Strong dividers, input borders |
+
+| Token                   | Hex       | Use                                       |
+| ----------------------- | --------- | ----------------------------------------- |
+| `bg.canvas`             | `#faf6ef` | App background — warm cream, ledger paper |
+| `bg.surface`            | `#ffffff` | Cards, modals                             |
+| `bg.subtle`             | `#f1ece1` | Section dividers, input backgrounds       |
+| `ink.primary`           | `#0d1b1e` | Primary text                              |
+| `ink.secondary`         | `#4a5b5e` | Secondary text                            |
+| `ink.muted`             | `#8a9395` | Captions, placeholders                    |
+| `brand.primary`         | `#0d7c66` | Primary actions, brand — deep jade        |
+| `brand.primary-pressed` | `#0a5f4f` | Pressed state                             |
+| `accent.gold`           | `#b8860b` | Highlights, gilded details                |
+| `positive`              | `#16a34a` | Credits, "owed to you"                    |
+| `negative`              | `#dc2626` | Debits, "you owe"                         |
+| `warning`               | `#d97706` | Warnings                                  |
+| `info`                  | `#0369a1` | Info banners                              |
+| `border.subtle`         | `#e7e1d3` | Subtle dividers                           |
+| `border.strong`         | `#c8bfaa` | Strong dividers, input borders            |
 
 ### Dark theme
-| Token | Hex |
-|---|---|
-| `bg.canvas` | `#0d1b1e` |
-| `bg.surface` | `#152428` |
-| `bg.subtle` | `#1f3034` |
-| `ink.primary` | `#f5f0e3` |
-| `ink.secondary` | `#b8c5c7` |
-| `ink.muted` | `#7c8a8c` |
-| `brand.primary` | `#3ecf8e` |
+
+| Token                   | Hex       |
+| ----------------------- | --------- |
+| `bg.canvas`             | `#0d1b1e` |
+| `bg.surface`            | `#152428` |
+| `bg.subtle`             | `#1f3034` |
+| `ink.primary`           | `#f5f0e3` |
+| `ink.secondary`         | `#b8c5c7` |
+| `ink.muted`             | `#7c8a8c` |
+| `brand.primary`         | `#3ecf8e` |
 | `brand.primary-pressed` | `#34b97f` |
-| `accent.gold` | `#f0b429` |
-| `positive` | `#4ade80` |
-| `negative` | `#f87171` |
-| `warning` | `#fb923c` |
-| `info` | `#38bdf8` |
-| `border.subtle` | `#1f3034` |
-| `border.strong` | `#2d4045` |
+| `accent.gold`           | `#f0b429` |
+| `positive`              | `#4ade80` |
+| `negative`              | `#f87171` |
+| `warning`               | `#fb923c` |
+| `info`                  | `#38bdf8` |
+| `border.subtle`         | `#1f3034` |
+| `border.strong`         | `#2d4045` |
 
 ## Typography
 
@@ -61,17 +63,17 @@ The `<Text />` component picks the family based on the active locale.
 
 ### Type scale
 
-| Token | Size | Line | Weight | Use |
-|---|---|---|---|---|
-| `display` | 32 | 40 | 700 | Empty-state hero |
-| `h1` | 24 | 32 | 700 | Screen titles |
-| `h2` | 20 | 28 | 600 | Section headers |
-| `h3` | 17 | 24 | 600 | Card titles |
-| `body` | 15 | 22 | 400 | Body copy |
-| `body-strong` | 15 | 22 | 600 | Emphasized body |
-| `caption` | 13 | 18 | 400 | Captions, metadata |
-| `label` | 12 | 16 | 600 | Form labels, eyebrow |
-| `mono-amount` | 22 | 28 | 600 | Money displays (tabular figures) |
+| Token         | Size | Line | Weight | Use                              |
+| ------------- | ---- | ---- | ------ | -------------------------------- |
+| `display`     | 32   | 40   | 700    | Empty-state hero                 |
+| `h1`          | 24   | 32   | 700    | Screen titles                    |
+| `h2`          | 20   | 28   | 600    | Section headers                  |
+| `h3`          | 17   | 24   | 600    | Card titles                      |
+| `body`        | 15   | 22   | 400    | Body copy                        |
+| `body-strong` | 15   | 22   | 600    | Emphasized body                  |
+| `caption`     | 13   | 18   | 400    | Captions, metadata               |
+| `label`       | 12   | 16   | 600    | Form labels, eyebrow             |
+| `mono-amount` | 22   | 28   | 600    | Money displays (tabular figures) |
 
 ## Spacing & radii
 
@@ -128,11 +130,13 @@ Build these first; every screen composes from them.
 ## Empty states
 
 Every list view has a designed empty state with:
+
 - A simple line illustration (commissioned, not stock)
 - A localized 2-line hint
 - A primary CTA
 
 Examples to design:
+
 - No groups: "তোমার প্রথম খাতা তৈরি করো" / "Create your first khata"
 - No expenses in group: "প্রথম খরচ যোগ করো" / "Add the first expense"
 - All settled: "সব হিসাব মিটে গেছে 🎉" / "All settled up 🎉"

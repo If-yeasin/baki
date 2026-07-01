@@ -5,24 +5,24 @@ mobile-preview, and dev-build-path agents landed (or attempted to land) their ch
 
 ## Static checks
 
-| Step | Command | Exit | Notes |
-|---|---|---|---|
-| Typecheck | `pnpm --filter mobile typecheck` | 0 | Clean (`tsc --noEmit`, no output). |
-| Lint | `pnpm --filter mobile lint` | 0 | 1 pre-existing warning in `apps/mobile/.expo/types/router.d.ts` ("Unused eslint-disable directive"). Auto-generated file; not introduced by this wave. |
-| Unit tests | `pnpm --filter mobile test` | 0 | 4 files / 24 tests pass. |
-| i18n parity | `pnpm i18n:check` | 0 | 1 test passes. |
+| Step        | Command                          | Exit | Notes                                                                                                                                                  |
+| ----------- | -------------------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Typecheck   | `pnpm --filter mobile typecheck` | 0    | Clean (`tsc --noEmit`, no output).                                                                                                                     |
+| Lint        | `pnpm --filter mobile lint`      | 0    | 1 pre-existing warning in `apps/mobile/.expo/types/router.d.ts` ("Unused eslint-disable directive"). Auto-generated file; not introduced by this wave. |
+| Unit tests  | `pnpm --filter mobile test`      | 0    | 4 files / 24 tests pass.                                                                                                                               |
+| i18n parity | `pnpm i18n:check`                | 0    | 1 test passes.                                                                                                                                         |
 
 No new errors or warnings introduced.
 
 ## Wrapper presence
 
-| File | Present? | Verdict |
-|---|---|---|
-| `apps/mobile/src/lib/expo-runtime.ts` | Yes | Exports `isExpoGo` from `Constants.executionEnvironment === ExecutionEnvironment.StoreClient`. |
-| `apps/mobile/src/lib/sentry.ts` | Yes | Exports `Sentry` shim with `captureException` / `captureMessage` / `addBreadcrumb`. Native `@sentry/react-native` is `require()`d only when `!isExpoGo`. |
-| `apps/mobile/src/lib/mmkv.ts` | Yes | Top-level `import { MMKV }` removed; native binding loaded inside `createNativeStorage()` via `require("react-native-mmkv")` behind the `!isExpoGo` branch. Memory fallback exported in Expo Go. |
-| Stray direct Sentry imports | None | `grep -rn 'from "@sentry/react-native"' apps/mobile/{src,app} | grep -v '@sentry/react-native/expo'` returns zero. |
-| Stray direct MMKV imports | None in app code | Only occurrence under `apps/mobile/{src,app}` is the gated `require()` inside `src/lib/mmkv.ts:25`. |
+| File                                  | Present?         | Verdict                                                                                                                                                                                          |
+| ------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------- |
+| `apps/mobile/src/lib/expo-runtime.ts` | Yes              | Exports `isExpoGo` from `Constants.executionEnvironment === ExecutionEnvironment.StoreClient`.                                                                                                   |
+| `apps/mobile/src/lib/sentry.ts`       | Yes              | Exports `Sentry` shim with `captureException` / `captureMessage` / `addBreadcrumb`. Native `@sentry/react-native` is `require()`d only when `!isExpoGo`.                                         |
+| `apps/mobile/src/lib/mmkv.ts`         | Yes              | Top-level `import { MMKV }` removed; native binding loaded inside `createNativeStorage()` via `require("react-native-mmkv")` behind the `!isExpoGo` branch. Memory fallback exported in Expo Go. |
+| Stray direct Sentry imports           | None             | `grep -rn 'from "@sentry/react-native"' apps/mobile/{src,app}                                                                                                                                    | grep -v '@sentry/react-native/expo'` returns zero. |
+| Stray direct MMKV imports             | None in app code | Only occurrence under `apps/mobile/{src,app}` is the gated `require()` inside `src/lib/mmkv.ts:25`.                                                                                              |
 
 ## `expo start --go`
 

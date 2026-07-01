@@ -2,5 +2,5 @@ packages:
   - apps/*
   - packages/*
 allowBuilds:
-  '@sentry/cli': true
+  "@sentry/cli": true
   supabase: true

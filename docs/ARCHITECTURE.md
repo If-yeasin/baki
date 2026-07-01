@@ -3,6 +3,7 @@
 ## Tech stack
 
 ### Mobile (apps/mobile)
+
 - **Expo SDK 54** with **React Native 0.81.5** (New Architecture enabled by default)
 - **React 19.1.0**
 - **TypeScript** strict mode
@@ -19,23 +20,27 @@
 - **MMKV** for fast key-value storage (auth tokens, prefs)
 
 ### Backend (packages/db + Supabase)
+
 - **Supabase** managed: Postgres 15, Auth, Realtime, Storage, Edge Functions (Deno)
 - **PostgREST** for the API surface
 - **Row Level Security** on every table — no exceptions
 - **Database functions** for balance simplification (PL/pgSQL)
 
 ### Payments (packages/payments)
+
 - **bKash** — deep link first, merchant API in v1.5 (requires business onboarding)
 - **Nagad** — deep link / USSD copy
 - **Stripe** — v3 only, for international users (deferred)
 
 ### Build & release
+
 - **EAS Build** for iOS + Android binaries
 - **EAS Submit** for App Store Connect + Play Console
 - **EAS Update** for OTA JS bundles
 - **Fastlane** not needed (EAS handles it)
 
 ### Monorepo
+
 - **pnpm workspaces**
 - **Turborepo** for task orchestration and caching
 - **changesets** for version bumps (post-launch)

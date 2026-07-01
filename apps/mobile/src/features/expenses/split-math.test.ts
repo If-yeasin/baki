@@ -1,12 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  SplitMathError,
-  splitEqual,
-  splitExact,
-  splitPercent,
-  splitShares
-} from "./split-math";
+import { SplitMathError, splitEqual, splitExact, splitPercent, splitShares } from "./split-math";
 
 describe("splitEqual", () => {
   it("divides 1000 paisa across 3 members with remainder on the first", () => {

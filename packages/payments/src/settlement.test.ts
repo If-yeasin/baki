@@ -104,10 +104,8 @@ describe("safeSettlementLogFields", () => {
 
   it("sets notePresent=false when the note is missing or empty", () => {
     expect(
-      safeSettlementLogFields(
-        { amountPaisa: 1000, recipientNumber: "+8801700123456" },
-        "cash"
-      ).notePresent
+      safeSettlementLogFields({ amountPaisa: 1000, recipientNumber: "+8801700123456" }, "cash")
+        .notePresent
     ).toBe(false);
   });
 });

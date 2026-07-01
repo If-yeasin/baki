@@ -1,11 +1,5 @@
 import * as React from "react";
-import {
-  createContext,
-  useMemo,
-  type Context,
-  type ReactElement,
-  type ReactNode
-} from "react";
+import { createContext, useMemo, type Context, type ReactElement, type ReactNode } from "react";
 import { useColorScheme } from "react-native";
 
 import { darkColors, lightColors } from "./tokens";
@@ -37,11 +31,7 @@ function readContext<T>(context: Context<T>): T {
   return typeof react.use === "function" ? react.use(context) : react.useContext(context);
 }
 
-function renderContext<T>(
-  context: Context<T>,
-  value: T,
-  children: ReactNode
-): ReactElement {
+function renderContext<T>(context: Context<T>, value: T, children: ReactNode): ReactElement {
   const provider = "Provider" in context ? context.Provider : context;
   return React.createElement(provider, { value }, children);
 }
@@ -57,27 +47,14 @@ function colorsFor(scheme: ColorScheme): ThemeColors {
 
 function SystemThemeProvider({ children }: { children: ReactNode }) {
   // `useColorScheme` may be missing in non-RN test runners; fall back to light.
-  const systemScheme =
-    typeof useColorScheme === "function" ? useColorScheme() : null;
+  const systemScheme = typeof useColorScheme === "function" ? useColorScheme() : null;
   const scheme: ColorScheme = systemScheme === "dark" ? "dark" : "light";
-  const value = useMemo<ThemeContextValue>(
-    () => ({ colors: colorsFor(scheme), scheme }),
-    [scheme]
-  );
+  const value = useMemo<ThemeContextValue>(() => ({ colors: colorsFor(scheme), scheme }), [scheme]);
   return renderContext(ThemeContext, value, children);
 }
 
-function FixedThemeProvider({
-  children,
-  scheme
-}: {
-  children: ReactNode;
-  scheme: ColorScheme;
-}) {
-  const value = useMemo<ThemeContextValue>(
-    () => ({ colors: colorsFor(scheme), scheme }),
-    [scheme]
-  );
+function FixedThemeProvider({ children, scheme }: { children: ReactNode; scheme: ColorScheme }) {
+  const value = useMemo<ThemeContextValue>(() => ({ colors: colorsFor(scheme), scheme }), [scheme]);
   return renderContext(ThemeContext, value, children);
 }
 

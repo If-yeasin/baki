@@ -315,9 +315,7 @@ test("capture populated Baki ledger states", async ({ page }) => {
     .getByText(/তুমি পাবে|You are owed/)
     .first()
     .waitFor({ timeout: 8000 });
-  await expect(page.getByTestId("home-next-action")).toContainText(
-    /পরের সেটেল|Next to settle/
-  );
+  await expect(page.getByTestId("home-next-action")).toContainText(/পরের সেটেল|Next to settle/);
   await page.screenshot({
     fullPage: true,
     path: "output/playwright/baki-populated-home.png"
@@ -358,9 +356,7 @@ test("capture populated Baki ledger states", async ({ page }) => {
 
   await page.goto("http://localhost:8090/activity", { waitUntil: "networkidle" });
   await page.getByText("June rent").waitFor({ timeout: 8000 });
-  await expect(page.getByTestId("activity-summary-card")).toContainText(
-    /তুমি দিয়েছ|You paid/
-  );
+  await expect(page.getByTestId("activity-summary-card")).toContainText(/তুমি দিয়েছ|You paid/);
   await expect(page.getByTestId("activity-summary-card")).toContainText(
     /অন্যরা দিয়েছে|Others paid/
   );
@@ -401,9 +397,7 @@ test("capture populated Baki ledger states", async ({ page }) => {
   await page.goto(`http://localhost:8090/group/${FLAT_ID}`, { waitUntil: "networkidle" });
   await page.getByText("June rent").waitFor({ timeout: 8000 });
   await page.getByTestId("group-people-balance-preview").waitFor({ timeout: 8000 });
-  await expect(page.getByTestId("group-people-balance-preview")).toContainText(
-    /সেটেল|Settle/
-  );
+  await expect(page.getByTestId("group-people-balance-preview")).toContainText(/সেটেল|Settle/);
   await page.screenshot({
     fullPage: true,
     path: "output/playwright/baki-populated-group-detail-debt.png"
@@ -416,9 +410,7 @@ test("capture populated Baki ledger states", async ({ page }) => {
   await page.getByTestId("amount-input").fill("1200");
   await page.getByTestId("description-input").fill("Dinner");
   await page.getByTestId("expense-quick-preview").waitFor({ timeout: 8000 });
-  await expect(page.getByTestId("expense-quick-preview")).toContainText(
-    /লাইভ ভাগ|Live split/
-  );
+  await expect(page.getByTestId("expense-quick-preview")).toContainText(/লাইভ ভাগ|Live split/);
   await expect(page.getByTestId("expense-quick-preview")).toContainText(/৳ ৬০০|৳ 600/);
   await page.getByTestId("expense-split-preview").waitFor({ timeout: 8000 });
   await expect(page.getByTestId("expense-split-preview")).toContainText(/প্রতি জনে|per person/);
@@ -467,9 +459,7 @@ test("capture populated Baki ledger states", async ({ page }) => {
   await expect(page.getByTestId("group-create-preview-meta")).toContainText(
     /এরপর ডাকবে|Invite next/
   );
-  await expect(page.getByTestId("create-group-footer-summary")).toContainText(
-    /Sajek Winter Trip/
-  );
+  await expect(page.getByTestId("create-group-footer-summary")).toContainText(/Sajek Winter Trip/);
   await expect(page.getByTestId("create-group-footer-summary")).toContainText(/ট্রিপ|Trip/);
   await expect(page.getByTestId("create-group-submit")).toBeVisible();
   await page.screenshot({
@@ -481,9 +471,7 @@ test("capture populated Baki ledger states", async ({ page }) => {
   await page.getByText(/খাতায় যোগ দাও|Join a khata/).waitFor({ timeout: 8000 });
   await page.getByTestId("join-code-input").fill("SAJEK1");
   await expect(page.getByTestId("join-code-preview")).toContainText("SAJEK1");
-  await expect(page.getByTestId("join-code-status")).toContainText(
-    /কোড প্রস্তুত|Code ready/
-  );
+  await expect(page.getByTestId("join-code-status")).toContainText(/কোড প্রস্তুত|Code ready/);
   await expect(page.getByTestId("join-group-submit")).toBeVisible();
   await page.screenshot({
     fullPage: true,
@@ -512,9 +500,7 @@ test("capture populated Baki ledger states", async ({ page }) => {
     .getByText(/তুমি পাবে|You are owed/)
     .first()
     .waitFor({ timeout: 8000 });
-  await expect(page.getByTestId("home-next-action")).toContainText(
-    /পরের সেটেল|Next to settle/
-  );
+  await expect(page.getByTestId("home-next-action")).toContainText(/পরের সেটেল|Next to settle/);
   await page.screenshot({
     fullPage: true,
     path: "output/playwright/baki-compact-home.png"
@@ -537,9 +523,7 @@ test("capture populated Baki ledger states", async ({ page }) => {
 
   await page.goto("http://localhost:8090/activity", { waitUntil: "networkidle" });
   await page.getByText("June rent").waitFor({ timeout: 8000 });
-  await expect(page.getByTestId("activity-summary-card")).toContainText(
-    /তুমি দিয়েছ|You paid/
-  );
+  await expect(page.getByTestId("activity-summary-card")).toContainText(/তুমি দিয়েছ|You paid/);
   await expect(page.getByTestId("activity-summary-card")).toContainText(
     /অন্যরা দিয়েছে|Others paid/
   );
@@ -571,9 +555,7 @@ test("capture populated Baki ledger states", async ({ page }) => {
   await page.goto(`http://localhost:8090/group/${FLAT_ID}`, { waitUntil: "networkidle" });
   await page.getByText("June rent").waitFor({ timeout: 8000 });
   await page.getByTestId("group-people-balance-preview").waitFor({ timeout: 8000 });
-  await expect(page.getByTestId("group-people-balance-preview")).toContainText(
-    /সেটেল|Settle/
-  );
+  await expect(page.getByTestId("group-people-balance-preview")).toContainText(/সেটেল|Settle/);
   await page.screenshot({
     fullPage: true,
     path: "output/playwright/baki-compact-group-detail-debt.png"
@@ -586,9 +568,7 @@ test("capture populated Baki ledger states", async ({ page }) => {
   await page.getByTestId("amount-input").fill("1200");
   await page.getByTestId("description-input").fill("Dinner");
   await page.getByTestId("expense-quick-preview").waitFor({ timeout: 8000 });
-  await expect(page.getByTestId("expense-quick-preview")).toContainText(
-    /লাইভ ভাগ|Live split/
-  );
+  await expect(page.getByTestId("expense-quick-preview")).toContainText(/লাইভ ভাগ|Live split/);
   await expect(page.getByTestId("expense-quick-preview")).toContainText(/৳ ৬০০|৳ 600/);
   await page.getByTestId("expense-split-preview").waitFor({ timeout: 8000 });
   await expect(page.getByTestId("expense-split-preview")).toContainText(/প্রতি জনে|per person/);
@@ -628,9 +608,7 @@ test("capture populated Baki ledger states", async ({ page }) => {
   await expect(page.getByTestId("group-create-preview-meta")).toContainText(
     /এরপর ডাকবে|Invite next/
   );
-  await expect(page.getByTestId("create-group-footer-summary")).toContainText(
-    /Sajek Winter Trip/
-  );
+  await expect(page.getByTestId("create-group-footer-summary")).toContainText(/Sajek Winter Trip/);
   await expect(page.getByTestId("create-group-footer-summary")).toContainText(/ট্রিপ|Trip/);
   await expect(page.getByTestId("create-group-submit")).toBeVisible();
   await page.screenshot({
@@ -642,9 +620,7 @@ test("capture populated Baki ledger states", async ({ page }) => {
   await page.getByText(/খাতায় যোগ দাও|Join a khata/).waitFor({ timeout: 8000 });
   await page.getByTestId("join-code-input").fill("SAJEK1");
   await expect(page.getByTestId("join-code-preview")).toContainText("SAJEK1");
-  await expect(page.getByTestId("join-code-status")).toContainText(
-    /কোড প্রস্তুত|Code ready/
-  );
+  await expect(page.getByTestId("join-code-status")).toContainText(/কোড প্রস্তুত|Code ready/);
   await expect(page.getByTestId("join-group-submit")).toBeVisible();
   await page.screenshot({
     fullPage: true,

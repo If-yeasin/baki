@@ -1,6 +1,7 @@
 # Mobile wave — features, screens, hooks
 
 ## A. Feature modules
+
 - [x] `src/features/groups/types.ts`
 - [x] `src/features/groups/use-groups.ts`
 - [x] `src/features/groups/use-create-group.ts`
@@ -19,6 +20,7 @@
 - [x] `src/features/auth/use-session.ts`
 
 ## B. Screens
+
 - [x] `app/_layout.tsx` — registered new routes
 - [x] `app/index.tsx` — auth-gate redirect
 - [x] `app/(tabs)/_layout.tsx`
@@ -33,6 +35,7 @@
 - [x] `app/group/[id]/settle.tsx`
 
 ## C. Verification
+
 - [x] `pnpm --filter mobile typecheck` — 0 errors
 - [x] `pnpm --filter mobile test` — 19 tests pass across 2 files
 - [x] `pnpm --filter mobile lint` — 0 errors, 3 warnings (2 documented `any` for the RPC missing from generated types; 1 in the auto-generated router.d.ts)
@@ -42,6 +45,7 @@
 This wave wires up the entire MVP user journey end-to-end: from auth gate, through the four-tab shell, into group creation/join, group detail, add-expense (all four split methods routed through pure math), and settle-up via bKash / Nagad / cash / other.
 
 Key design decisions:
+
 - Split math lives in `features/expenses/split-math.ts` as pure functions with `SplitMathError` codes; the only error message that ships to the user is the existing `expense.validation.shares_must_sum` key.
 - `simplify-display.ts` projects `get_group_balances` rows into self-vs-other display rows (not the minimum-transfer plan; that stays on the server via `simplify_debts`).
 - All Supabase calls have `// TODO(offline-watermelon)` placeholders where the local-DB hydration will plug in; writes already enqueue into the existing `enqueueMutation` queue on failure.

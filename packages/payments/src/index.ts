@@ -41,7 +41,10 @@ export function buildSettlementPlan(input: SettlementPlanInput): PaymentLinkPlan
       // Exhaustiveness guard — if a new deep-link provider is added to
       // DeepLinkSettlementProvider, the compiler will force a case here.
       const exhaustive: never = provider;
-      throw new PaymentInputError("unsupported_provider", `unsupported_provider:${String(exhaustive)}`);
+      throw new PaymentInputError(
+        "unsupported_provider",
+        `unsupported_provider:${String(exhaustive)}`
+      );
     }
   }
 }

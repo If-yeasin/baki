@@ -128,12 +128,11 @@ export default function AddExpenseScreen() {
     const countLabel = formatMemberCount(splitMemberCount, locale);
     const splitCountLabel = t("expense.review.splitWithCount", { count: countLabel });
     const methodLabel = t(`expense.add.splitMethod.${splitMethod}`);
-    const readyForEqualPreview =
-      amountPaisa > 0 && splitMemberCount > 0 && splitMethod === "equal";
+    const readyForEqualPreview = amountPaisa > 0 && splitMemberCount > 0 && splitMethod === "equal";
     const equalShare = readyForEqualPreview
-      ? splitEqual(amountPaisa, selectedSplitMembers, { payerId: selectedPaidBy })[
+      ? (splitEqual(amountPaisa, selectedSplitMembers, { payerId: selectedPaidBy })[
           selectedSplitMembers[0] ?? ""
-        ] ?? 0
+        ] ?? 0)
       : 0;
 
     return {

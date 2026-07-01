@@ -204,9 +204,7 @@ export default function JoinGroupScreen() {
                 style={{ color: inviteCodeIsReady ? colors.brandPrimary : colors.inkSecondary }}
                 variant="label"
               >
-                {inviteCodeIsReady
-                  ? t("groups.join.code.ready")
-                  : t("groups.join.code.waiting")}
+                {inviteCodeIsReady ? t("groups.join.code.ready") : t("groups.join.code.waiting")}
               </Text>
               <Text ellipsizeMode="tail" numberOfLines={1} tone="muted" variant="caption">
                 {inviteCodeIsReady

@@ -30,7 +30,7 @@ Translating that to Baki's contract:
   `Settings → Delete account`. Settings is reachable only after phone
   OTP sign-in.
 - **Apple guidance:** "from within the app" — the deletion entry **must
-  be reachable in a logged-in state**, and Apple does *not* require a
+  be reachable in a logged-in state**, and Apple does _not_ require a
   pre-login deletion path. Settings-only is acceptable.
 - **Status:** PASS, with one caveat — Apple reviewers must be able to
   sign in, and Baki uses SMS OTP that Apple's test devices typically
@@ -48,8 +48,8 @@ Translating that to Baki's contract:
 - **Current state in tree:** the live `apps/mobile/app/(tabs)/settings.tsx`
   still surfaces only `t("settings.account.delete_coming_soon")` —
   `"Account deletion is coming soon."` / `"অ্যাকাউন্ট ডিলিটের ফিচার
-  শিগগিরই আসছে।"`. This is the stub flagged in `docs/RELEASE_NOTES.md
-  §0.2.1` and is fine for TestFlight but a hard blocker for App Store
+শিগগিরই আসছে।"`. This is the stub flagged in `docs/RELEASE_NOTES.md
+§0.2.1` and is fine for TestFlight but a hard blocker for App Store
   submission.
 - **What the contract owes the user on first delete:**
   1. A confirmation sheet that names the consequences in BN + EN
@@ -59,7 +59,7 @@ Translating that to Baki's contract:
      this).
   3. A success toast / screen reading the equivalent of
      `"Your account has been deleted. Some receipts may take up to 30
-     days to clear from backups per Apple Guideline 5.1.1(v)."` — i18n
+days to clear from backups per Apple Guideline 5.1.1(v)."` — i18n
      keys must ship in both `bn` and `en`.
   4. Forced sign-out immediately after success.
 - **Status:** PENDING on `account-delete-mobile-agent`. Verify the new
@@ -112,15 +112,15 @@ Translating that to Baki's contract:
 
 ### Per-guideline checklist mapping
 
-| Apple requirement | Contract | TestFlight | App Store v1.0 |
-|---|---|---|---|
-| In-app deletion entry, no sign-up wall | Settings → Delete account | OK (stub) | PASS (live flow) |
-| Confirmation step(s) | Two-step sheet, BN+EN | n/a (stub) | required |
-| Deletion or ≤30-day schedule, on-screen | Success screen + sign-out | n/a (stub) | required |
-| Personal data deletion or anonymization | Edge function cascades profile; expenses reassigned to tombstone | n/a (stub) | required |
-| Audit / compliance trail | `account_deletions` table proposed | not blocking | required for our bar |
-| Sign in with Apple alternative | N/A — phone OTP only, reviewer note ready | OK | OK |
-| Web deletion path | Not provided; in-app is sufficient | OK | OK |
+| Apple requirement                       | Contract                                                         | TestFlight   | App Store v1.0       |
+| --------------------------------------- | ---------------------------------------------------------------- | ------------ | -------------------- |
+| In-app deletion entry, no sign-up wall  | Settings → Delete account                                        | OK (stub)    | PASS (live flow)     |
+| Confirmation step(s)                    | Two-step sheet, BN+EN                                            | n/a (stub)   | required             |
+| Deletion or ≤30-day schedule, on-screen | Success screen + sign-out                                        | n/a (stub)   | required             |
+| Personal data deletion or anonymization | Edge function cascades profile; expenses reassigned to tombstone | n/a (stub)   | required             |
+| Audit / compliance trail                | `account_deletions` table proposed                               | not blocking | required for our bar |
+| Sign in with Apple alternative          | N/A — phone OTP only, reviewer note ready                        | OK           | OK                   |
+| Web deletion path                       | Not provided; in-app is sufficient                               | OK           | OK                   |
 
 ## B. TestFlight readiness checklist (delta from `docs/SETUP.md` §168–238)
 
@@ -166,7 +166,7 @@ Status legend: `[ ]` pending, `[~]` partial, `[x]` done.
   without a local DB (see section C). Must be exercised against the
   live project once.
 - `[~] .env.local present locally; EAS Secrets the source for the
-  build` — operator-side check; cannot verify from inside this
+build` — operator-side check; cannot verify from inside this
   read-only audit.
 - `[x] App icon, splash, adaptive icon present` — verified
   `apps/mobile/assets/icons/icon.png`, `adaptive-icon.png`,
@@ -178,7 +178,7 @@ Status legend: `[ ]` pending, `[~]` partial, `[x]` done.
   confirmed `apps/mobile/app.config.ts` line 17:
   `LSApplicationQueriesSchemes: ["bkashopen", "nagad"]`.
 - `[ ] Phone OTP provider configured in Supabase Auth, test number
-  allow-listed` — pending; Supabase-dashboard side, cannot verify from
+allow-listed` — pending; Supabase-dashboard side, cannot verify from
   the repo.
 
 ### §3 — Build & submit commands
@@ -234,7 +234,7 @@ Status legend: `[ ]` pending, `[~]` partial, `[x]` done.
   `docs/SETUP.md §6` and `docs/RELEASE_NOTES.md`; just needs to be
   copied into App Store Connect reviewer notes.
 - `[ ] Reviewer notes: ledger-not-payments framing + demo OTP bypass
-  account + demo data` — drafted; operator must paste into
+account + demo data` — drafted; operator must paste into
   App Store Connect and provision the demo account.
 - `[ ] Age rating 4+, Category Finance` — pending, App Store Connect.
 - `[ ] Privacy policy + Support URL live` — pending. Per
@@ -284,7 +284,7 @@ Status legend: `[ ]` pending, `[~]` partial, `[x]` done.
   Supabase local default), the whole `describe` block becomes
   `describe.skip` and the suite exits "green-with-warning."
 
-So `pnpm db:check` will not *fail* in this environment — it will
+So `pnpm db:check` will not _fail_ in this environment — it will
 **skip** the meaningful suite and print:
 `[db tests] Skipping cross-user RLS suite: <reason>.`
 
@@ -301,7 +301,7 @@ real local stack before the TestFlight upload, not rely on CI.
 - `docker` (CLI) — installed: `/usr/local/bin/docker` v29.4.2.
 - `docker` daemon — **NOT running.** `docker info` fails with
   `failed to connect to the docker API at
-  unix:///Users/muhammadyeasin/.docker/run/docker.sock`. The
+unix:///Users/muhammadyeasin/.docker/run/docker.sock`. The
   daemon socket is absent, which typically means Docker Desktop /
   Colima / OrbStack has not been started.
 
@@ -352,10 +352,10 @@ is on `PATH` and that the Supabase containers listen on port
 
 ### Dependencies missing in this environment
 
-| Dep | Why it matters | One-line install |
-|---|---|---|
-| Docker daemon | `supabase start` needs it | Launch Docker Desktop (`open -a Docker`) or `brew install --cask docker` if not present |
-| `psql` | Host-driver path for the RLS suite | `brew install libpq && brew link --force libpq` |
+| Dep           | Why it matters                     | One-line install                                                                        |
+| ------------- | ---------------------------------- | --------------------------------------------------------------------------------------- |
+| Docker daemon | `supabase start` needs it          | Launch Docker Desktop (`open -a Docker`) or `brew install --cask docker` if not present |
+| `psql`        | Host-driver path for the RLS suite | `brew install libpq && brew link --force libpq`                                         |
 
 The `docker exec` fallback in the test files looks for a container
 named `supabase_db_Baki_-_` (note the project-name slug from
