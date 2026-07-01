@@ -345,6 +345,7 @@ export type Database = {
       settlements: {
         Row: {
           amount_paisa: number
+          client_mutation_id: string | null
           created_at: string
           external_ref: string | null
           from_user: string
@@ -356,6 +357,7 @@ export type Database = {
         }
         Insert: {
           amount_paisa: number
+          client_mutation_id?: string | null
           created_at?: string
           external_ref?: string | null
           from_user: string
@@ -367,6 +369,7 @@ export type Database = {
         }
         Update: {
           amount_paisa?: number
+          client_mutation_id?: string | null
           created_at?: string
           external_ref?: string | null
           from_user?: string
@@ -425,6 +428,7 @@ export type Database = {
       create_settlement: {
         Args: {
           p_amount_paisa: number
+          p_client_mutation_id?: string
           p_external_ref?: string
           p_from_user: string
           p_group_id: string

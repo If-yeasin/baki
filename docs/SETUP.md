@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Node.js 20 LTS (use `nvm` or `mise`)
+- Node.js 24 LTS (use `nvm` or `mise`)
 - pnpm 9+
 - Watchman (macOS): `brew install watchman`
 - Xcode 16+ (for iOS builds; macOS only)

@@ -1,4 +1,4 @@
-import { Cloud, CloudOff } from "lucide-react-native";
+import { CircleAlert, Cloud, CloudOff } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { View } from "react-native";
 
@@ -9,10 +9,13 @@ import { useSyncStatus } from "@/features/offline/use-sync-status";
 export function SyncStatusIndicator() {
   const { t } = useTranslation();
   const sync = useSyncStatus();
+  const isFailed = sync.state === "failed";
   const isPending = sync.state === "pending";
-  const label = isPending
-    ? t("sync.status.pending", { count: sync.pendingCount })
-    : t("sync.status.synced");
+  const label = isFailed
+    ? t("sync.status.failed")
+    : isPending
+      ? t("sync.status.pending", { count: sync.pendingCount })
+      : t("sync.status.synced");
 
   return (
     <View
@@ -26,7 +29,9 @@ export function SyncStatusIndicator() {
         paddingHorizontal: spacing.md
       }}
     >
-      {isPending ? (
+      {isFailed ? (
+        <CircleAlert color={lightColors.negative} size={18} />
+      ) : isPending ? (
         <CloudOff color={lightColors.warning} size={18} />
       ) : (
         <Cloud color={lightColors.brandPrimary} size={18} />

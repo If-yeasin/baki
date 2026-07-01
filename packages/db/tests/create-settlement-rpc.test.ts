@@ -182,14 +182,23 @@ type CreatedSettlementSummary = {
   settlementId: string;
 };
 
+type RetriedSettlementSummary = {
+  activityCount: number;
+  firstSettlementId: string;
+  secondSettlementId: string;
+  settlementCount: number;
+};
+
 function createSettlementSql({
   amountPaisa,
+  clientMutationId,
   externalRef,
   fromUser = SEED.tanvirId,
   method = "bkash",
   toUser = SEED.riniId
 }: {
   amountPaisa: number;
+  clientMutationId?: string;
   externalRef?: string;
   fromUser?: string;
   method?: string;
@@ -208,6 +217,7 @@ function createSettlementSql({
       p_amount_paisa := ${amountPaisa},
       p_method := ${sqlLiteral(method)}
       ${externalRef ? `, p_external_ref := ${sqlLiteral(externalRef)}` : ""}
+      ${clientMutationId ? `, p_client_mutation_id := ${sqlLiteral(clientMutationId)}` : ""}
     );
 
     select jsonb_build_object(
@@ -235,6 +245,62 @@ function createSettlementSql({
             select id::text from created_settlement_rpc_result
           )
         limit 1
+      )
+    )::text;
+  `;
+}
+
+function retrySettlementSql({
+  clientMutationId,
+  externalRef
+}: {
+  clientMutationId: string;
+  externalRef: string;
+}): string {
+  const createSql = (attempt: number) => `
+    insert into retried_settlement_rpc_result (attempt, id)
+    select ${attempt}, public.create_settlement(
+      p_group_id := ${sqlLiteral(SEED.groupId)}::uuid,
+      p_from_user := ${sqlLiteral(SEED.tanvirId)}::uuid,
+      p_to_user := ${sqlLiteral(SEED.riniId)}::uuid,
+      p_amount_paisa := 12300,
+      p_method := 'bkash',
+      p_external_ref := ${sqlLiteral(externalRef)},
+      p_client_mutation_id := ${sqlLiteral(clientMutationId)}
+    );
+  `;
+
+  return `
+    create temporary table retried_settlement_rpc_result (
+      attempt integer primary key,
+      id uuid not null
+    ) on commit drop;
+
+    ${createSql(1)}
+    ${createSql(2)}
+
+    select jsonb_build_object(
+      'firstSettlementId', (
+        select id::text from retried_settlement_rpc_result where attempt = 1
+      ),
+      'secondSettlementId', (
+        select id::text from retried_settlement_rpc_result where attempt = 2
+      ),
+      'settlementCount', (
+        select count(*)::int
+        from public.settlements
+        where group_id = ${sqlLiteral(SEED.groupId)}::uuid
+          and from_user = ${sqlLiteral(SEED.tanvirId)}::uuid
+          and client_mutation_id = ${sqlLiteral(clientMutationId)}
+      ),
+      'activityCount', (
+        select count(*)::int
+        from public.activity_log
+        where group_id = ${sqlLiteral(SEED.groupId)}::uuid
+          and event_type = 'settled'
+          and payload->>'settlement_id' = (
+            select id::text from retried_settlement_rpc_result where attempt = 1
+          )
       )
     )::text;
   `;
@@ -285,6 +351,21 @@ describeIfDb(suiteName, () => {
     expect(result.settlementCount).toBe(1);
     expect(result.activityCount).toBe(1);
     expect(result.activityMethod).toBe("bkash");
+  });
+
+  it("returns the existing id without duplicating settlements or activity on retry", () => {
+    const result = runJsonAsAuthenticated<RetriedSettlementSummary>(
+      SEED.tanvirId,
+      retrySettlementSql({
+        clientMutationId: `settlement-test:${randomUUID()}`,
+        externalRef: `BKASH-${randomUUID()}`
+      })
+    );
+
+    expect(result.firstSettlementId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(result.secondSettlementId).toBe(result.firstSettlementId);
+    expect(result.settlementCount).toBe(1);
+    expect(result.activityCount).toBe(1);
   });
 
   it("rejects an unauthenticated caller", () => {

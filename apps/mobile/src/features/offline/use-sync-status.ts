@@ -1,25 +1,27 @@
 import { useEffect, useState } from "react";
 
-import { listQueuedMutations } from "./mutation-queue";
+import { getQueueStats } from "./mutation-queue";
 
 export type SyncStatus = {
+  failedCount: number;
   pendingCount: number;
-  state: "idle" | "pending";
+  state: "failed" | "idle" | "pending";
 };
 
 export function useSyncStatus(pollMs = 5000): SyncStatus {
-  const [pendingCount, setPendingCount] = useState(() => listQueuedMutations().length);
+  const [stats, setStats] = useState(() => getQueueStats());
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setPendingCount(listQueuedMutations().length);
+      setStats(getQueueStats());
     }, pollMs);
 
     return () => clearInterval(timer);
   }, [pollMs]);
 
   return {
-    pendingCount,
-    state: pendingCount > 0 ? "pending" : "idle"
+    failedCount: stats.failedCount,
+    pendingCount: stats.pendingCount,
+    state: stats.failedCount > 0 ? "failed" : stats.pendingCount > 0 ? "pending" : "idle"
   };
 }

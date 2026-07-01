@@ -1,4 +1,12 @@
 import { storage } from "@/lib/mmkv";
+import { supabase } from "@/lib/supabase";
+
+import type { Database } from "@baki/db";
+
+type CreateExpensePayload = Database["public"]["Functions"]["create_expense"]["Args"];
+type CreateSettlementPayload = Database["public"]["Functions"]["create_settlement"]["Args"];
+
+export type QueuedMutationStatus = "pending" | "failed";
 
 export type QueuedMutationType =
   | "group.create"
@@ -10,13 +18,44 @@ export type QueuedMutationType =
 
 export type QueuedMutation = {
   createdAt: string;
+  failedAt?: string;
   id: string;
+  lastErrorCode?: string;
+  lastErrorMessage?: string;
+  lastRetriedAt?: string;
   payload: Record<string, unknown>;
   retryCount: number;
+  status?: QueuedMutationStatus;
   type: QueuedMutationType;
 };
 
+export type QueueStats = {
+  failedCount: number;
+  pendingCount: number;
+  totalCount: number;
+};
+
+export type ProcessQueuedMutationsResult = {
+  attempted: number;
+  failed: number;
+  retried: number;
+  skipped: number;
+  succeeded: number;
+};
+
 const queueKey = "offline.mutationQueue.v1";
+const permanentErrorCodes = new Set([
+  "22023",
+  "22P02",
+  "23502",
+  "23503",
+  "23505",
+  "23514",
+  "28000",
+  "42501",
+  "P0001",
+  "empty_result"
+]);
 
 function readQueue(): QueuedMutation[] {
   const raw = storage.getString(queueKey);
@@ -42,7 +81,8 @@ export function enqueueMutation(input: Omit<QueuedMutation, "createdAt" | "id" |
     ...input,
     createdAt: new Date().toISOString(),
     id: `${input.type}:${Date.now()}:${Math.random().toString(36).slice(2)}`,
-    retryCount: 0
+    retryCount: 0,
+    status: input.status ?? "pending"
   };
 
   writeQueue([...readQueue(), mutation]);
@@ -53,14 +93,146 @@ export function listQueuedMutations() {
   return readQueue();
 }
 
+export function getQueueStats(): QueueStats {
+  const queue = readQueue();
+  const failedCount = queue.filter((mutation) => mutation.status === "failed").length;
+
+  return {
+    failedCount,
+    pendingCount: queue.length - failedCount,
+    totalCount: queue.length
+  };
+}
+
 export function removeQueuedMutation(id: string) {
   writeQueue(readQueue().filter((mutation) => mutation.id !== id));
 }
 
-export function markQueuedMutationRetried(id: string) {
+export function markQueuedMutationRetried(id: string, error?: unknown) {
+  const errorDetails = getQueuedMutationErrorDetails(error);
+
   writeQueue(
     readQueue().map((mutation) =>
-      mutation.id === id ? { ...mutation, retryCount: mutation.retryCount + 1 } : mutation
+      mutation.id === id
+        ? {
+            ...mutation,
+            failedAt: undefined,
+            lastErrorCode: errorDetails.code,
+            lastErrorMessage: errorDetails.message,
+            lastRetriedAt: new Date().toISOString(),
+            retryCount: mutation.retryCount + 1,
+            status: "pending"
+          }
+        : mutation
     )
   );
+}
+
+export function markQueuedMutationFailed(id: string, error?: unknown) {
+  const errorDetails = getQueuedMutationErrorDetails(error);
+
+  writeQueue(
+    readQueue().map((mutation) =>
+      mutation.id === id
+        ? {
+            ...mutation,
+            failedAt: new Date().toISOString(),
+            lastErrorCode: errorDetails.code,
+            lastErrorMessage: errorDetails.message,
+            status: "failed"
+          }
+        : mutation
+    )
+  );
+}
+
+export function isPermanentQueuedMutationError(error: unknown) {
+  const details = getQueuedMutationErrorDetails(error);
+  if (details.code && permanentErrorCodes.has(details.code)) {
+    return true;
+  }
+
+  if (details.status === undefined) {
+    return false;
+  }
+
+  if (details.status === 408 || details.status === 429) {
+    return false;
+  }
+
+  return details.status >= 400 && details.status < 500;
+}
+
+export async function processQueuedMutations(): Promise<ProcessQueuedMutationsResult> {
+  const result: ProcessQueuedMutationsResult = {
+    attempted: 0,
+    failed: 0,
+    retried: 0,
+    skipped: 0,
+    succeeded: 0
+  };
+
+  for (const mutation of readQueue()) {
+    if (mutation.status === "failed") {
+      result.skipped += 1;
+      continue;
+    }
+
+    if (mutation.type !== "expense.create" && mutation.type !== "settlement.create") {
+      result.skipped += 1;
+      continue;
+    }
+
+    result.attempted += 1;
+
+    const response =
+      mutation.type === "expense.create"
+        ? await supabase.rpc("create_expense", mutation.payload as CreateExpensePayload)
+        : await supabase.rpc("create_settlement", mutation.payload as CreateSettlementPayload);
+
+    if (response.error) {
+      if (isPermanentQueuedMutationError(response.error)) {
+        markQueuedMutationFailed(mutation.id, response.error);
+        result.failed += 1;
+      } else {
+        markQueuedMutationRetried(mutation.id, response.error);
+        result.retried += 1;
+      }
+      continue;
+    }
+
+    if (!response.data) {
+      markQueuedMutationFailed(mutation.id, {
+        code: "empty_result",
+        message: `${mutation.type}.empty_result`
+      });
+      result.failed += 1;
+      continue;
+    }
+
+    removeQueuedMutation(mutation.id);
+    result.succeeded += 1;
+  }
+
+  return result;
+}
+
+function getQueuedMutationErrorDetails(error: unknown): {
+  code?: string;
+  message: string;
+  status?: number;
+} {
+  const record =
+    typeof error === "object" && error !== null ? (error as Record<string, unknown>) : null;
+
+  const code = record && typeof record.code === "string" ? record.code : undefined;
+  const status = record && typeof record.status === "number" ? record.status : undefined;
+  const message =
+    error instanceof Error
+      ? error.message
+      : record && typeof record.message === "string"
+        ? record.message
+        : "queued_mutation_failed";
+
+  return { code, message, status };
 }

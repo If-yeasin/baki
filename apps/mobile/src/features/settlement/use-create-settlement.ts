@@ -10,6 +10,7 @@ export type SettlementMethod = "bkash" | "nagad" | "cash" | "other";
 
 export type CreateSettlementInput = {
   amountPaisa: number;
+  clientMutationId?: string;
   externalRef?: string;
   fromUser: string;
   groupId: string;
@@ -17,13 +18,20 @@ export type CreateSettlementInput = {
   toUser: string;
 };
 
+function createClientMutationId() {
+  return `settlement:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 12)}`;
+}
+
 export function useCreateSettlement() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (input: CreateSettlementInput) => {
+      const clientMutationId = input.clientMutationId?.trim() || createClientMutationId();
+
       const rpcPayload = {
         p_amount_paisa: input.amountPaisa,
+        p_client_mutation_id: clientMutationId,
         ...(input.externalRef === undefined ? {} : { p_external_ref: input.externalRef }),
         p_from_user: input.fromUser,
         p_group_id: input.groupId,
