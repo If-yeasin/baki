@@ -80,6 +80,7 @@ create table public.expenses (
   occurred_at timestamptz not null default now(),
   note text,
   receipt_url text,
+  client_mutation_id text,
   created_by uuid not null references public.profiles(id),
   deleted_at timestamptz,
   created_at timestamptz not null default now(),
@@ -87,6 +88,8 @@ create table public.expenses (
 );
 
 create index on public.expenses (group_id, occurred_at desc);
+create unique index on public.expenses (group_id, created_by, client_mutation_id)
+  where client_mutation_id is not null;
 ```
 
 ### `expense_shares`
@@ -191,14 +194,27 @@ Given a group, computes net balances and returns the minimum-transaction settlem
 ### `create_expense(...) returns uuid`
 Atomic expense writer used by the mobile app.
 
-- Signature: `create_expense(p_group_id uuid, p_amount_paisa bigint, p_description text, p_category text, p_paid_by uuid, p_split_method text, p_shares jsonb, p_occurred_at timestamptz default now(), p_note text default null, p_receipt_url text default null) returns uuid`
+- Signature: `create_expense(p_group_id uuid, p_amount_paisa bigint, p_description text, p_category text, p_paid_by uuid, p_split_method text, p_shares jsonb, p_occurred_at timestamptz default now(), p_note text default null, p_receipt_url text default null, p_client_mutation_id text default null) returns uuid`
 - `p_shares` is a JSON object keyed by member UUID: `{ "<user_id>": <share_paisa> }`
+- `p_client_mutation_id` is optional. When present, retries for the same `group_id`, caller, and client mutation id return the existing expense id instead of inserting another expense or duplicate share rows.
 - Requires `auth.uid()`; raises `not_authenticated` (`28000`) for anonymous callers
 - Verifies the caller is a current group member; raises `not_group_member` (`42501`) otherwise
 - Verifies `p_paid_by` is a current group member; raises `paid_by_not_group_member` (`42501`) otherwise
 - Verifies every share user is a current group member; raises `split_user_not_group_member` (`42501`) otherwise
 - Verifies all share values are non-negative integer paisa and sum exactly to `p_amount_paisa`; raises `split_total_mismatch` (`23514`) if the total is wrong
 - Inserts the parent `expenses` row and all `expense_shares` rows in one Postgres transaction. The existing `expenses_log_activity` trigger writes the `activity_log` row in that same transaction.
+- `SECURITY INVOKER`; normal table RLS still applies. `EXECUTE` is revoked from `public`/`anon` and granted only to `authenticated`.
+
+### `create_settlement(...) returns uuid`
+Atomic settlement writer used by the mobile app.
+
+- Signature: `create_settlement(p_group_id uuid, p_from_user uuid, p_to_user uuid, p_amount_paisa bigint, p_method text, p_external_ref text default null, p_occurred_at timestamptz default now()) returns uuid`
+- Requires `auth.uid()`; raises `not_authenticated` (`28000`) for anonymous callers
+- Verifies the caller is a current group member; raises `not_group_member` (`42501`) otherwise
+- Verifies both settlement parties are current group members; raises `from_user_not_group_member` or `to_user_not_group_member` (`42501`) otherwise
+- Verifies the caller is one side of the settlement; raises `settlement_party_required` (`42501`) otherwise
+- Verifies `p_from_user` and `p_to_user` are different, `p_amount_paisa` is positive, and `p_method` is one of `bkash`, `nagad`, `cash`, or `other`
+- Inserts the `settlements` row in one Postgres transaction. The existing `settlements_log_activity` trigger writes the `settled` `activity_log` row in that same transaction.
 - `SECURITY INVOKER`; normal table RLS still applies. `EXECUTE` is revoked from `public`/`anon` and granted only to `authenticated`.
 
 ## Triggers
@@ -222,6 +238,7 @@ Clients subscribe per-group; the mobile app filters by `group_id = $current_grou
 
 - `groups(invite_code)` — already unique
 - `expenses(group_id, occurred_at desc)`
+- `expenses(group_id, created_by, client_mutation_id) where client_mutation_id is not null` — idempotent mobile retries
 - `expense_shares(user_id)` — for "all my balances" view
 - `settlements(group_id, occurred_at desc)`
 - `activity_log(group_id, created_at desc)`
@@ -258,11 +275,12 @@ The doc prose says "UPDATE: only if user is admin of the group". This is enforce
 ### Database functions added since 0001
 
 - `get_group_balances(p_group_id uuid) returns table(user_id uuid, net_paisa bigint)` — added in `0003_balances_helper.sql`. `SECURITY DEFINER`, raises `not_group_member` (SQLSTATE `42501`) if the caller is not a current member. Returns one row per member who has a non-zero net (creditor positive, debtor negative). The mobile app uses this for the per-member balance strip without re-running `simplify_debts`.
-- `create_expense(...) returns uuid` — added in `20260630230837_create_expense_rpc.sql`. `SECURITY INVOKER`, raises `not_authenticated` (`28000`) for anon callers, `not_group_member` / `paid_by_not_group_member` / `split_user_not_group_member` (`42501`) for membership failures, and `split_total_mismatch` (`23514`) when shares do not sum to the expense amount. Returns the inserted expense UUID.
+- `create_expense(...) returns uuid` — added in `20260630230837_create_expense_rpc.sql` and made idempotent in `20260630235302_retry_safe_money_rpc.sql`. `SECURITY INVOKER`, raises `not_authenticated` (`28000`) for anon callers, `not_group_member` / `paid_by_not_group_member` / `split_user_not_group_member` (`42501`) for membership failures, and `split_total_mismatch` (`23514`) when shares do not sum to the expense amount. Returns the inserted expense UUID, or the existing UUID for a retry with the same non-null client mutation id.
+- `create_settlement(...) returns uuid` — added in `20260630235302_retry_safe_money_rpc.sql`. `SECURITY INVOKER`, validates caller membership, settlement parties, amount, method, and party participation before inserting the settlement. The `settlements_log_activity` trigger writes the `settled` event in the same transaction.
 
 ### Type-generation note
 
-`packages/db/src/types.ts` is regenerated against a local Supabase with all migrations applied (`0001`–`0004` plus `20260630230837_create_expense_rpc` as of 2026-06-30). `Database["public"]["Functions"].get_group_balances`, `Database["public"]["Functions"].delete_my_account`, and `Database["public"]["Functions"].create_expense` are present and typed. `GroupBalanceRow` in `packages/db/src/index.ts` is derived from that generated type, so the mobile app calls `supabase.rpc("get_group_balances", { p_group_id })` against the typed client with no casts. Re-run `pnpm --filter db gen:types` after any new migration that touches a table, enum, relationship, function, or return shape.
+`packages/db/src/types.ts` is regenerated against a local Supabase with all migrations applied (`0001`–`0004`, `20260630230837_create_expense_rpc`, and `20260630235302_retry_safe_money_rpc` as of 2026-06-30). `Database["public"]["Functions"].get_group_balances`, `Database["public"]["Functions"].delete_my_account`, `Database["public"]["Functions"].create_expense`, and `Database["public"]["Functions"].create_settlement` are present and typed. `GroupBalanceRow` in `packages/db/src/index.ts` is derived from that generated type, so the mobile app calls `supabase.rpc("get_group_balances", { p_group_id })` against the typed client with no casts. Re-run `pnpm --filter db gen:types` after any new migration that touches a table, enum, relationship, function, or return shape.
 
 ## Account deletion
 

@@ -145,6 +145,7 @@ export type Database = {
         Row: {
           amount_paisa: number
           category: string
+          client_mutation_id: string | null
           created_at: string
           created_by: string
           deleted_at: string | null
@@ -161,6 +162,7 @@ export type Database = {
         Insert: {
           amount_paisa: number
           category: string
+          client_mutation_id?: string | null
           created_at?: string
           created_by: string
           deleted_at?: string | null
@@ -177,6 +179,7 @@ export type Database = {
         Update: {
           amount_paisa?: number
           category?: string
+          client_mutation_id?: string | null
           created_at?: string
           created_by?: string
           deleted_at?: string | null
@@ -407,6 +410,7 @@ export type Database = {
         Args: {
           p_amount_paisa: number
           p_category: string
+          p_client_mutation_id?: string
           p_description: string
           p_group_id: string
           p_note?: string
@@ -415,6 +419,18 @@ export type Database = {
           p_receipt_url?: string
           p_shares: Json
           p_split_method: string
+        }
+        Returns: string
+      }
+      create_settlement: {
+        Args: {
+          p_amount_paisa: number
+          p_external_ref?: string
+          p_from_user: string
+          p_group_id: string
+          p_method: string
+          p_occurred_at?: string
+          p_to_user: string
         }
         Returns: string
       }

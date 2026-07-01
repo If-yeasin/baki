@@ -182,9 +182,19 @@ type CreatedExpenseSummary = {
   sharesCount: number;
 };
 
+type RetriedExpenseSummary = {
+  activityCount: number;
+  expenseCount: number;
+  firstExpenseId: string;
+  secondExpenseId: string;
+  shareTotal: number;
+  sharesCount: number;
+};
+
 function createExpenseSql({
   amountPaisa,
   category = "food",
+  clientMutationId,
   description,
   paidBy = SEED.tanvirId,
   shares,
@@ -192,6 +202,7 @@ function createExpenseSql({
 }: {
   amountPaisa: number;
   category?: string;
+  clientMutationId?: string;
   description: string;
   paidBy?: string;
   shares: string;
@@ -211,6 +222,7 @@ function createExpenseSql({
       p_paid_by := ${sqlLiteral(paidBy)}::uuid,
       p_split_method := ${sqlLiteral(splitMethod)},
       p_shares := ${shares}
+      ${clientMutationId ? `, p_client_mutation_id := ${sqlLiteral(clientMutationId)}` : ""}
     );
 
     select jsonb_build_object(
@@ -237,6 +249,83 @@ function createExpenseSql({
           and actor_id = ${sqlLiteral(SEED.tanvirId)}::uuid
           and event_type = 'expense_added'
           and payload->>'expense_id' = (select id::text from created_expense_rpc_result)
+      )
+    )::text;
+  `;
+}
+
+function retryExpenseSql({
+  clientMutationId,
+  description
+}: {
+  clientMutationId: string;
+  description: string;
+}): string {
+  const shares = shareObject([
+    [SEED.tanvirId, 5_001],
+    [SEED.riniId, 5_000]
+  ]);
+
+  const createSql = (attempt: number) => `
+    insert into retried_expense_rpc_result (attempt, id)
+    select ${attempt}, public.create_expense(
+      p_group_id := ${sqlLiteral(SEED.groupId)}::uuid,
+      p_amount_paisa := 10001,
+      p_description := ${sqlLiteral(description)},
+      p_category := 'food',
+      p_paid_by := ${sqlLiteral(SEED.tanvirId)}::uuid,
+      p_split_method := 'equal',
+      p_shares := ${shares},
+      p_client_mutation_id := ${sqlLiteral(clientMutationId)}
+    );
+  `;
+
+  return `
+    create temporary table retried_expense_rpc_result (
+      attempt integer primary key,
+      id uuid not null
+    ) on commit drop;
+
+    ${createSql(1)}
+    ${createSql(2)}
+
+    select jsonb_build_object(
+      'firstExpenseId', (
+        select id::text from retried_expense_rpc_result where attempt = 1
+      ),
+      'secondExpenseId', (
+        select id::text from retried_expense_rpc_result where attempt = 2
+      ),
+      'expenseCount', (
+        select count(*)::int
+        from public.expenses
+        where group_id = ${sqlLiteral(SEED.groupId)}::uuid
+          and created_by = ${sqlLiteral(SEED.tanvirId)}::uuid
+          and client_mutation_id = ${sqlLiteral(clientMutationId)}
+      ),
+      'sharesCount', (
+        select count(*)::int
+        from public.expense_shares
+        where expense_id = (
+          select id from retried_expense_rpc_result where attempt = 1
+        )
+      ),
+      'shareTotal', (
+        select coalesce(sum(share_paisa), 0)::int
+        from public.expense_shares
+        where expense_id = (
+          select id from retried_expense_rpc_result where attempt = 1
+        )
+      ),
+      'activityCount', (
+        select count(*)::int
+        from public.activity_log
+        where group_id = ${sqlLiteral(SEED.groupId)}::uuid
+          and actor_id = ${sqlLiteral(SEED.tanvirId)}::uuid
+          and event_type = 'expense_added'
+          and payload->>'expense_id' = (
+            select id::text from retried_expense_rpc_result where attempt = 1
+          )
       )
     )::text;
   `;
@@ -296,6 +385,23 @@ describeIfDb(suiteName, () => {
     );
 
     expect(result.expenseId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(result.expenseCount).toBe(1);
+    expect(result.sharesCount).toBe(2);
+    expect(result.shareTotal).toBe(10_001);
+    expect(result.activityCount).toBe(1);
+  });
+
+  it("returns the existing id without duplicating expenses or shares on retry", () => {
+    const result = runJsonAsAuthenticated<RetriedExpenseSummary>(
+      SEED.tanvirId,
+      retryExpenseSql({
+        clientMutationId: `expense-test:${randomUUID()}`,
+        description: "RPC idempotent retry"
+      })
+    );
+
+    expect(result.firstExpenseId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(result.secondExpenseId).toBe(result.firstExpenseId);
     expect(result.expenseCount).toBe(1);
     expect(result.sharesCount).toBe(2);
     expect(result.shareTotal).toBe(10_001);

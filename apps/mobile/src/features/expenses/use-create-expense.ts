@@ -12,6 +12,7 @@ import { expensesKeys } from "./use-expenses";
 export type CreateExpenseInput = {
   amountPaisa: number;
   category: ExpenseCategory;
+  clientMutationId?: string;
   description: string;
   groupId: string;
   paidBy: string;
@@ -55,6 +56,10 @@ function computeShares(input: CreateExpenseInput): Record<string, number> {
   }
 }
 
+function createClientMutationId() {
+  return `expense:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 12)}`;
+}
+
 export function useCreateExpense() {
   const queryClient = useQueryClient();
 
@@ -74,10 +79,12 @@ export function useCreateExpense() {
       }
 
       const shares = computeShares(input);
+      const clientMutationId = input.clientMutationId?.trim() || createClientMutationId();
 
       const rpcPayload = {
         p_amount_paisa: input.amountPaisa,
         p_category: input.category,
+        p_client_mutation_id: clientMutationId,
         p_description: input.description.trim(),
         p_group_id: input.groupId,
         p_paid_by: input.paidBy,
