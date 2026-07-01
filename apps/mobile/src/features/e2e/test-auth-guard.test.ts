@@ -5,7 +5,8 @@ import { canUseE2ETestAuth } from "./test-auth-guard";
 const fixture = {
   seedEmail: "tanvir@example.test",
   seedPassword: "password",
-  seedUserId: "11111111-1111-4111-8111-111111111111"
+  seedUserId: "11111111-1111-4111-8111-111111111111",
+  supabaseEnv: "preview"
 };
 
 describe("canUseE2ETestAuth", () => {
@@ -46,13 +47,26 @@ describe("canUseE2ETestAuth", () => {
   it("requires the non-secret seeded user fixture", () => {
     expect(
       canUseE2ETestAuth({
-        appChannel: "preview",
+        appChannel: fixture.supabaseEnv,
         e2eMode: "true",
         isDev: false,
         seedEmail: "tanvir@example.test",
-        seedPassword: "password"
+        seedPassword: "password",
+        supabaseEnv: fixture.supabaseEnv
       })
     ).toEqual({ enabled: false, reason: "fixture_missing" });
+  });
+
+  it("is disabled when E2E does not declare a local, preview, or test Supabase target", () => {
+    expect(
+      canUseE2ETestAuth({
+        ...fixture,
+        appChannel: "preview",
+        e2eMode: "true",
+        isDev: false,
+        supabaseEnv: "production"
+      })
+    ).toEqual({ enabled: false, reason: "production_supabase" });
   });
 
   it("is enabled for preview E2E builds with the complete fixture", () => {

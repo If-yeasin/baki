@@ -7,11 +7,13 @@ const ALLOWED_BUILD_PROFILES = new Set([
   "preview-e2e"
 ]);
 const ALLOWED_CHANNELS = new Set(["dev", "development", "preview", "preview-e2e"]);
+const ALLOWED_SUPABASE_ENVS = new Set(["local", "preview", "test"]);
 
 export type E2ETestAuthDisabledReason =
   | "e2e_flag_disabled"
   | "fixture_missing"
   | "not_preview_or_dev"
+  | "production_supabase"
   | "production_variant";
 
 export type E2ETestAuthGuardInput = {
@@ -22,6 +24,7 @@ export type E2ETestAuthGuardInput = {
   seedEmail?: boolean | number | string | null;
   seedPassword?: boolean | number | string | null;
   seedUserId?: boolean | number | string | null;
+  supabaseEnv?: boolean | number | string | null;
 };
 
 export type E2ETestAuthConfig =
@@ -55,6 +58,7 @@ export function canUseE2ETestAuth(input: E2ETestAuthGuardInput): E2ETestAuthConf
   const seedEmail = normalize(input.seedEmail);
   const seedPassword = normalize(input.seedPassword);
   const expectedUserId = normalize(input.seedUserId);
+  const supabaseEnv = normalizeLower(input.supabaseEnv);
 
   if (!isE2EModeEnabled(input.e2eMode)) {
     return { enabled: false, reason: "e2e_flag_disabled" };
@@ -69,6 +73,10 @@ export function canUseE2ETestAuth(input: E2ETestAuthGuardInput): E2ETestAuthConf
 
   if (!isAllowedVariant) {
     return { enabled: false, reason: "not_preview_or_dev" };
+  }
+
+  if (!ALLOWED_SUPABASE_ENVS.has(supabaseEnv)) {
+    return { enabled: false, reason: "production_supabase" };
   }
 
   if (!expectedUserId || !seedEmail || !seedPassword) {

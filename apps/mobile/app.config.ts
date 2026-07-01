@@ -3,7 +3,9 @@ import type { ExpoConfig } from "expo/config";
 const e2eMode = process.env.EXPO_PUBLIC_E2E_MODE === "true";
 const easBuildProfile = process.env.EAS_BUILD_PROFILE ?? "";
 const appChannel = process.env.EXPO_PUBLIC_APP_CHANNEL ?? "";
+const supabaseEnv = process.env.EXPO_PUBLIC_SUPABASE_ENV ?? "";
 const productionMarkers = new Set(["production", "prod"]);
+const allowedE2ESupabaseEnvs = new Set(["local", "preview", "test"]);
 
 if (
   e2eMode &&
@@ -11,6 +13,10 @@ if (
     productionMarkers.has(appChannel.toLowerCase()))
 ) {
   throw new Error("EXPO_PUBLIC_E2E_MODE cannot be enabled for production builds.");
+}
+
+if (e2eMode && !allowedE2ESupabaseEnvs.has(supabaseEnv.toLowerCase())) {
+  throw new Error("EXPO_PUBLIC_E2E_MODE requires EXPO_PUBLIC_SUPABASE_ENV=local|preview|test.");
 }
 
 const config: ExpoConfig = {
@@ -73,6 +79,7 @@ const config: ExpoConfig = {
       : undefined,
     sentryDsn: process.env.EXPO_PUBLIC_SENTRY_DSN,
     supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+    supabaseEnv,
     supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL
   }
 };

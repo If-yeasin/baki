@@ -22,6 +22,7 @@ All env vars live in `apps/mobile/.env.local` (gitignored) and are exposed to th
 # Supabase
 EXPO_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJhbGc...
+EXPO_PUBLIC_SUPABASE_ENV=local
 
 # Sentry
 EXPO_PUBLIC_SENTRY_DSN=
@@ -103,7 +104,8 @@ pnpm --filter mobile check:assets
       "channel": "preview",
       "env": {
         "EXPO_PUBLIC_APP_CHANNEL": "preview",
-        "EXPO_PUBLIC_E2E_MODE": "true"
+        "EXPO_PUBLIC_E2E_MODE": "true",
+        "EXPO_PUBLIC_SUPABASE_ENV": "preview"
       },
       "android": { "buildType": "apk" },
       "ios": { "resourceClass": "m-medium" }
@@ -134,7 +136,7 @@ pnpm --filter mobile check:assets
 
 Workflows in `.github/workflows/`:
 
-- `ci.yml` — runs on every PR: install, local Supabase reset, lint, typecheck, tests, i18n parity, DB checks, asset checks, aggregate `pnpm check`, and `git diff --check`
+- `ci.yml` — runs on every PR: install, local Supabase reset, lint, typecheck, tests, i18n parity, DB checks, asset checks, E2E auth checks, release safety scan, aggregate `pnpm check`, and `git diff --check`
 - `eas-preview.yml` — on PR label `build:preview`: triggers `eas build --profile preview --platform ios`
 - `eas-preview.yml` — on PR label `build:preview-e2e`: triggers `eas build --profile preview-e2e --platform android`
 - `release.yml` — on tag `v*`: triggers production EAS build + submit to App Store
@@ -149,6 +151,7 @@ Required secrets:
 - `EAS_PROJECT_ID`
 - `EXPO_PUBLIC_SUPABASE_URL`
 - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+- `EXPO_PUBLIC_SUPABASE_ENV`
 - `EXPO_PUBLIC_SENTRY_DSN`
 - `SUPABASE_ACCESS_TOKEN`
 - `APPLE_APP_SPECIFIC_PASSWORD` (for submission)
@@ -170,7 +173,13 @@ The local seed includes the preview E2E trusted-tester fixture:
 - shared group: `33333333-3333-4333-8333-333333333333`
 
 Use this fixture only with `EXPO_PUBLIC_E2E_MODE=true` in local dev or
-`preview-e2e`; `app.config.ts` rejects production-marked E2E builds.
+`preview-e2e`; `app.config.ts` rejects production-marked E2E builds and E2E
+builds that do not declare `EXPO_PUBLIC_SUPABASE_ENV=local`, `preview`, or
+`test`.
+
+Preview-E2E must use a dedicated preview/test Supabase project seeded with the
+trusted-tester fixture. Do not point seed-auth builds at production Supabase and
+do not add service-role keys to mobile env or EAS Secrets.
 
 ## Apple App Store prep checklist
 

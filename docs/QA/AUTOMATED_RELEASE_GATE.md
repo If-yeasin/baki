@@ -20,10 +20,13 @@ of these are true:
 - `EXPO_PUBLIC_E2E_MODE=true`
 - the build is local dev or a preview/dev EAS variant
 - the app is not production-marked by build profile or channel
+- `EXPO_PUBLIC_SUPABASE_ENV` is `local`, `preview`, or `test`
 - the expected seeded user id, email, and password fixture are present
 - Supabase URL and anon key are configured
 
-`app.config.ts` throws if E2E mode is enabled for a production profile/channel.
+`app.config.ts` throws if E2E mode is enabled for a production profile/channel,
+or if E2E mode does not explicitly target a local, preview, or test Supabase
+environment.
 
 Manual real-device offline replay QA was not performed. The release gate currently
 relies on automated tests, CI, and optional EAS/Maestro preview automation.
@@ -41,6 +44,8 @@ GitHub Actions `CI` runs on pull requests and pushes to `main`:
 - `pnpm i18n:check`
 - `pnpm db:check`
 - `pnpm --filter mobile check:assets`
+- `pnpm e2e:auth:check`
+- `pnpm release:safety`
 - `pnpm check`
 - `git diff --check`
 
@@ -136,7 +141,12 @@ Required preview environment/secrets:
 - `EXPO_PUBLIC_SUPABASE_URL`
 - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
 - `EXPO_PUBLIC_SENTRY_DSN`
-- hosted preview Supabase seeded with `packages/db/seed.sql`, or equivalent seeded users/group data
+- `EXPO_PUBLIC_SUPABASE_ENV=preview` or `test`
+- dedicated preview/test Supabase project seeded with `packages/db/seed.sql`, or equivalent seeded users/group data
+
+Do not point preview-E2E seed-auth builds at production Supabase. The seeded
+password fixture is non-secret test data and must only exist in local,
+preview, or test projects.
 
 The preview E2E path is not a required release gate until a real EAS/Maestro run
 has passed on the current branch.
@@ -168,6 +178,7 @@ EXPO_PUBLIC_APP_CHANNEL=preview \
 EXPO_PUBLIC_E2E_SEED_EMAIL=rini@example.test \
 EXPO_PUBLIC_E2E_SEED_PASSWORD=password \
 EXPO_PUBLIC_E2E_SEED_USER_ID=22222222-2222-4222-8222-222222222222 \
+EXPO_PUBLIC_SUPABASE_ENV=local \
 pnpm --filter mobile dev:devclient
 
 maestro test e2e/maestro/60-preview-trusted-tester.yaml

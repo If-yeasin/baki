@@ -13,6 +13,7 @@ type E2EExtra = {
   e2eSeedEmail?: unknown;
   e2eSeedPassword?: unknown;
   e2eSeedUserId?: unknown;
+  supabaseEnv?: unknown;
 };
 
 function getExpoExtra(): E2EExtra {
@@ -29,7 +30,8 @@ export function getE2ETestAuthConfig(): E2ETestAuthConfig {
     isDev: __DEV__,
     seedEmail: extra.e2eSeedEmail as string | undefined,
     seedPassword: extra.e2eSeedPassword as string | undefined,
-    seedUserId: extra.e2eSeedUserId as string | undefined
+    seedUserId: extra.e2eSeedUserId as string | undefined,
+    supabaseEnv: extra.supabaseEnv as string | undefined
   });
 }
 

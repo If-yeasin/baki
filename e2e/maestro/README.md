@@ -18,10 +18,12 @@ Preview/dev E2E builds use a guarded seed-auth route instead of phone OTP:
 - required flag: `EXPO_PUBLIC_E2E_MODE=true`
 - allowed variants: local `__DEV__`, `development`, `development:device`, `preview`, or `preview-e2e`
 - blocked variants: `production` / `prod`
+- allowed Supabase targets: `EXPO_PUBLIC_SUPABASE_ENV=local`, `preview`, or `test`
 - seeded account: `rini@example.test`, user id `22222222-2222-4222-8222-222222222222`
 
 The route signs in through Supabase Auth with the local/test password fixture.
 It does not inject JWTs, does not log OTPs, and does not use a service-role key.
+Do not run seed-auth against production Supabase.
 
 ## Local Setup
 
@@ -39,6 +41,7 @@ EXPO_PUBLIC_APP_CHANNEL=preview \
 EXPO_PUBLIC_E2E_SEED_EMAIL=rini@example.test \
 EXPO_PUBLIC_E2E_SEED_PASSWORD=password \
 EXPO_PUBLIC_E2E_SEED_USER_ID=22222222-2222-4222-8222-222222222222 \
+EXPO_PUBLIC_SUPABASE_ENV=local \
 pnpm --filter mobile dev:devclient
 ```
 
@@ -66,8 +69,9 @@ Required preview env/secrets:
 - `EAS_PROJECT_ID`
 - `EXPO_PUBLIC_SUPABASE_URL`
 - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+- `EXPO_PUBLIC_SUPABASE_ENV=preview` or `test`
 - `EXPO_PUBLIC_SENTRY_DSN`
-- hosted preview Supabase seeded with the trusted-tester fixture
+- dedicated hosted preview/test Supabase seeded with the trusted-tester fixture
 
 The GitHub Actions workflow `.github/workflows/eas-preview.yml` also supports
 the `build:preview-e2e` label for an Android preview-E2E build. That path does

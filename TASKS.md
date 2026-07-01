@@ -2,7 +2,7 @@
 
 ## Done
 
-- Branch created: `codex/trusted-tester-mvp-hardening`
+- Branch created: `codex/automated-preview-e2e-gate`
 - Selected Baki monogram kept as the app icon source of truth.
 - Unused icon experiments moved out of bundled mobile assets.
 - `pnpm --filter mobile check:assets` verifies active icon files.
@@ -24,7 +24,7 @@
 
 ## In Progress
 
-- GitHub Actions verification after the merge PR is opened.
+- GitHub Actions verification for the automated preview E2E gate PR is pending until the new PR checks pass.
 - Remote/local cache breadth beyond the core read paths.
 - First real EAS/Maestro preview-E2E run on hosted preview env.
 
@@ -36,7 +36,7 @@
 
 ## Next 5 Tasks
 
-1. Wait for PR GitHub Actions and fix any CI-only failure.
+1. Open the automated preview E2E gate PR and wait for GitHub Actions.
 2. Run the optional `build:preview-e2e` EAS/Maestro path on hosted preview env.
 3. Promote EAS + Maestro to a real release gate after a green preview-E2E run.
 4. Add a repair/dismiss UX for permanently failed queued mutations.
