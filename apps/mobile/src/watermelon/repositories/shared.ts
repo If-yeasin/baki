@@ -42,3 +42,23 @@ export async function upsertLocalRows<T extends LocalRawRecord>(
     }
   });
 }
+
+export async function deleteLocalRows(table: WatermelonTableName, ids: readonly string[]) {
+  const database = getBakiDatabase();
+  if (!database || ids.length === 0) {
+    return;
+  }
+
+  await database.write(async () => {
+    const collection = database.collections.get<Model>(table);
+
+    for (const id of ids) {
+      try {
+        const existing = await collection.find(id);
+        await existing.destroyPermanently();
+      } catch {
+        // Missing local rows are already in the desired state.
+      }
+    }
+  });
+}

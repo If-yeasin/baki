@@ -6,6 +6,8 @@ import type { Database } from "@baki/db";
 type CreateExpensePayload = Database["public"]["Functions"]["create_expense"]["Args"];
 type CreateGroupPayload = Database["public"]["Functions"]["create_group"]["Args"];
 type CreateSettlementPayload = Database["public"]["Functions"]["create_settlement"]["Args"];
+type DeleteExpensePayload = Database["public"]["Functions"]["delete_expense"]["Args"];
+type UpdateExpensePayload = Database["public"]["Functions"]["edit_expense"]["Args"];
 
 export type QueuedMutationStatus = "pending" | "failed";
 
@@ -17,7 +19,11 @@ export type QueuedMutationType =
   | "settlement.create"
   | "profile.update";
 
-export type MoneyQueuedMutationType = "expense.create" | "settlement.create";
+export type MoneyQueuedMutationType =
+  | "expense.create"
+  | "expense.update"
+  | "expense.delete"
+  | "settlement.create";
 
 export type QueuedMutation = {
   createdAt: string;
@@ -251,6 +257,8 @@ export async function processQueuedMutations(): Promise<ProcessQueuedMutationsRe
 
     if (
       mutation.type !== "expense.create" &&
+      mutation.type !== "expense.update" &&
+      mutation.type !== "expense.delete" &&
       mutation.type !== "settlement.create" &&
       mutation.type !== "group.create"
     ) {
@@ -263,9 +271,16 @@ export async function processQueuedMutations(): Promise<ProcessQueuedMutationsRe
     const response =
       mutation.type === "expense.create"
         ? await supabase.rpc("create_expense", mutation.payload as CreateExpensePayload)
-        : mutation.type === "settlement.create"
-          ? await supabase.rpc("create_settlement", mutation.payload as CreateSettlementPayload)
-          : await supabase.rpc("create_group", mutation.payload as CreateGroupPayload);
+        : mutation.type === "expense.update"
+          ? await supabase.rpc("edit_expense", mutation.payload as UpdateExpensePayload)
+          : mutation.type === "expense.delete"
+            ? await supabase.rpc("delete_expense", mutation.payload as DeleteExpensePayload)
+            : mutation.type === "settlement.create"
+              ? await supabase.rpc(
+                  "create_settlement",
+                  mutation.payload as CreateSettlementPayload
+                )
+              : await supabase.rpc("create_group", mutation.payload as CreateGroupPayload);
 
     if (response.error) {
       if (isPermanentQueuedMutationError(response.error)) {

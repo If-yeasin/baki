@@ -15,7 +15,6 @@ import {
   ShieldCheck,
   Trash2
 } from "lucide-react-native";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Alert, ScrollView, View } from "react-native";
 
@@ -25,7 +24,6 @@ import {
   Skeleton,
   Tabs,
   Text,
-  Toast,
   radii,
   spacing,
   useTheme
@@ -54,11 +52,6 @@ type ProfileRow = {
   phone: string;
 };
 
-type SettingsNotice = {
-  bodyKey: string;
-  titleKey: string;
-};
-
 export default function SettingsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -69,7 +62,6 @@ export default function SettingsScreen() {
   const setTheme = usePreferencesStore((state) => state.setTheme);
   const deleteAccount = useDeleteAccount();
   const { colors } = useTheme();
-  const [settingsNotice, setSettingsNotice] = useState<SettingsNotice | null>(null);
 
   const profileQuery = useQuery({
     enabled: Boolean(session.userId),
@@ -170,10 +162,6 @@ export default function SettingsScreen() {
     );
   }
 
-  function showSettingsNotice(titleKey: string, bodyKey: string) {
-    setSettingsNotice({ bodyKey, titleKey });
-  }
-
   const profileName = profileQuery.data?.display_name || t("common.unknown_user");
   const phoneLabel = maskPhone(profileQuery.data?.phone, locale);
   const themeItems = [
@@ -181,13 +169,6 @@ export default function SettingsScreen() {
     { label: t("settings.theme.light"), value: "light" },
     { label: t("settings.theme.dark"), value: "dark" }
   ] as const;
-  const renderSoonTrailing = () => (
-    <View style={{ alignItems: "center", flexDirection: "row", gap: spacing.xs }}>
-      <SettingsStatusPill>{t("settings.status.soon")}</SettingsStatusPill>
-      <ChevronRight color={colors.inkMuted} size={18} />
-    </View>
-  );
-
   return (
     <ScrollView
       contentContainerStyle={{
@@ -297,32 +278,23 @@ export default function SettingsScreen() {
         />
         <SettingsRow
           icon={<Bell color={colors.brandPrimary} size={19} />}
-          onPress={() =>
-            showSettingsNotice(
-              "settings.notifications.notice.title",
-              "settings.notifications.notice.body"
-            )
-          }
+          onPress={() => router.push("/settings/notifications" as Href)}
           subtitle={t("settings.notifications.subtitle")}
           testID="settings-notifications-row"
           title={t("settings.notifications.title")}
-          trailing={renderSoonTrailing()}
+          trailing={<ChevronRight color={colors.inkMuted} size={18} />}
         />
         <SettingsRow
           icon={<Download color={colors.brandPrimary} size={19} />}
-          onPress={() =>
-            showSettingsNotice("settings.export.notice.title", "settings.export.notice.body")
-          }
+          onPress={() => router.push("/settings/export" as Href)}
           subtitle={t("settings.export.subtitle")}
           testID="settings-export-row"
           title={t("settings.export.title")}
-          trailing={renderSoonTrailing()}
+          trailing={<ChevronRight color={colors.inkMuted} size={18} />}
         />
         <SettingsRow
           icon={<FileText color={colors.brandPrimary} size={19} />}
-          onPress={() =>
-            showSettingsNotice("settings.privacy.notice.title", "settings.privacy.notice.body")
-          }
+          onPress={() => router.push("/settings/privacy" as Href)}
           subtitle={t("settings.privacy.subtitle")}
           testID="settings-privacy-row"
           title={t("settings.privacy.title")}
@@ -330,27 +302,14 @@ export default function SettingsScreen() {
         />
         <SettingsRow
           icon={<HelpCircle color={colors.brandPrimary} size={19} />}
-          onPress={() =>
-            showSettingsNotice("settings.support.notice.title", "settings.support.notice.body")
-          }
+          onPress={() => router.push("/settings/support" as Href)}
           showDivider={false}
           subtitle={t("settings.support.subtitle")}
           testID="settings-support-row"
           title={t("settings.support.title")}
-          trailing={renderSoonTrailing()}
+          trailing={<ChevronRight color={colors.inkMuted} size={18} />}
         />
       </SettingsSection>
-
-      {settingsNotice ? (
-        <Toast
-          dismissLabel={t("common.dismiss")}
-          message={t(settingsNotice.bodyKey)}
-          onDismiss={() => setSettingsNotice(null)}
-          testID="settings-notice"
-          title={t(settingsNotice.titleKey)}
-          variant="info"
-        />
-      ) : null}
 
       <SettingsSection title={t("settings.section.account")}>
         <SettingsRow

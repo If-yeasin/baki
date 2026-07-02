@@ -51,7 +51,7 @@ async function readLocalGroupDetail(groupId: string): Promise<GroupDetail | null
   };
 }
 
-async function fetchGroupDetail(groupId: string): Promise<GroupDetail> {
+export async function fetchGroupDetail(groupId: string): Promise<GroupDetail> {
   const localDetail = await readLocalGroupDetail(groupId);
 
   try {

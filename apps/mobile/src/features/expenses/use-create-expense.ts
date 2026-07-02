@@ -23,6 +23,11 @@ export type CreateExpenseInput = {
   splitValues?: Record<string, number>;
 };
 
+export type ExpenseSplitInput = Pick<
+  CreateExpenseInput,
+  "amountPaisa" | "paidBy" | "splitMembers" | "splitMethod" | "splitValues"
+>;
+
 export type CreateExpenseResult =
   | {
       expenseId: string;
@@ -33,7 +38,7 @@ export type CreateExpenseResult =
       status: "queued";
     };
 
-function computeShares(input: CreateExpenseInput): Record<string, number> {
+export function computeExpenseShares(input: ExpenseSplitInput): Record<string, number> {
   const { amountPaisa, paidBy, splitMethod, splitMembers, splitValues } = input;
 
   if (!Number.isInteger(amountPaisa) || amountPaisa <= 0) {
@@ -62,13 +67,14 @@ function computeShares(input: CreateExpenseInput): Record<string, number> {
   }
 }
 
-function createClientMutationId() {
-  return `expense:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 12)}`;
+export function createExpenseClientMutationId(operation = "expense") {
+  return `${operation}:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 12)}`;
 }
 
 export function buildCreateExpenseRpcPayload(input: CreateExpenseInput) {
-  const shares = computeShares(input);
-  const clientMutationId = input.clientMutationId?.trim() || createClientMutationId();
+  const shares = computeExpenseShares(input);
+  const clientMutationId =
+    input.clientMutationId?.trim() || createExpenseClientMutationId("expense");
 
   return {
     p_amount_paisa: input.amountPaisa,

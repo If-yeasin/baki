@@ -55,6 +55,22 @@ const settlementPayload = {
   p_to_user: "receiver-id"
 };
 
+const updateExpensePayload = {
+  p_amount_paisa: 1200,
+  p_category: "food",
+  p_client_mutation_id: "expense.update:test",
+  p_description: "Dinner updated",
+  p_expense_id: "expense-id",
+  p_paid_by: "payer-id",
+  p_shares: { "payer-id": 1200 },
+  p_split_method: "exact"
+};
+
+const deleteExpensePayload = {
+  p_client_mutation_id: "expense.delete:test",
+  p_expense_id: "expense-id"
+};
+
 const groupPayload = {
   p_client_mutation_id: "group:test",
   p_name: "Sajek trip",
@@ -67,13 +83,17 @@ describe("processQueuedMutations", () => {
     mocks.rpc.mockReset();
   });
 
-  it("replays group, expense, and settlement creates through RPC and removes successes", async () => {
+  it("replays queued ledger and group writes through RPC and removes successes", async () => {
     enqueueMutation({ payload: groupPayload, type: "group.create" });
     enqueueMutation({ payload: expensePayload, type: "expense.create" });
+    enqueueMutation({ payload: updateExpensePayload, type: "expense.update" });
+    enqueueMutation({ payload: deleteExpensePayload, type: "expense.delete" });
     enqueueMutation({ payload: settlementPayload, type: "settlement.create" });
 
     mocks.rpc
       .mockResolvedValueOnce({ data: "group-id", error: null })
+      .mockResolvedValueOnce({ data: "expense-id", error: null })
+      .mockResolvedValueOnce({ data: "expense-id", error: null })
       .mockResolvedValueOnce({ data: "expense-id", error: null })
       .mockResolvedValueOnce({ data: "settlement-id", error: null });
 
@@ -81,13 +101,15 @@ describe("processQueuedMutations", () => {
 
     expect(mocks.rpc).toHaveBeenNthCalledWith(1, "create_group", groupPayload);
     expect(mocks.rpc).toHaveBeenNthCalledWith(2, "create_expense", expensePayload);
-    expect(mocks.rpc).toHaveBeenNthCalledWith(3, "create_settlement", settlementPayload);
+    expect(mocks.rpc).toHaveBeenNthCalledWith(3, "edit_expense", updateExpensePayload);
+    expect(mocks.rpc).toHaveBeenNthCalledWith(4, "delete_expense", deleteExpensePayload);
+    expect(mocks.rpc).toHaveBeenNthCalledWith(5, "create_settlement", settlementPayload);
     expect(result).toEqual({
-      attempted: 3,
+      attempted: 5,
       failed: 0,
       retried: 0,
       skipped: 0,
-      succeeded: 3
+      succeeded: 5
     });
     expect(listQueuedMutations()).toEqual([]);
     expect(getQueueStats()).toEqual({ failedCount: 0, pendingCount: 0, totalCount: 0 });
@@ -161,8 +183,8 @@ describe("enqueueMoneyMutationFromRpcError", () => {
   it("queues temporary money-write failures as pending success", () => {
     const result = enqueueMoneyMutationFromRpcError({
       error: new Error("Network request failed"),
-      payload: expensePayload,
-      type: "expense.create"
+      payload: updateExpensePayload,
+      type: "expense.update"
     });
     const [mutation] = listQueuedMutations();
 
@@ -171,10 +193,10 @@ describe("enqueueMoneyMutationFromRpcError", () => {
       queuedMutationId: mutation?.id
     });
     expect(mutation).toMatchObject({
-      payload: expensePayload,
+      payload: updateExpensePayload,
       retryCount: 0,
       status: "pending",
-      type: "expense.create"
+      type: "expense.update"
     });
     expect(getQueueStats()).toEqual({ failedCount: 0, pendingCount: 1, totalCount: 1 });
   });

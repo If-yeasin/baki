@@ -6,34 +6,33 @@ Updated: 2026-07-02
 
 - Phone OTP auth, profile creation, persisted session, language/theme preference, sign-out, and account deletion client hook.
 - Create/join/list khatas, invite-code display/copy, member strip, template rendering, and group detail ledger summary.
-- Add expense through the `create_expense` RPC with integer-paisa split math, idempotency, activity logging, and offline queued-success handling for temporary RPC failures.
+- Add/edit/delete expense through RPC-only ledger paths with integer-paisa split math, idempotency, activity logging, and offline queued-success handling for temporary RPC failures.
 - Group and all-groups balance views using `get_group_balances`, local WatermelonDB fallback, and simplified next-action cards.
 - Settlement plan through `simplify_debts`, raw-balance fallback, bKash/Nagad/cash/other outside-app settlement copy, and `create_settlement` idempotent replay.
-- Activity reads real `activity_log` rows for group and tab views, with local fallback and actor hydration.
-- Settings -> Sync shows pending/failed counts, failed item details, and manual retry.
+- Activity reads real `activity_log` rows for group and tab views, with local fallback, actor hydration, pull-to-refresh, and load-more pagination.
+- Settings -> Sync shows pending/failed counts, failed item details, manual retry, per-item retry, redacted debug copy, and guarded dismiss for permanent failures.
+- Settings includes CSV ledger export, Expo push token registration/preferences, privacy/terms, and support screens.
 - Group settings can rename, change type, archive, leave, safe-delete, copy/share/regenerate invites, and show member/admin/created-date metadata through server RPCs.
-- `create_group`, `create_expense`, and `create_settlement` are idempotent RPC replay paths; direct client writes to group lifecycle, activity, and money tables are denied.
+- `create_group`, `create_expense`, `edit_expense`, `delete_expense`, and `create_settlement` are idempotent RPC replay paths; direct client writes to group lifecycle, activity, and money tables are denied.
 - Preview-only E2E auth is guarded by app-channel and Supabase-environment checks.
 - CI runs lint, typecheck, tests, i18n parity, DB checks, mobile asset checks, E2E auth guard checks, release safety, aggregate `pnpm check`, and `git diff --check`.
 
 ## Partial Features
 
 - Group lifecycle: user-facing settings and RPCs exist, but richer member management and custom avatar upload remain deferred.
-- Expense lifecycle: create exists; edit/delete/receipt attachment are not implemented.
-- Settlement lifecycle: create exists; settlement notes/references and failed-mutation repair/dismiss are incomplete.
-- Activity feed: real rows render, but pull-to-refresh, pagination, richer event-specific rendering, and fully localized fallback actor names are incomplete.
-- Notifications: Expo Notifications is installed and `device_tokens` exists, but token registration, preferences, and server delivery are not implemented.
-- Settings/legal/export: placeholders exist for notifications, export, privacy, and support; store-review docs are not complete.
+- Expense lifecycle: create/edit/delete exist; receipt attachment remains deferred.
+- Settlement lifecycle: create exists; settlement notes/references remain incomplete.
+- Activity feed: real rows render with refresh/pagination; richer event-specific rendering remains future polish.
+- Notifications: Expo token registration and user preferences exist; server delivery is not implemented.
+- Settings/legal/export: CSV export and in-app privacy/terms/support screens exist; hosted store-review URLs and final legal review are not complete.
 - Localization: Bengali/English catalogs are parity-checked and Bengali numerals render in existing formatters, but final native copy review is not recorded.
 
 ## Missing V1 Features
 
-- Edit/delete expense RPCs and screens, with idempotent offline-safe mutation handling.
 - Optional receipt attachment boundary with storage policies, or explicit deferred UI/docs if Storage is not configured.
 - Raw versus simplified settlement toggle on the settlement screen.
-- Failed sync item repair/dismiss UX with secret-safe debug copy.
-- Push token registration and notification preferences.
-- Export group CSV.
+- Server-side push notification delivery.
+- Hosted legal/support/privacy URLs for store review.
 - Store listing docs for App Store Connect, Google Play, screenshots, privacy/data-safety answers, and reviewer notes.
 - Expanded Maestro flows for edit/delete expense, group settings, language toggle, sync failure, notification preferences, and export if automatable.
 

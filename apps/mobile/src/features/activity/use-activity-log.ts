@@ -1,5 +1,5 @@
 import type { Json } from "@baki/db";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
 import { Sentry } from "@/lib/sentry";
 import { supabase } from "@/lib/supabase";
@@ -37,7 +37,9 @@ export type ActivityLogItem = {
 
 export const activityKeys = {
   all: ["activity"] as const,
-  group: (groupId: string) => [...activityKeys.all, "group", groupId] as const
+  group: (groupId: string) => [...activityKeys.all, "group", groupId] as const,
+  groupPage: (groupId: string, limit: number) =>
+    [...activityKeys.group(groupId), "page", limit] as const
 };
 
 const activityEventTypes = new Set<ActivityEventType>([
@@ -95,34 +97,78 @@ export function mapActivityRowsToItems({
   }));
 }
 
-export async function fetchGroupActivity(groupId: string): Promise<ActivityLogItem[]> {
+export type ActivityLogPage = {
+  items: ActivityLogItem[];
+  nextCursor: string | null;
+};
+
+export async function fetchGroupActivityPage({
+  cursor,
+  groupId,
+  limit = 50,
+  unknownName = "Unknown user"
+}: {
+  cursor?: string | null;
+  groupId: string;
+  limit?: number;
+  unknownName?: string;
+}): Promise<ActivityLogPage> {
   const localRows = await readLocalActivityRows(groupId);
 
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from("activity_log")
       .select("*")
       .eq("group_id", groupId)
       .order("created_at", { ascending: false })
-      .limit(50);
+      .limit(limit + 1);
+
+    if (cursor) {
+      query = query.lt("created_at", cursor);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       throw error;
     }
 
     const rows = data ?? [];
-    await upsertRemoteActivityRows(rows);
-    return hydrateActivityActors(rows);
+    const visibleRows = rows.slice(0, limit);
+    await upsertRemoteActivityRows(visibleRows);
+    return {
+      items: await hydrateActivityActors(visibleRows, unknownName),
+      nextCursor: rows.length > limit ? (visibleRows.at(-1)?.created_at ?? null) : null
+    };
   } catch (error) {
     Sentry.captureException(error, { tags: { feature: "activity.group" } });
-    if (localRows.length > 0) {
-      return hydrateActivityActors(localRows);
+    if (!cursor && localRows.length > 0) {
+      const rows = localRows.slice(0, limit);
+      return {
+        items: await hydrateActivityActors(rows, unknownName),
+        nextCursor: localRows.length > limit ? (rows.at(-1)?.created_at ?? null) : null
+      };
     }
     throw error;
   }
 }
 
-async function hydrateActivityActors(rows: readonly ActivityLogRow[]): Promise<ActivityLogItem[]> {
+export async function fetchGroupActivity(
+  groupId: string,
+  options: { limit?: number; unknownName?: string } = {}
+): Promise<ActivityLogItem[]> {
+  const page = await fetchGroupActivityPage({
+    groupId,
+    limit: options.limit,
+    unknownName: options.unknownName
+  });
+  return page.items;
+}
+
+async function hydrateActivityActors(
+  rows: readonly ActivityLogRow[],
+  unknownName: string
+): Promise<ActivityLogItem[]> {
   const actorIds = Array.from(new Set(rows.map((row) => row.actor_id))).sort();
   const actorNames = new Map<string, string>();
 
@@ -142,16 +188,33 @@ async function hydrateActivityActors(rows: readonly ActivityLogRow[]): Promise<A
   return mapActivityRowsToItems({
     actorNames,
     rows,
-    unknownName: "Unknown user"
+    unknownName
   });
 }
 
-export function useGroupActivity(groupId: string | undefined) {
+export function useGroupActivity(groupId: string | undefined, unknownName?: string) {
   return useQuery({
     enabled: Boolean(groupId),
     placeholderData: keepPreviousData,
-    queryFn: () => fetchGroupActivity(groupId as string),
+    queryFn: () => fetchGroupActivity(groupId as string, { unknownName }),
     queryKey: groupId ? activityKeys.group(groupId) : ["activity", "group", "unknown"],
+    staleTime: 1000 * 30
+  });
+}
+
+export function useInfiniteGroupActivity(groupId: string | undefined, unknownName: string) {
+  return useInfiniteQuery<ActivityLogPage, Error>({
+    enabled: Boolean(groupId),
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam }) =>
+      fetchGroupActivityPage({
+        cursor: pageParam as string | null,
+        groupId: groupId as string,
+        limit: 25,
+        unknownName
+      }),
+    queryKey: groupId ? [...activityKeys.group(groupId), "infinite"] : ["activity", "group", "infinite", "unknown"],
     staleTime: 1000 * 30
   });
 }

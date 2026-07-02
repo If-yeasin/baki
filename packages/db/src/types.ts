@@ -141,6 +141,58 @@ export type Database = {
           },
         ]
       }
+      expense_mutation_receipts: {
+        Row: {
+          actor_id: string
+          client_mutation_id: string
+          created_at: string
+          expense_id: string
+          group_id: string
+          id: string
+          operation: string
+        }
+        Insert: {
+          actor_id: string
+          client_mutation_id: string
+          created_at?: string
+          expense_id: string
+          group_id: string
+          id?: string
+          operation: string
+        }
+        Update: {
+          actor_id?: string
+          client_mutation_id?: string
+          created_at?: string
+          expense_id?: string
+          group_id?: string
+          id?: string
+          operation?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_mutation_receipts_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_mutation_receipts_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_mutation_receipts_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expenses: {
         Row: {
           amount_paisa: number
@@ -306,6 +358,44 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          created_at: string
+          expense_activity: boolean
+          push_enabled: boolean
+          reminders: boolean
+          settlement_activity: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expense_activity?: boolean
+          push_enabled?: boolean
+          reminders?: boolean
+          settlement_activity?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expense_activity?: boolean
+          push_enabled?: boolean
+          reminders?: boolean
+          settlement_activity?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -459,7 +549,27 @@ export type Database = {
         Returns: boolean
       }
       delete_group: { Args: { p_group_id: string }; Returns: undefined }
+      delete_expense: {
+        Args: { p_client_mutation_id?: string; p_expense_id: string }
+        Returns: string
+      }
       delete_my_account: { Args: never; Returns: undefined }
+      edit_expense: {
+        Args: {
+          p_amount_paisa: number
+          p_category: string
+          p_client_mutation_id?: string
+          p_description: string
+          p_expense_id: string
+          p_note?: string
+          p_occurred_at?: string
+          p_paid_by: string
+          p_receipt_url?: string
+          p_shares: Json
+          p_split_method: string
+        }
+        Returns: string
+      }
       get_group_balances: {
         Args: { p_group_id: string }
         Returns: {

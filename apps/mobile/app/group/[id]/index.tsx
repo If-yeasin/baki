@@ -443,16 +443,25 @@ export default function GroupDetailScreen() {
             ? t("expense.list.you_paid")
             : t("expense.list.member_paid", { name: payerName });
           return (
-            <View
-              style={{
+            <Pressable
+              accessibilityLabel={t("expense.list.open_edit", {
+                amount: formatMoney(item.amountPaisa, locale),
+                description: item.description
+              })}
+              accessibilityRole="button"
+              onPress={() =>
+                router.push(`/group/${groupId}/add-expense?expenseId=${item.id}` as Href)
+              }
+              style={({ pressed }) => ({
                 alignItems: "center",
-                backgroundColor: colors.bgSurface,
+                backgroundColor: pressed ? colors.bgSubtle : colors.bgSurface,
                 flexDirection: "row",
                 gap: spacing.md,
                 minHeight: 72,
                 paddingHorizontal: spacing.xl,
                 paddingVertical: spacing.sm
-              }}
+              })}
+              testID={`expense-row-${item.id}`}
             >
               <ExpenseCategoryMark category={item.category} />
               <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
@@ -495,7 +504,7 @@ export default function GroupDetailScreen() {
                   {formatMoney(item.amountPaisa, locale)}
                 </Text>
               </View>
-            </View>
+            </Pressable>
           );
         }}
       />
