@@ -10,14 +10,14 @@ Current queue types live in `apps/mobile/src/features/offline/mutation-queue.ts`
 
 - `expense.create` — replayed through `create_expense`
 - `settlement.create` — replayed through `create_settlement`
-- `group.create` — queued so the user intent is not lost, not replayed in this sprint
+- `group.create` — replayed through `create_group`
 - `expense.update`, `expense.delete`, `profile.update` — reserved for later repair paths
 
-Money-writing replay must continue to use RPCs only. Do not add direct client inserts for expenses or settlements.
+Money-writing replay must continue to use RPCs only. Do not add direct client inserts for expenses or settlements. Group lifecycle replay also uses RPCs so membership/admin checks and idempotency stay server-side.
 
 ## Idempotency
 
-`create_expense` and `create_settlement` both accept `p_client_mutation_id`. The mobile app generates a client mutation id before calling the RPC and stores the same id in the queue payload if the call fails. Replaying the same payload returns the original ledger row instead of creating a duplicate.
+`create_group`, `create_expense`, and `create_settlement` accept `p_client_mutation_id`. The mobile app generates a client mutation id before calling the RPC and stores the same id in the queue payload if the call fails. Replaying the same payload returns the original group/ledger row instead of creating a duplicate.
 
 ## Failure Handling
 
@@ -43,7 +43,7 @@ The orchestrator keeps an in-memory lock so concurrent triggers share one run in
 ## Known Limitations
 
 - NetInfo is not installed yet. Replay is driven by app lifecycle, interval, and retry/backoff instead of explicit connectivity state.
-- `group.create` can be queued but is not automatically replayed in this sprint because group creation is not idempotent yet.
+- Expense edit/delete and profile update queue types are reserved but not replayed yet. They need dedicated idempotent RPCs before being enabled.
 - Conflict resolution is remote-wins after successful fetch. Conflicts that fail RPC validation remain visible as failed sync items.
 - Expo Go uses in-memory storage and cannot validate the full WatermelonDB offline path; use a Dev Client for trusted-tester QA.
 

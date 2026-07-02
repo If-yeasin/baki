@@ -39,13 +39,15 @@ async function readLocalGroupDetail(groupId: string): Promise<GroupDetail | null
 
   return {
     group,
-    members: members.map((member) => ({
-      displayName: UNKNOWN_DISPLAY_NAME,
-      joinedAt: member.joinedAt,
-      leftAt: member.leftAt,
-      role: member.role,
-      userId: member.userId
-    }))
+    members: members
+      .filter((member) => member.leftAt === null)
+      .map((member) => ({
+        displayName: UNKNOWN_DISPLAY_NAME,
+        joinedAt: member.joinedAt,
+        leftAt: member.leftAt,
+        role: member.role,
+        userId: member.userId
+      }))
   };
 }
 
@@ -61,6 +63,7 @@ async function fetchGroupDetail(groupId: string): Promise<GroupDetail> {
           "group_id, user_id, role, joined_at, left_at, profiles!group_members_user_id_fkey(display_name)"
         )
         .eq("group_id", groupId)
+        .is("left_at", null)
     ]);
 
     if (groupResult.error) {

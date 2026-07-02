@@ -65,6 +65,7 @@ export function mapGroupMemberRowToLocal(row: GroupMemberRow): LocalGroupMemberR
 export function mapLocalGroupToSummary(row: LocalGroupRaw): GroupSummary {
   return {
     archivedAt: fromWatermelonTimestamp(row.archived_at),
+    createdAt: fromWatermelonTimestamp(row.updated_at) ?? new Date(0).toISOString(),
     createdBy: row.created_by,
     id: row.id,
     inviteCode: row.invite_code ?? "",
@@ -78,7 +79,7 @@ export async function readLocalGroups(): Promise<GroupSummary[]> {
   const rows = await fetchLocalRows<LocalGroupRaw>(watermelonTables.groups);
 
   return rows
-    .filter((row) => row.deleted_at === null)
+    .filter((row) => row.deleted_at === null && row.archived_at === null)
     .sort((a, b) => b.updated_at - a.updated_at)
     .map(mapLocalGroupToSummary);
 }

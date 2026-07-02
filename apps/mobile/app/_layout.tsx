@@ -142,6 +142,7 @@ function RootStack() {
         name="group/[id]/activity"
         options={{ title: t("groups.detail.activity.title") }}
       />
+      <Stack.Screen name="group/[id]/settings" options={{ title: t("groups.settings.title") }} />
       <Stack.Screen name="group/[id]/settle" options={{ title: t("settle.title") }} />
     </Stack>
   );

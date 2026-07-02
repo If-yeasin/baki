@@ -55,30 +55,39 @@ const settlementPayload = {
   p_to_user: "receiver-id"
 };
 
+const groupPayload = {
+  p_client_mutation_id: "group:test",
+  p_name: "Sajek trip",
+  p_template: "trip"
+};
+
 describe("processQueuedMutations", () => {
   beforeEach(() => {
     mocks.values.clear();
     mocks.rpc.mockReset();
   });
 
-  it("replays expense and settlement creates through RPC and removes successes", async () => {
+  it("replays group, expense, and settlement creates through RPC and removes successes", async () => {
+    enqueueMutation({ payload: groupPayload, type: "group.create" });
     enqueueMutation({ payload: expensePayload, type: "expense.create" });
     enqueueMutation({ payload: settlementPayload, type: "settlement.create" });
 
     mocks.rpc
+      .mockResolvedValueOnce({ data: "group-id", error: null })
       .mockResolvedValueOnce({ data: "expense-id", error: null })
       .mockResolvedValueOnce({ data: "settlement-id", error: null });
 
     const result = await processQueuedMutations();
 
-    expect(mocks.rpc).toHaveBeenNthCalledWith(1, "create_expense", expensePayload);
-    expect(mocks.rpc).toHaveBeenNthCalledWith(2, "create_settlement", settlementPayload);
+    expect(mocks.rpc).toHaveBeenNthCalledWith(1, "create_group", groupPayload);
+    expect(mocks.rpc).toHaveBeenNthCalledWith(2, "create_expense", expensePayload);
+    expect(mocks.rpc).toHaveBeenNthCalledWith(3, "create_settlement", settlementPayload);
     expect(result).toEqual({
-      attempted: 2,
+      attempted: 3,
       failed: 0,
       retried: 0,
       skipped: 0,
-      succeeded: 2
+      succeeded: 3
     });
     expect(listQueuedMutations()).toEqual([]);
     expect(getQueueStats()).toEqual({ failedCount: 0, pendingCount: 0, totalCount: 0 });

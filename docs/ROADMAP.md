@@ -1,5 +1,26 @@
 # ROADMAP.md
 
+## Current Release Tracks
+
+### v1.0 — iOS Closed Beta / Release Candidate
+
+- Bengali-first shared expense khata for Bangladesh.
+- Phone OTP auth, profile, create/join khata, group settings, add expense, balances, settlement suggestions, outside-app settlement recording, activity, sync details, and account deletion.
+- Offline queue covers group create, expense create, and settlement create through idempotent RPCs.
+- Store readiness docs, release safety checks, DB tests, and preview-E2E guardrails must be green before a trusted-tester build.
+- Deferred from v1.0 unless completed safely: expense edit/delete, CSV export, push delivery, receipt uploads, and hosted EAS/Maestro as a required gate.
+
+### v1.1 — Android + Completion Polish
+
+- Android closed testing and common Bangladesh device QA.
+- Expense edit/delete if not completed before iOS beta.
+- CSV export, notification preferences/token registration, and hosted support/privacy URLs.
+- Promote EAS/Maestro preview E2E to a release gate after a green hosted run.
+
+### Later
+
+- Receipt OCR, recurring expenses, bKash merchant API, web app, admin dashboard, multi-currency, friends without groups, group photo uploads, and expense comments.
+
 ## Phases
 
 ### Phase 0 — Bootstrap (Week 0)

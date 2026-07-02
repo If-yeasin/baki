@@ -251,6 +251,117 @@ describeIfDb(suiteName, () => {
     expect(blocked).toBe(true);
   });
 
+  it("a member cannot self-promote or reactivate membership by direct UPDATE", () => {
+    let result: string;
+    try {
+      result = runAsAuthenticated(
+        SEED.riniId,
+        `update public.group_members
+            set role = 'admin', left_at = null
+          where group_id = ${sqlLiteral(SEED.groupId)}::uuid
+            and user_id = ${sqlLiteral(SEED.riniId)}::uuid
+          returning role || ',' || (left_at is null)::text;`
+      );
+    } catch (err) {
+      expect(String(err)).toMatch(/row-level security|permission/);
+      return;
+    }
+
+    expect(result).toBe("");
+  });
+
+  it("an admin cannot soft-delete or mutate a group by direct UPDATE", () => {
+    let result: string;
+    try {
+      result = runAsAuthenticated(
+        SEED.tanvirId,
+        `update public.groups
+            set deleted_at = now(), invite_code = 'unsafe'
+          where id = ${sqlLiteral(SEED.groupId)}::uuid
+          returning invite_code;`
+      );
+    } catch (err) {
+      expect(String(err)).toMatch(/row-level security|permission/);
+      return;
+    }
+
+    expect(result).toBe("");
+  });
+
+  it("a member cannot bypass money RPCs with direct table inserts", () => {
+    let expenseBlocked = false;
+    let settlementBlocked = false;
+
+    try {
+      runAsAuthenticated(
+        SEED.tanvirId,
+        `insert into public.expenses (
+            group_id,
+            amount_paisa,
+            description,
+            category,
+            paid_by,
+            split_method,
+            created_by
+          ) values (
+            ${sqlLiteral(SEED.groupId)}::uuid,
+            100,
+            'Unsafe direct write',
+            'food',
+            ${sqlLiteral(SEED.tanvirId)}::uuid,
+            'equal',
+            ${sqlLiteral(SEED.tanvirId)}::uuid
+          );`
+      );
+    } catch (err) {
+      expenseBlocked = String(err).includes("row-level security") || String(err).includes("permission");
+    }
+
+    try {
+      runAsAuthenticated(
+        SEED.tanvirId,
+        `insert into public.settlements (
+            group_id,
+            from_user,
+            to_user,
+            amount_paisa,
+            method
+          ) values (
+            ${sqlLiteral(SEED.groupId)}::uuid,
+            ${sqlLiteral(SEED.tanvirId)}::uuid,
+            ${sqlLiteral(SEED.riniId)}::uuid,
+            100,
+            'cash'
+          );`
+      );
+    } catch (err) {
+      settlementBlocked =
+        String(err).includes("row-level security") || String(err).includes("permission");
+    }
+
+    expect(expenseBlocked).toBe(true);
+    expect(settlementBlocked).toBe(true);
+  });
+
+  it("a member cannot spoof activity_log rows directly", () => {
+    let blocked = false;
+    try {
+      runAsAuthenticated(
+        SEED.tanvirId,
+        `insert into public.activity_log (group_id, actor_id, event_type, payload)
+         values (
+           ${sqlLiteral(SEED.groupId)}::uuid,
+           ${sqlLiteral(SEED.tanvirId)}::uuid,
+           'group_deleted',
+           '{}'::jsonb
+         );`
+      );
+    } catch (err) {
+      blocked = String(err).includes("row-level security") || String(err).includes("permission");
+    }
+    expect(blocked).toBe(true);
+  });
+
   it("an outsider joining via accept_invite succeeds and then can read the group", () => {
     // We must run this without the surrounding rollback so the insert persists
     // long enough to query, but we still need to clean up afterwards. Use a

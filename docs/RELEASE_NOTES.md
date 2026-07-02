@@ -1,5 +1,15 @@
 # Release Notes
 
+## 0.9.0-beta.0 — v1 release-candidate completion slice (2026-07-02)
+
+- Added the v1 release-candidate gap map and store-readiness docs for App Store, Google Play, and screenshots.
+- Added idempotent `create_group` plus group lifecycle RPCs for rename, type change, archive, leave, safe delete, and invite regeneration.
+- Added a Group Settings screen with invite copy/share, lifecycle actions, member count, created date, and creator/admin state.
+- Replayed `group.create` from the offline queue through `create_group`; expense and settlement replay continue through their existing idempotent RPCs.
+- Hardened RLS by removing direct client write policies for group lifecycle, money tables, and activity rows; mobile writes now go through explicit RPCs.
+- Regenerated Supabase types and added DB/unit coverage for group lifecycle, direct-write denial, group replay, and i18n placeholder parity.
+- Strengthened the tag release workflow to run the full automated gate before production EAS build. Store submission remains manual.
+
 ## 0.2.7 — Automated trusted-tester gate (2026-07-01)
 
 - Converted PR #1 from a manual-device merge gate to an automated-first gate by

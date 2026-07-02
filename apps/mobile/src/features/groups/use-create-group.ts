@@ -1,6 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { enqueueMutation } from "@/features/offline/mutation-queue";
+import {
+  enqueueMutation,
+  getQueuedMutationErrorDetails,
+  isPermanentQueuedMutationError
+} from "@/features/offline/mutation-queue";
 import { Sentry } from "@/lib/sentry";
 import { supabase } from "@/lib/supabase";
 
@@ -12,46 +16,83 @@ export type CreateGroupInput = {
   template: GroupTemplate;
 };
 
+export type CreateGroupResult =
+  | {
+      group: GroupSummary;
+      status: "synced";
+    }
+  | {
+      queuedMutationId: string;
+      status: "queued";
+    };
+
+function createClientMutationId() {
+  return `group:${Date.now().toString(36)}:${Math.random().toString(36).slice(2, 12)}`;
+}
+
+export function buildCreateGroupRpcPayload(input: CreateGroupInput) {
+  return {
+    p_client_mutation_id: createClientMutationId(),
+    p_name: input.name.trim(),
+    p_template: input.template
+  };
+}
+
+export async function createGroupWithOfflineQueue(
+  input: CreateGroupInput
+): Promise<CreateGroupResult> {
+  const payload = buildCreateGroupRpcPayload(input);
+  const { data: groupId, error } = await supabase.rpc("create_group", payload);
+
+  if (error) {
+    const errorDetails = getQueuedMutationErrorDetails(error);
+    const permanent = isPermanentQueuedMutationError(error);
+    const queuedMutation = enqueueMutation({
+      payload,
+      type: "group.create",
+      ...(permanent
+        ? {
+            failedAt: new Date().toISOString(),
+            lastErrorCode: errorDetails.code,
+            lastErrorMessage: errorDetails.message,
+            status: "failed" as const
+          }
+        : {})
+    });
+    Sentry.captureException(error, { tags: { feature: "groups.create" } });
+
+    if (!permanent) {
+      return {
+        queuedMutationId: queuedMutation.id,
+        status: "queued"
+      };
+    }
+
+    throw error;
+  }
+
+  if (!groupId) {
+    throw new Error("group.create.empty_result");
+  }
+
+  const { data: group, error: groupError } = await supabase
+    .from("groups")
+    .select("*")
+    .eq("id", groupId)
+    .single();
+
+  if (groupError) {
+    throw groupError;
+  }
+
+  return { group: toGroupSummary(group), status: "synced" };
+}
+
 export function useCreateGroup() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (input: CreateGroupInput): Promise<GroupSummary> => {
-      const {
-        data: { user },
-        error: userError
-      } = await supabase.auth.getUser();
-
-      if (userError) {
-        throw userError;
-      }
-
-      if (!user) {
-        throw new Error("auth.error.session_failed");
-      }
-
-      const trimmed = input.name.trim();
-      const payload = {
-        created_by: user.id,
-        name: trimmed,
-        template: input.template
-      };
-
-      const { data, error } = await supabase.from("groups").insert(payload).select("*").single();
-
-      if (error) {
-        // Persist the intent locally so the user's effort isn't lost when
-        // offline. The sync worker (out of scope this wave) will drain it.
-        enqueueMutation({
-          payload: { ...payload, owner_user_id: user.id },
-          type: "group.create"
-        });
-        Sentry.captureException(error, { tags: { feature: "groups.create" } });
-        throw error;
-      }
-
-      return toGroupSummary(data);
-    },
+    mutationFn: createGroupWithOfflineQueue,
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: groupsKeys.list() });
     }

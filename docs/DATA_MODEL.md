@@ -43,6 +43,7 @@ create table public.groups (
   template text not null check (template in ('mess','family','trip','event','custom')),
   avatar_url text,
   invite_code text unique not null default substr(md5(random()::text), 1, 6),
+  client_mutation_id text,
   created_by uuid not null references public.profiles(id),
   archived_at timestamptz,
   deleted_at timestamptz,
@@ -140,7 +141,9 @@ create table public.activity_log (
   actor_id uuid not null references public.profiles(id),
   event_type text not null check (event_type in (
     'expense_added','expense_edited','expense_deleted',
-    'settled','member_joined','member_left','group_renamed'
+    'settled','member_joined','member_left',
+    'group_created','group_renamed','group_template_changed',
+    'group_archived','group_deleted','invite_regenerated'
   )),
   payload jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()
@@ -176,20 +179,18 @@ create table public.device_tokens (
 ### `groups`
 
 - SELECT: only groups where the user is in `group_members` and `left_at is null`
-- INSERT: any authenticated user (creator)
-- UPDATE: only if user is admin of the group
-- DELETE: only if user is creator AND no unsettled balances exist (enforced by edge function, not raw delete)
+- INSERT/UPDATE/DELETE: no direct client table writes. Group lifecycle writes go through RPCs so creator/admin checks, safe-delete/leave balance checks, idempotency, and activity events stay server-side.
 
 ### `group_members`
 
 - SELECT: users can see members of groups they belong to
 - INSERT: only via `accept_invite` edge function (which validates invite_code)
-- UPDATE: only own row (to set `left_at`)
+- UPDATE: no direct client table writes. Leaving a group goes through `leave_group(p_group_id)` so role escalation and self-reactivation cannot bypass rules.
 
 ### `expenses`, `expense_shares`, `settlements`, `activity_log`
 
 - SELECT: only if user is a current member of the expense's `group_id`
-- INSERT/UPDATE: only by current group members; `created_by` must equal `auth.uid()`
+- INSERT/UPDATE/DELETE: no direct client table writes for money-changing tables or activity. Mobile must use RPCs such as `create_expense`, `create_settlement`, and group lifecycle functions.
 
 ### `device_tokens`
 
@@ -211,6 +212,23 @@ membership before returning data, revokes `anon`, and grants execute to
 - Validates code, inserts into `group_members`, logs `member_joined` event, returns `group_id`
 - Security definer; bypasses RLS to perform the insert, but checks `invite_code` validity strictly
 
+### `create_group(p_name text, p_template text, p_client_mutation_id text default null) returns uuid`
+
+- Validates auth, trims and validates group name length (1-50), validates template, inserts the group, and lets the existing trigger add the creator as admin.
+- `p_client_mutation_id` makes offline/retry replay idempotent per creator. A retry with the same creator and non-null mutation id returns the existing group id.
+- Writes a `group_created` activity event.
+- `SECURITY DEFINER`; no direct `groups` insert policy exists for clients.
+
+### Group lifecycle RPCs
+
+- `rename_group(p_group_id uuid, p_name text) returns void` — admin-only, validates name length, writes `group_renamed`.
+- `update_group_template(p_group_id uuid, p_template text) returns void` — admin-only, validates template, writes `group_template_changed`.
+- `archive_group(p_group_id uuid) returns void` — admin-only, sets `archived_at`, writes `group_archived`.
+- `leave_group(p_group_id uuid) returns void` — current-member-only, refuses non-zero personal balance and refuses the last active admin leaving, writes `member_left`.
+- `delete_group(p_group_id uuid) returns void` — creator-only, refuses any outstanding group balance, soft-deletes the group, writes `group_deleted`.
+- `regenerate_group_invite(p_group_id uuid) returns text` — admin-only, rotates the 6-character invite code and writes `invite_regenerated`.
+- All are `SECURITY DEFINER`, revoke `public`/`anon`, grant execute to `authenticated`, and rely on explicit `auth.uid()` membership/admin checks.
+
 ### `create_expense(...) returns uuid`
 
 Atomic expense writer used by the mobile app.
@@ -224,7 +242,7 @@ Atomic expense writer used by the mobile app.
 - Verifies every share user is a current group member; raises `split_user_not_group_member` (`42501`) otherwise
 - Verifies all share values are non-negative integer paisa and sum exactly to `p_amount_paisa`; raises `split_total_mismatch` (`23514`) if the total is wrong
 - Inserts the parent `expenses` row and all `expense_shares` rows in one Postgres transaction. The existing `expenses_log_activity` trigger writes the `activity_log` row in that same transaction.
-- `SECURITY INVOKER`; normal table RLS still applies. `EXECUTE` is revoked from `public`/`anon` and granted only to `authenticated`.
+- `SECURITY DEFINER` after `20260702114947_v1_group_lifecycle_and_write_hardening.sql` because direct money-table insert/update policies are revoked. The function still performs explicit auth, membership, payer, split-user, and split-total checks before writing. `EXECUTE` is revoked from `public`/`anon` and granted only to `authenticated`.
 
 ### `create_settlement(...) returns uuid`
 
@@ -238,7 +256,7 @@ Atomic settlement writer used by the mobile app.
 - Verifies the caller is one side of the settlement; raises `settlement_party_required` (`42501`) otherwise
 - Verifies `p_from_user` and `p_to_user` are different, `p_amount_paisa` is positive, and `p_method` is one of `bkash`, `nagad`, `cash`, or `other`
 - Inserts the `settlements` row in one Postgres transaction. The existing `settlements_log_activity` trigger writes the `settled` `activity_log` row in that same transaction.
-- `SECURITY INVOKER`; normal table RLS still applies. `EXECUTE` is revoked from `public`/`anon` and granted only to `authenticated`.
+- `SECURITY DEFINER` after `20260702114947_v1_group_lifecycle_and_write_hardening.sql` because direct settlement inserts are revoked. The function still performs explicit auth, membership, party, amount, method, and caller-participation checks before writing. `EXECUTE` is revoked from `public`/`anon` and granted only to `authenticated`.
 
 ## Triggers
 
@@ -261,6 +279,7 @@ Clients subscribe per-group; the mobile app filters by `group_id = $current_grou
 ## Indexes (beyond PKs)
 
 - `groups(invite_code)` — already unique
+- `groups(created_by, client_mutation_id) where client_mutation_id is not null` — idempotent offline/retry group creation
 - `expenses(group_id, occurred_at desc)`
 - `expenses(group_id, created_by, client_mutation_id) where client_mutation_id is not null` — idempotent mobile retries
 - `expense_shares(user_id)` — for "all my balances" view
@@ -291,7 +310,11 @@ Only `SELECT`, `INSERT`, and `UPDATE` policies are defined for `public.expense_s
 
 ### Group archive / rename
 
-The doc prose says "UPDATE: only if user is admin of the group". This is enforced by `groups_update_admins`, which is `FOR UPDATE` and gates both `using` and `with check` on `current_user_is_group_admin(id)`. Archive (`archived_at`) and rename (`name`) both go through this single policy — no extra policy needed.
+`20260702114947_v1_group_lifecycle_and_write_hardening.sql` removed the broad `groups_update_admins` table policy. Rename, template change, archive, delete, invite regeneration, and leave now go through dedicated RPCs that validate the exact action and write activity events. This prevents clients from directly changing `created_by`, `invite_code`, `deleted_at`, or membership roles.
+
+### Direct ledger writes
+
+`20260702114947_v1_group_lifecycle_and_write_hardening.sql` removed direct client insert/update policies on `expenses`, `expense_shares`, `settlements`, and `activity_log`. Mobile money writes must use `create_expense` and `create_settlement`; future edit/delete must add dedicated RPCs before exposing UI.
 
 ### `device_tokens`
 
@@ -300,12 +323,13 @@ The doc prose says "UPDATE: only if user is admin of the group". This is enforce
 ### Database functions added since 0001
 
 - `get_group_balances(p_group_id uuid) returns table(user_id uuid, net_paisa bigint)` — added in `0003_balances_helper.sql`. `SECURITY DEFINER`, raises `not_group_member` (SQLSTATE `42501`) if the caller is not a current member. Returns one row per member who has a non-zero net (creditor positive, debtor negative). The mobile app uses this for the per-member balance strip without re-running `simplify_debts`.
-- `create_expense(...) returns uuid` — added in `20260630230837_create_expense_rpc.sql` and made idempotent in `20260630235302_retry_safe_money_rpc.sql`. `SECURITY INVOKER`, raises `not_authenticated` (`28000`) for anon callers, `not_group_member` / `paid_by_not_group_member` / `split_user_not_group_member` (`42501`) for membership failures, and `split_total_mismatch` (`23514`) when shares do not sum to the expense amount. Returns the inserted expense UUID, or the existing UUID for a retry with the same non-null client mutation id.
-- `create_settlement(...) returns uuid` — added in `20260630235302_retry_safe_money_rpc.sql` and made idempotent in `20260701073918_settlement_idempotency_and_queue_replay.sql`. `SECURITY INVOKER`, validates caller membership, settlement parties, amount, method, and party participation before inserting the settlement. The `settlements_log_activity` trigger writes the `settled` event in the same transaction. Returns the inserted settlement UUID, or the existing UUID for a retry with the same non-null client mutation id.
+- `create_expense(...) returns uuid` — added in `20260630230837_create_expense_rpc.sql`, made idempotent in `20260630235302_retry_safe_money_rpc.sql`, and switched to `SECURITY DEFINER` in `20260702114947_v1_group_lifecycle_and_write_hardening.sql` after direct money-table writes were revoked. Raises `not_authenticated` (`28000`) for anon callers, `not_group_member` / `paid_by_not_group_member` / `split_user_not_group_member` (`42501`) for membership failures, and `split_total_mismatch` (`23514`) when shares do not sum to the expense amount. Returns the inserted expense UUID, or the existing UUID for a retry with the same non-null client mutation id.
+- `create_settlement(...) returns uuid` — added in `20260630235302_retry_safe_money_rpc.sql`, made idempotent in `20260701073918_settlement_idempotency_and_queue_replay.sql`, and switched to `SECURITY DEFINER` in `20260702114947_v1_group_lifecycle_and_write_hardening.sql` after direct settlement inserts were revoked. Validates caller membership, settlement parties, amount, method, and party participation before inserting the settlement. The `settlements_log_activity` trigger writes the `settled` event in the same transaction. Returns the inserted settlement UUID, or the existing UUID for a retry with the same non-null client mutation id.
+- `create_group(...)`, `rename_group(...)`, `update_group_template(...)`, `archive_group(...)`, `leave_group(...)`, `delete_group(...)`, and `regenerate_group_invite(...)` — added in `20260702114947_v1_group_lifecycle_and_write_hardening.sql` for safe group lifecycle.
 
 ### Type-generation note
 
-`packages/db/src/types.ts` is regenerated against a local Supabase with all migrations applied (`0001`–`0004`, `20260630230837_create_expense_rpc`, `20260630235302_retry_safe_money_rpc`, and `20260701073918_settlement_idempotency_and_queue_replay` as of 2026-07-01). `Database["public"]["Functions"].get_group_balances`, `Database["public"]["Functions"].delete_my_account`, `Database["public"]["Functions"].create_expense`, and `Database["public"]["Functions"].create_settlement` are present and typed. `GroupBalanceRow` in `packages/db/src/index.ts` is derived from that generated type, so the mobile app calls `supabase.rpc("get_group_balances", { p_group_id })` against the typed client with no casts. Re-run `pnpm --filter db gen:types` after any new migration that touches a table, enum, relationship, function, or return shape.
+`packages/db/src/types.ts` is regenerated against a local Supabase with all migrations applied through `20260702114947_v1_group_lifecycle_and_write_hardening.sql` as of 2026-07-02. `Database["public"]["Functions"]` includes `get_group_balances`, `delete_my_account`, `create_expense`, `create_settlement`, `create_group`, and the group lifecycle RPCs. `GroupBalanceRow` in `packages/db/src/index.ts` is derived from that generated type, so the mobile app calls typed RPCs with no casts. Re-run `pnpm --filter db gen:types` after any new migration that touches a table, enum, relationship, function, or return shape.
 
 ## Account deletion
 
@@ -338,6 +362,7 @@ Apple Guideline 5.1.1(v) requires an in-app deletion path before the App Store s
 
 The following FK columns reference `public.profiles(id)` **without** `on delete cascade`, so a naive cascade would fail or orphan data:
 
+- `groups.created_by`
 - `expenses.paid_by`
 - `expenses.created_by`
 - `settlements.from_user`
@@ -366,7 +391,7 @@ Added in `0004_account_deletion.sql`:
 - `SECURITY DEFINER`, owned by the Postgres role.
 - Raises `not_authenticated` (SQLSTATE `28000`) if `auth.uid()` is null.
 - Raises `unsettled_balances` (SQLSTATE `P0001`) if any active-group net is non-zero.
-- Reassigns the six FK columns listed above from the caller's UUID to the tombstone UUID inside a single transaction. Each `UPDATE` is scoped on `... = auth.uid()` so the function cannot touch other users' rows even by mistake.
+- Reassigns the FK columns listed above from the caller's UUID to the tombstone UUID inside a single transaction. Each `UPDATE` is scoped on `... = auth.uid()` so the function cannot touch other users' rows even by mistake. `groups.created_by` reassignment was added in `20260702114947_v1_group_lifecycle_and_write_hardening.sql` so zero-balance group creators can delete their account without an FK failure.
 - Deletes the row from `auth.users where id = auth.uid()`. The cascade from `auth.users -> public.profiles -> (group_members, device_tokens)` removes the caller's identity and push tokens.
 - Returns `void`.
 - `EXECUTE` is revoked from `anon` and granted to `authenticated`.
