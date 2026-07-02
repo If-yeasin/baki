@@ -59,10 +59,10 @@ pnpm install
 # 2. Supabase: link & migrate
 supabase login
 supabase link --project-ref <ref>
-pnpm --filter db migrate
+pnpm --filter @baki/db migrate
 
 # 3. Generate Supabase types
-pnpm --filter db gen:types
+pnpm --filter @baki/db gen:types
 
 # 4. Configure Expo / EAS
 cd apps/mobile
@@ -208,8 +208,8 @@ do not add service-role keys to mobile env or EAS Secrets.
 
 1. Modify `docs/DATA_MODEL.md` first
 2. Write SQL in `packages/db/migrations/NNN_name.sql` (sequentially numbered)
-3. Run `pnpm --filter db migrate:local` to apply
-4. Run `pnpm --filter db gen:types` to regenerate `types.ts`
+3. Run `pnpm --filter @baki/db migrate:local` to apply
+4. Run `pnpm --filter @baki/db gen:types` to regenerate `types.ts`
 5. Commit migration + types together
 
 ## Troubleshooting cheatsheet
