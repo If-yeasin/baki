@@ -1,16 +1,25 @@
 import { Stack } from "expo-router";
-import { AlertCircle, CheckCircle2, Clock3, RefreshCw } from "lucide-react-native";
-import { useMemo, useState } from "react";
+import * as Clipboard from "expo-clipboard";
+import { AlertCircle, CheckCircle2, Clock3, Copy, RefreshCw, Trash2 } from "lucide-react-native";
+import { useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Pressable, ScrollView, View } from "react-native";
+import { Alert, Pressable, ScrollView, View } from "react-native";
 
 import { Text, Toast, radii, spacing, useTheme } from "@baki/ui";
 
 import { BakiEmptyState } from "@/components/baki-empty-state";
 import { SettingsRow, SettingsSection } from "@/components/settings-section";
-import { listQueuedMutations } from "@/features/offline/mutation-queue";
 import {
+  listQueuedMutations,
+  markQueuedMutationRetried,
+  removeQueuedMutation,
+  type QueuedMutation
+} from "@/features/offline/mutation-queue";
+import {
+  buildFailedQueuedMutationDebugText,
   buildSyncDetailMetrics,
+  canDismissFailedQueuedMutation,
+  formatFailedQueuedMutationSubtitle,
   formatSyncCount,
   selectFailedQueuedMutations
 } from "@/features/offline/sync-details-view-model";
@@ -28,7 +37,8 @@ export default function SyncDetailsScreen() {
     title: string;
     variant: "error" | "info" | "success";
   } | null>(null);
-  const queuedMutations = listQueuedMutations();
+  const [queueVersion, setQueueVersion] = useState(0);
+  const queuedMutations = useMemo(() => listQueuedMutations(), [queueVersion, snapshot]);
   const failedMutations = selectFailedQueuedMutations(queuedMutations);
   const hasQueue = queuedMutations.length > 0;
 
@@ -64,6 +74,84 @@ export default function SyncDetailsScreen() {
         variant: "error"
       });
     }
+  }
+
+  async function handleRetryFailedMutation(mutation: QueuedMutation) {
+    markQueuedMutationRetried(mutation.id);
+    setQueueVersion((version) => version + 1);
+    await handleRetryNow();
+  }
+
+  async function handleCopyDebug(mutation: QueuedMutation) {
+    await Clipboard.setStringAsync(buildFailedQueuedMutationDebugText(mutation));
+    setNotice({
+      title: t("sync.details.debugCopied.title"),
+      variant: "success"
+    });
+  }
+
+  function handleDismissFailedMutation(mutation: QueuedMutation) {
+    if (!canDismissFailedQueuedMutation(mutation)) {
+      setNotice({
+        body: t("sync.details.dismissBlocked.body"),
+        title: t("sync.details.dismissBlocked.title"),
+        variant: "info"
+      });
+      return;
+    }
+
+    Alert.alert(t("sync.details.dismiss.confirm.title"), t("sync.details.dismiss.confirm.body"), [
+      {
+        style: "cancel",
+        text: t("common.cancel")
+      },
+      {
+        onPress: () => {
+          removeQueuedMutation(mutation.id);
+          setQueueVersion((version) => version + 1);
+          setNotice({
+            title: t("sync.details.dismissed.title"),
+            variant: "success"
+          });
+        },
+        style: "destructive",
+        text: t("sync.details.dismiss.cta")
+      }
+    ]);
+  }
+
+  function renderFailedMutationActions(mutation: QueuedMutation) {
+    return (
+      <View style={{ flexDirection: "row", gap: spacing.xs }}>
+        <IconAction
+          accessibilityLabel={t("sync.details.copyDebug.cta")}
+          icon={<Copy color={colors.inkMuted} size={16} />}
+          onPress={() => {
+            void handleCopyDebug(mutation);
+          }}
+        />
+        <IconAction
+          accessibilityLabel={t("sync.details.retryOne.cta")}
+          icon={<RefreshCw color={colors.brandPrimary} size={16} />}
+          onPress={() => {
+            void handleRetryFailedMutation(mutation);
+          }}
+        />
+        <IconAction
+          accessibilityLabel={t("sync.details.dismiss.cta")}
+          disabled={!canDismissFailedQueuedMutation(mutation)}
+          icon={
+            <Trash2
+              color={
+                canDismissFailedQueuedMutation(mutation) ? colors.negative : colors.borderStrong
+              }
+              size={16}
+            />
+          }
+          onPress={() => handleDismissFailedMutation(mutation)}
+        />
+      </View>
+    );
   }
 
   return (
@@ -191,14 +279,14 @@ export default function SyncDetailsScreen() {
               key={mutation.id}
               icon={<AlertCircle color={colors.negative} size={19} />}
               showDivider={index !== failedMutations.length - 1}
-              subtitle={
-                mutation.lastErrorCode
-                  ? `${mutation.lastErrorCode} · ${mutation.lastErrorMessage ?? ""}`
-                  : (mutation.lastErrorMessage ?? t("sync.details.failedUnknown"))
-              }
+              subtitle={formatFailedQueuedMutationSubtitle(
+                mutation,
+                t("sync.details.failedUnknown")
+              )}
               title={t(`sync.mutation.${mutation.type}`, {
                 defaultValue: mutation.type
               })}
+              trailing={renderFailedMutationActions(mutation)}
             />
           ))}
         </SettingsSection>
@@ -230,5 +318,40 @@ export default function SyncDetailsScreen() {
         </View>
       ) : null}
     </ScrollView>
+  );
+}
+
+function IconAction({
+  accessibilityLabel,
+  disabled,
+  icon,
+  onPress
+}: {
+  accessibilityLabel: string;
+  disabled?: boolean;
+  icon: ReactNode;
+  onPress: () => void;
+}) {
+  const { colors } = useTheme();
+
+  return (
+    <Pressable
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole="button"
+      disabled={disabled}
+      hitSlop={8}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        alignItems: "center",
+        backgroundColor: pressed ? colors.bgSubtle : "transparent",
+        borderRadius: radii.pill,
+        height: 34,
+        justifyContent: "center",
+        opacity: disabled ? 0.45 : 1,
+        width: 34
+      })}
+    >
+      {icon}
+    </Pressable>
   );
 }

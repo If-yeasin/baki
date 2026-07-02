@@ -4,7 +4,7 @@ import { useRouter, type Href } from "expo-router";
 import { Activity as ActivityIcon, Layers3, Search } from "lucide-react-native";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ScrollView, TextInput, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, TextInput, View } from "react-native";
 
 import { Skeleton, Text, radii, spacing, useTheme } from "@baki/ui";
 
@@ -29,6 +29,7 @@ export default function ActivityScreen() {
   const groupsQuery = useGroups();
   const groups = groupsQuery.data ?? [];
   const [query, setQuery] = useState("");
+  const [visibleLimit, setVisibleLimit] = useState(20);
   const firstGroupId = groups[0]?.id;
   const addTarget = firstGroupId
     ? (`/group/${firstGroupId}/add-expense` as Href)
@@ -37,8 +38,12 @@ export default function ActivityScreen() {
   const expenseQueries = useQueries({
     queries: groups.map((group) => ({
       enabled: Boolean(session.userId),
-      queryFn: () => fetchGroupActivity(group.id),
-      queryKey: activityKeys.group(group.id),
+      queryFn: () =>
+        fetchGroupActivity(group.id, {
+          limit: visibleLimit,
+          unknownName: t("common.unknown_user")
+        }),
+      queryKey: activityKeys.groupPage(group.id, visibleLimit),
       staleTime: 1000 * 30
     }))
   });
@@ -54,8 +59,8 @@ export default function ActivityScreen() {
           }))
         )
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-        .slice(0, 20),
-    [expenseQueries, groups]
+        .slice(0, visibleLimit),
+    [expenseQueries, groups, visibleLimit]
   );
   const searchTerm = query.trim().toLowerCase();
   const filteredActivityItems = useMemo(() => {
@@ -165,6 +170,9 @@ export default function ActivityScreen() {
   const showLoadingRows =
     groupsQuery.isPending ||
     (groups.length > 0 && expenseQueries.some((query) => query.isPending && !query.data));
+  const isRefreshing =
+    groupsQuery.isRefetching || expenseQueries.some((query) => query.isRefetching);
+  const canLoadMore = activityItems.length >= visibleLimit;
 
   return (
     <View style={{ backgroundColor: colors.bgCanvas, flex: 1 }}>
@@ -174,6 +182,18 @@ export default function ActivityScreen() {
           padding: spacing.lg,
           paddingBottom: tabScreenBottomInset
         }}
+        refreshControl={
+          <RefreshControl
+            onRefresh={() => {
+              void groupsQuery.refetch();
+              for (const activityQuery of expenseQueries) {
+                void activityQuery.refetch();
+              }
+            }}
+            refreshing={isRefreshing}
+            tintColor={colors.brandPrimary}
+          />
+        }
         style={{ backgroundColor: colors.bgCanvas, flex: 1 }}
       >
         <View style={{ gap: spacing.md }}>
@@ -302,6 +322,26 @@ export default function ActivityScreen() {
                 </View>
 
                 <ActivityFeedList sections={activitySections} />
+                {canLoadMore && !searchTerm ? (
+                  <Pressable
+                    accessibilityLabel={t("activity.loadMore")}
+                    accessibilityRole="button"
+                    onPress={() => setVisibleLimit((limit) => limit + 20)}
+                    style={({ pressed }) => ({
+                      alignItems: "center",
+                      backgroundColor: colors.bgSurface,
+                      borderColor: colors.borderSubtle,
+                      borderRadius: radii.pill,
+                      borderWidth: 1,
+                      justifyContent: "center",
+                      minHeight: 46,
+                      opacity: pressed ? 0.78 : 1
+                    })}
+                    testID="activity-load-more"
+                  >
+                    <Text variant="bodyStrong">{t("activity.loadMore")}</Text>
+                  </Pressable>
+                ) : null}
               </>
             ) : (
               <BakiEmptyState

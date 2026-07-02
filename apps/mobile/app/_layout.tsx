@@ -132,7 +132,15 @@ function RootStack() {
       <Stack.Screen name="e2e/seed-auth" options={{ headerShown: false }} />
       <Stack.Screen name="groups/create" options={{ title: t("groups.create.title") }} />
       <Stack.Screen name="groups/join" options={{ title: t("groups.join.title") }} />
+      <Stack.Screen name="settings/export" options={{ title: t("settings.export.title") }} />
+      <Stack.Screen
+        name="settings/notifications"
+        options={{ title: t("settings.notifications.title") }}
+      />
+      <Stack.Screen name="settings/privacy" options={{ title: t("settings.privacy.title") }} />
+      <Stack.Screen name="settings/support" options={{ title: t("settings.support.title") }} />
       <Stack.Screen name="settings/sync" options={{ title: t("sync.details.title") }} />
+      <Stack.Screen name="settings/terms" options={{ title: t("settings.terms.title") }} />
       <Stack.Screen
         name="group/[id]/index"
         options={{ title: t("groups.detail.fallback_title") }}

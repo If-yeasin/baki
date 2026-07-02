@@ -2,13 +2,14 @@ import type { Database } from "@baki/db";
 
 import {
   isExpenseCategory,
+  type ExpenseCategory,
   type ExpenseRow,
   type ExpenseSummary
 } from "../../features/expenses/types";
 
 import { fromWatermelonTimestamp, requiredTimestamp, toWatermelonTimestamp } from "../mappers";
 import { watermelonTables } from "../tables";
-import { fetchLocalRows, upsertLocalRows } from "./shared";
+import { deleteLocalRows, fetchLocalRows, upsertLocalRows } from "./shared";
 
 export type ExpenseShareRow = Database["public"]["Tables"]["expense_shares"]["Row"];
 
@@ -97,6 +98,87 @@ export async function readLocalExpenseShares(groupId: string): Promise<LocalExpe
   const rows = await fetchLocalRows<LocalExpenseShareRaw>(watermelonTables.expenseShares);
 
   return rows.filter((row) => expenseIds.has(row.expense_id));
+}
+
+export type LocalExpenseEditInput = {
+  amountPaisa: number;
+  category: ExpenseCategory;
+  description: string;
+  expenseId: string;
+  note?: string | null;
+  occurredAt?: string | null;
+  paidBy: string;
+  receiptUrl?: string | null;
+  shares: Record<string, number>;
+  splitMethod: string;
+};
+
+export async function applyLocalExpenseEdit(input: LocalExpenseEditInput) {
+  const rows = await fetchLocalRows<LocalExpenseRaw>(watermelonTables.expenses);
+  const existing = rows.find((row) => row.id === input.expenseId);
+
+  if (!existing) {
+    return;
+  }
+
+  const updatedAt = Date.now();
+  await upsertLocalRows(watermelonTables.expenses, [
+    {
+      ...existing,
+      amount_paisa: input.amountPaisa,
+      category: input.category,
+      deleted_at: null,
+      description: input.description,
+      note: input.note ?? existing.note,
+      occurred_at: input.occurredAt
+        ? (toWatermelonTimestamp(input.occurredAt) ?? existing.occurred_at)
+        : existing.occurred_at,
+      paid_by: input.paidBy,
+      receipt_url: input.receiptUrl ?? existing.receipt_url,
+      split_method: input.splitMethod,
+      sync_status: null,
+      updated_at: updatedAt
+    }
+  ]);
+
+  await replaceLocalExpenseShares(input.expenseId, input.shares);
+}
+
+export async function applyLocalExpenseDelete(expenseId: string) {
+  const rows = await fetchLocalRows<LocalExpenseRaw>(watermelonTables.expenses);
+  const existing = rows.find((row) => row.id === expenseId);
+
+  if (!existing) {
+    return;
+  }
+
+  const now = Date.now();
+  await upsertLocalRows(watermelonTables.expenses, [
+    {
+      ...existing,
+      deleted_at: now,
+      sync_status: null,
+      updated_at: now
+    }
+  ]);
+}
+
+async function replaceLocalExpenseShares(expenseId: string, shares: Record<string, number>) {
+  const existingShares = await fetchLocalRows<LocalExpenseShareRaw>(watermelonTables.expenseShares);
+  const oldIds = existingShares
+    .filter((share) => share.expense_id === expenseId)
+    .map((share) => share.id);
+
+  await deleteLocalRows(watermelonTables.expenseShares, oldIds);
+  await upsertLocalRows(
+    watermelonTables.expenseShares,
+    Object.entries(shares).map(([userId, sharePaisa]) => ({
+      expense_id: expenseId,
+      id: `${expenseId}:${userId}`,
+      share_paisa: sharePaisa,
+      user_id: userId
+    }))
+  );
 }
 
 export async function upsertRemoteExpenses(rows: readonly ExpenseRow[]) {

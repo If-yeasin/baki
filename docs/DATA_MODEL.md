@@ -5,7 +5,7 @@
 ## Conventions
 
 - All tables in `public` schema
-- All money columns: `integer` (paisa), NOT NULL, CHECK `>= 0`
+- All money columns: `bigint` (paisa), NOT NULL, CHECK `>= 0`
 - All timestamps: `timestamptz`, default `now()`
 - All primary keys: `uuid`, default `gen_random_uuid()`
 - All tables have `created_at` and `updated_at`; trigger updates `updated_at` on every UPDATE
@@ -111,6 +111,24 @@ create table public.expense_shares (
 
 Invariant (enforced by trigger): `sum(share_paisa) for an expense = expenses.amount_paisa`.
 
+### `expense_mutation_receipts`
+
+Internal idempotency receipts for offline/retry-safe expense edits and deletes.
+Clients never read or write this table directly.
+
+```sql
+create table public.expense_mutation_receipts (
+  id uuid primary key default gen_random_uuid(),
+  operation text not null check (operation in ('edit','delete')),
+  expense_id uuid not null references public.expenses(id) on delete cascade,
+  group_id uuid not null references public.groups(id) on delete cascade,
+  actor_id uuid not null references public.profiles(id) on delete cascade,
+  client_mutation_id text not null,
+  created_at timestamptz not null default now(),
+  unique (operation, actor_id, client_mutation_id)
+);
+```
+
 ### `settlements`
 
 A payment between two members that zeroes or reduces a balance.
@@ -167,6 +185,24 @@ create table public.device_tokens (
 );
 ```
 
+### `notification_preferences`
+
+Per-user push preference switches. Defaults are opt-in after the user grants
+device notification permission; the mobile app can turn any channel off without
+removing the device token.
+
+```sql
+create table public.notification_preferences (
+  user_id uuid primary key references public.profiles(id) on delete cascade,
+  push_enabled boolean not null default true,
+  expense_activity boolean not null default true,
+  settlement_activity boolean not null default true,
+  reminders boolean not null default true,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+```
+
 ## Row Level Security
 
 **Every table has RLS enabled.** Default deny.
@@ -190,11 +226,20 @@ create table public.device_tokens (
 ### `expenses`, `expense_shares`, `settlements`, `activity_log`
 
 - SELECT: only if user is a current member of the expense's `group_id`
-- INSERT/UPDATE/DELETE: no direct client table writes for money-changing tables or activity. Mobile must use RPCs such as `create_expense`, `create_settlement`, and group lifecycle functions.
+- INSERT/UPDATE/DELETE: no direct client table writes for money-changing tables or activity. Mobile must use RPCs such as `create_expense`, `edit_expense`, `delete_expense`, `create_settlement`, and group lifecycle functions.
+
+### `expense_mutation_receipts`
+
+- No direct client access. The table has RLS enabled and `anon`/`authenticated` table privileges revoked. Expense lifecycle RPCs insert receipts inside the same transaction as the ledger mutation.
 
 ### `device_tokens`
 
 - ALL: only own rows
+
+### `notification_preferences`
+
+- SELECT/INSERT/UPDATE: only own row
+- DELETE: default-deny; preferences should be updated or cascade with profile deletion
 
 ## Database functions
 
@@ -244,6 +289,32 @@ Atomic expense writer used by the mobile app.
 - Inserts the parent `expenses` row and all `expense_shares` rows in one Postgres transaction. The existing `expenses_log_activity` trigger writes the `activity_log` row in that same transaction.
 - `SECURITY DEFINER` after `20260702114947_v1_group_lifecycle_and_write_hardening.sql` because direct money-table insert/update policies are revoked. The function still performs explicit auth, membership, payer, split-user, and split-total checks before writing. `EXECUTE` is revoked from `public`/`anon` and granted only to `authenticated`.
 
+### `edit_expense(...) returns uuid`
+
+Atomic expense editor used by the mobile app.
+
+- Signature: `edit_expense(p_expense_id uuid, p_amount_paisa bigint, p_description text, p_category text, p_paid_by uuid, p_split_method text, p_shares jsonb, p_occurred_at timestamptz default null, p_note text default null, p_receipt_url text default null, p_client_mutation_id text default null) returns uuid`
+- `p_shares` is a JSON object keyed by member UUID: `{ "<user_id>": <share_paisa> }`
+- `p_client_mutation_id` is optional. When present, retries for the same actor and client mutation id return the original edited expense id from `expense_mutation_receipts` without applying a second update or duplicate activity event.
+- Requires `auth.uid()`; raises `not_authenticated` (`28000`) for anonymous callers.
+- Verifies the target expense exists, is not soft-deleted, and belongs to a group where the caller is a current member; raises `expense_not_found` (`22023`) or `not_group_member` (`42501`) otherwise.
+- Verifies `p_paid_by` and every split user are current group members, verifies amount/category/split method/description validity, and verifies all share values are non-negative integer paisa summing exactly to `p_amount_paisa`.
+- Updates the parent `expenses` row and replaces all `expense_shares` rows in one Postgres transaction. The deferrable share-sum trigger validates the final split total at commit.
+- Sets a transaction-local activity actor so the existing `expenses_log_activity` trigger writes `expense_edited` with the editor's user id, not necessarily the original creator.
+- `SECURITY DEFINER`; no direct `expenses`/`expense_shares` update policy exists for clients.
+
+### `delete_expense(...) returns uuid`
+
+Soft-deletes an expense through the ledger-safe RPC path.
+
+- Signature: `delete_expense(p_expense_id uuid, p_client_mutation_id text default null) returns uuid`
+- `p_client_mutation_id` is optional. When present, retries for the same actor and client mutation id return the original deleted expense id from `expense_mutation_receipts` without writing a duplicate activity event.
+- Requires `auth.uid()`; raises `not_authenticated` (`28000`) for anonymous callers.
+- Verifies the target expense exists and belongs to a group where the caller is a current member; raises `expense_not_found` (`22023`) or `not_group_member` (`42501`) otherwise.
+- Sets `expenses.deleted_at` instead of deleting rows. Existing share rows remain for audit, and balance helpers ignore soft-deleted expenses.
+- Sets a transaction-local activity actor so the existing `expenses_log_activity` trigger writes `expense_deleted` with the deleting member's user id.
+- `SECURITY DEFINER`; no direct `expenses` delete/update policy exists for clients.
+
 ### `create_settlement(...) returns uuid`
 
 Atomic settlement writer used by the mobile app.
@@ -282,11 +353,13 @@ Clients subscribe per-group; the mobile app filters by `group_id = $current_grou
 - `groups(created_by, client_mutation_id) where client_mutation_id is not null` — idempotent offline/retry group creation
 - `expenses(group_id, occurred_at desc)`
 - `expenses(group_id, created_by, client_mutation_id) where client_mutation_id is not null` — idempotent mobile retries
+- `expense_mutation_receipts(operation, actor_id, client_mutation_id)` — idempotent mobile expense edit/delete retries
 - `expense_shares(user_id)` — for "all my balances" view
 - `settlements(group_id, occurred_at desc)`
 - `settlements(group_id, from_user, client_mutation_id) where client_mutation_id is not null` — idempotent mobile settlement retries
 - `activity_log(group_id, created_at desc)`
 - `group_members(user_id) where left_at is null`
+- `notification_preferences(user_id)` — primary key, own-row preference lookup
 
 ## Implementation status
 
@@ -294,7 +367,7 @@ This section tracks divergences between the prose schema above and the actual mi
 
 ### Money column widths
 
-The doc text above says "money columns: `integer` (paisa)". The shipped migration `0001_initial.sql` uses **`bigint`** for `expenses.amount_paisa`, `expense_shares.share_paisa`, and `settlements.amount_paisa`, which matches the project-wide non-negotiable "money is bigint paisa". The doc prose is the drift; treat the migration as authoritative. New columns must follow `bigint`.
+The shipped migration `0001_initial.sql` uses **`bigint`** for `expenses.amount_paisa`, `expense_shares.share_paisa`, and `settlements.amount_paisa`, which matches the project-wide non-negotiable "money is bigint paisa". New money columns must follow `bigint`.
 
 ### `group_members` INSERT
 
@@ -314,22 +387,28 @@ Only `SELECT`, `INSERT`, and `UPDATE` policies are defined for `public.expense_s
 
 ### Direct ledger writes
 
-`20260702114947_v1_group_lifecycle_and_write_hardening.sql` removed direct client insert/update policies on `expenses`, `expense_shares`, `settlements`, and `activity_log`. Mobile money writes must use `create_expense` and `create_settlement`; future edit/delete must add dedicated RPCs before exposing UI.
+`20260702114947_v1_group_lifecycle_and_write_hardening.sql` removed direct client insert/update policies on `expenses`, `expense_shares`, `settlements`, and `activity_log`. Mobile money writes must use `create_expense`, `edit_expense`, `delete_expense`, and `create_settlement`.
 
 ### `device_tokens`
 
 `device_tokens_own_rows` is `FOR ALL` (SELECT/INSERT/UPDATE/DELETE) gated to `user_id = auth.uid()`. The doc bullet ("ALL: only own rows") matches the migration.
 
+### `notification_preferences`
+
+`20260702131351_v1_notification_preferences.sql` adds own-row push preference storage with SELECT/INSERT/UPDATE policies and no direct DELETE policy. The table cascades when a profile is deleted.
+
 ### Database functions added since 0001
 
 - `get_group_balances(p_group_id uuid) returns table(user_id uuid, net_paisa bigint)` — added in `0003_balances_helper.sql`. `SECURITY DEFINER`, raises `not_group_member` (SQLSTATE `42501`) if the caller is not a current member. Returns one row per member who has a non-zero net (creditor positive, debtor negative). The mobile app uses this for the per-member balance strip without re-running `simplify_debts`.
 - `create_expense(...) returns uuid` — added in `20260630230837_create_expense_rpc.sql`, made idempotent in `20260630235302_retry_safe_money_rpc.sql`, and switched to `SECURITY DEFINER` in `20260702114947_v1_group_lifecycle_and_write_hardening.sql` after direct money-table writes were revoked. Raises `not_authenticated` (`28000`) for anon callers, `not_group_member` / `paid_by_not_group_member` / `split_user_not_group_member` (`42501`) for membership failures, and `split_total_mismatch` (`23514`) when shares do not sum to the expense amount. Returns the inserted expense UUID, or the existing UUID for a retry with the same non-null client mutation id.
+- `edit_expense(...) returns uuid` — added in `20260702124812_v1_expense_lifecycle_rpc.sql`. Validates caller membership, payer membership, split-user membership, amount/category/split method/description, and final share total before replacing the expense fields and split rows. Returns the edited expense UUID, or the existing UUID for a retry with the same actor and non-null client mutation id. The activity trigger records `expense_edited` with the actual editor.
+- `delete_expense(...) returns uuid` — added in `20260702124812_v1_expense_lifecycle_rpc.sql`. Validates caller membership before soft-deleting the expense. Returns the deleted expense UUID, or the existing UUID for a retry with the same actor and non-null client mutation id. The activity trigger records `expense_deleted` with the actual deleting member.
 - `create_settlement(...) returns uuid` — added in `20260630235302_retry_safe_money_rpc.sql`, made idempotent in `20260701073918_settlement_idempotency_and_queue_replay.sql`, and switched to `SECURITY DEFINER` in `20260702114947_v1_group_lifecycle_and_write_hardening.sql` after direct settlement inserts were revoked. Validates caller membership, settlement parties, amount, method, and party participation before inserting the settlement. The `settlements_log_activity` trigger writes the `settled` event in the same transaction. Returns the inserted settlement UUID, or the existing UUID for a retry with the same non-null client mutation id.
 - `create_group(...)`, `rename_group(...)`, `update_group_template(...)`, `archive_group(...)`, `leave_group(...)`, `delete_group(...)`, and `regenerate_group_invite(...)` — added in `20260702114947_v1_group_lifecycle_and_write_hardening.sql` for safe group lifecycle.
 
 ### Type-generation note
 
-`packages/db/src/types.ts` is regenerated against a local Supabase with all migrations applied through `20260702114947_v1_group_lifecycle_and_write_hardening.sql` as of 2026-07-02. `Database["public"]["Functions"]` includes `get_group_balances`, `delete_my_account`, `create_expense`, `create_settlement`, `create_group`, and the group lifecycle RPCs. `GroupBalanceRow` in `packages/db/src/index.ts` is derived from that generated type, so the mobile app calls typed RPCs with no casts. Re-run `pnpm --filter db gen:types` after any new migration that touches a table, enum, relationship, function, or return shape.
+`packages/db/src/types.ts` is regenerated against a local Supabase with all migrations applied through `20260702124812_v1_expense_lifecycle_rpc.sql` as of 2026-07-02. `Database["public"]["Functions"]` includes `get_group_balances`, `delete_my_account`, `create_expense`, `edit_expense`, `delete_expense`, `create_settlement`, `create_group`, and the group lifecycle RPCs. `GroupBalanceRow` in `packages/db/src/index.ts` is derived from that generated type, so the mobile app calls typed RPCs with no casts. Re-run `pnpm --filter db gen:types` after any new migration that touches a table, enum, relationship, function, or return shape.
 
 ## Account deletion
 

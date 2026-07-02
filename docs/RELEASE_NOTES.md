@@ -1,5 +1,15 @@
 # Release Notes
 
+## Unreleased — v1 complete app implementation slice (2026-07-02)
+
+- Added RPC-only expense edit/delete with idempotency receipts, activity attribution to the editing/deleting member, offline queue replay, local cache updates, and DB/mobile unit coverage.
+- Added CSV ledger export from Settings through the native share sheet, with tested CSV escaping and offline local-row fallback.
+- Added Expo push token registration plus user notification preferences backed by `notification_preferences`.
+- Added Settings -> Sync per-item retry, redacted debug copy, and guarded dismiss for permanent failed mutations.
+- Added pull-to-refresh and load-more pagination to group and all-activity views.
+- Added in-app privacy, terms, and support screens plus draft store/legal docs.
+- Supabase type generation and local migration reset still require a responsive local Docker/Supabase stack; the attempted generation hung and was stopped before completion.
+
 ## 0.9.0-beta.0 — v1 release-candidate completion slice (2026-07-02)
 
 - Added the v1 release-candidate gap map and store-readiness docs for App Store, Google Play, and screenshots.

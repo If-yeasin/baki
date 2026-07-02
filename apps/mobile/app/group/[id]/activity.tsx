@@ -8,13 +8,16 @@ import { Stack, useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { Activity as ActivityIcon } from "lucide-react-native";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { ScrollView, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, View } from "react-native";
 
-import { Skeleton, spacing, useTheme } from "@baki/ui";
+import { Skeleton, Text, radii, spacing, useTheme } from "@baki/ui";
 
 import { ActivityFeedList, type ActivityFeedSection } from "@/components/activity-feed-list";
 import { BakiEmptyState } from "@/components/baki-empty-state";
-import { useGroupActivity, type ActivityLogItem } from "@/features/activity/use-activity-log";
+import {
+  useInfiniteGroupActivity,
+  type ActivityLogItem
+} from "@/features/activity/use-activity-log";
 import { useSession } from "@/features/auth/use-session";
 import { useGroupDetail } from "@/features/groups/use-group-detail";
 import { usePreferencesStore } from "@/stores/preferences";
@@ -32,13 +35,17 @@ export default function GroupActivityScreen() {
   const session = useSession();
   const { colors } = useTheme();
   const detailQuery = useGroupDetail(groupId);
-  const activityQuery = useGroupActivity(groupId);
+  const activityQuery = useInfiniteGroupActivity(groupId, t("common.unknown_user"));
   const groupName = detailQuery.data?.group.name ?? t("groups.detail.fallback_title");
+  const activityItems = useMemo(
+    () => activityQuery.data?.pages.flatMap((page) => page.items) ?? [],
+    [activityQuery.data]
+  );
 
   const sections = useMemo<ActivityFeedSection[]>(() => {
     const grouped = new Map<string, ActivityFeedSection>();
 
-    for (const item of activityQuery.data ?? []) {
+    for (const item of activityItems) {
       const title = formatRelativeDhakaDate(item.createdAt, locale);
       const existing = grouped.get(title);
       const feedItem = toFeedItem({
@@ -68,9 +75,10 @@ export default function GroupActivityScreen() {
     }
 
     return Array.from(grouped.values());
-  }, [activityQuery.data, groupId, groupName, locale, router, session.userId, t]);
+  }, [activityItems, groupId, groupName, locale, router, session.userId, t]);
 
   const isLoading = detailQuery.isPending || activityQuery.isPending;
+  const isRefreshing = detailQuery.isRefetching || activityQuery.isRefetching;
 
   return (
     <ScrollView
@@ -79,6 +87,16 @@ export default function GroupActivityScreen() {
         padding: spacing.lg,
         paddingBottom: spacing["4xl"]
       }}
+      refreshControl={
+        <RefreshControl
+          onRefresh={() => {
+            void detailQuery.refetch();
+            void activityQuery.refetch();
+          }}
+          refreshing={isRefreshing}
+          tintColor={colors.brandPrimary}
+        />
+      }
       style={{ backgroundColor: colors.bgCanvas, flex: 1 }}
     >
       <Stack.Screen options={{ title: t("groups.detail.activity.title") }} />
@@ -90,7 +108,34 @@ export default function GroupActivityScreen() {
           <Skeleton height={68} />
         </View>
       ) : sections.length > 0 ? (
-        <ActivityFeedList sections={sections} />
+        <>
+          <ActivityFeedList sections={sections} />
+          {activityQuery.hasNextPage ? (
+            <Pressable
+              accessibilityLabel={t("activity.loadMore")}
+              accessibilityRole="button"
+              disabled={activityQuery.isFetchingNextPage}
+              onPress={() => {
+                void activityQuery.fetchNextPage();
+              }}
+              style={({ pressed }) => ({
+                alignItems: "center",
+                backgroundColor: colors.bgSurface,
+                borderColor: colors.borderSubtle,
+                borderRadius: radii.pill,
+                borderWidth: 1,
+                minHeight: 46,
+                justifyContent: "center",
+                opacity: activityQuery.isFetchingNextPage ? 0.52 : pressed ? 0.78 : 1
+              })}
+              testID="group-activity-load-more"
+            >
+              <Text variant="bodyStrong">
+                {activityQuery.isFetchingNextPage ? t("common.loading") : t("activity.loadMore")}
+              </Text>
+            </Pressable>
+          ) : null}
+        </>
       ) : (
         <BakiEmptyState
           body={t("activity.empty.body")}

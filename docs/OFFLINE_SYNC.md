@@ -9,15 +9,17 @@ Baki queues money-changing work when the network is weak or unavailable, then re
 Current queue types live in `apps/mobile/src/features/offline/mutation-queue.ts`:
 
 - `expense.create` — replayed through `create_expense`
+- `expense.update` — replayed through `edit_expense`
+- `expense.delete` — replayed through `delete_expense`
 - `settlement.create` — replayed through `create_settlement`
 - `group.create` — replayed through `create_group`
-- `expense.update`, `expense.delete`, `profile.update` — reserved for later repair paths
+- `profile.update` — reserved for later repair paths
 
 Money-writing replay must continue to use RPCs only. Do not add direct client inserts for expenses or settlements. Group lifecycle replay also uses RPCs so membership/admin checks and idempotency stay server-side.
 
 ## Idempotency
 
-`create_group`, `create_expense`, and `create_settlement` accept `p_client_mutation_id`. The mobile app generates a client mutation id before calling the RPC and stores the same id in the queue payload if the call fails. Replaying the same payload returns the original group/ledger row instead of creating a duplicate.
+`create_group`, `create_expense`, `edit_expense`, `delete_expense`, and `create_settlement` accept `p_client_mutation_id`. The mobile app generates a client mutation id before calling the RPC and stores the same id in the queue payload if the call fails. Replaying the same payload returns the original group/ledger row instead of creating a duplicate.
 
 ## Failure Handling
 
@@ -25,7 +27,7 @@ Temporary failures stay `pending` and increment `retryCount`. Examples: network 
 
 Permanent failures are marked `failed` and are skipped by automatic replay. Examples: validation errors, RLS/membership errors, auth errors, foreign-key errors, and empty RPC results.
 
-Failed mutations are not silently deleted. They remain visible on Settings -> Sync until the user taps retry, or until a future repair/dismiss path is added.
+Failed mutations are not silently deleted. They remain visible on Settings -> Sync. Users can retry all, retry one failed item, copy redacted debug details, or dismiss only permanent validation/auth failures that cannot safely replay.
 
 When an expense or settlement RPC fails for a temporary reason, the mobile app now keeps the payload in the queue and returns a queued-success result to the screen. The user sees "অফলাইনে সেভ হয়েছে" / "Saved offline" with copy explaining that Baki will sync automatically. Permanent money-writing failures are queued with `failed` status for visibility, but the form still treats them as errors.
 
@@ -43,7 +45,7 @@ The orchestrator keeps an in-memory lock so concurrent triggers share one run in
 ## Known Limitations
 
 - NetInfo is not installed yet. Replay is driven by app lifecycle, interval, and retry/backoff instead of explicit connectivity state.
-- Expense edit/delete and profile update queue types are reserved but not replayed yet. They need dedicated idempotent RPCs before being enabled.
+- `profile.update` is reserved but not replayed yet. It needs a dedicated typed repair path before being enabled.
 - Conflict resolution is remote-wins after successful fetch. Conflicts that fail RPC validation remain visible as failed sync items.
 - Expo Go uses in-memory storage and cannot validate the full WatermelonDB offline path; use a Dev Client for trusted-tester QA.
 

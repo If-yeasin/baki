@@ -1,11 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { formatMoney, toBengaliNumerals } from "@baki/i18n";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { Check, X } from "lucide-react-native";
+import { Check, Trash2, X } from "lucide-react-native";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
-import { Pressable, ScrollView, View } from "react-native";
+import { Alert, Pressable, ScrollView, View } from "react-native";
 import { z } from "zod";
 
 import {
@@ -25,6 +25,8 @@ import { ExpenseReviewCard } from "@/components/expense-review-card";
 import { ExpenseCategoryMark } from "@/components/ledger-marks";
 import { useSession } from "@/features/auth/use-session";
 import { useCreateExpense } from "@/features/expenses/use-create-expense";
+import { useDeleteExpense, useUpdateExpense } from "@/features/expenses/use-update-expense";
+import { useExpenseDetail } from "@/features/expenses/use-expenses";
 import {
   SplitMathError,
   splitEqual,
@@ -71,16 +73,22 @@ function formatMemberCount(count: number, locale: "bn" | "en"): string {
 export default function AddExpenseScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const params = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ expenseId?: string; id: string }>();
   const groupId = params.id ?? "";
+  const expenseId = typeof params.expenseId === "string" ? params.expenseId : undefined;
+  const isEditing = Boolean(expenseId);
   const session = useSession();
   const locale = usePreferencesStore((state) => state.locale);
   const { colors } = useTheme();
 
   const detailQuery = useGroupDetail(groupId);
+  const expenseDetailQuery = useExpenseDetail(groupId, expenseId);
   const createExpense = useCreateExpense();
+  const updateExpense = useUpdateExpense();
+  const deleteExpense = useDeleteExpense();
   const members = detailQuery.data?.members ?? [];
   const groupName = detailQuery.data?.group.name ?? t("groups.detail.fallback_title");
+  const activeMutation = isEditing ? updateExpense : createExpense;
 
   const {
     control,
@@ -119,7 +127,7 @@ export default function AddExpenseScreen() {
   const [splitMembersTouched, setSplitMembersTouched] = useState(false);
   const [queuedNoticeVisible, setQueuedNoticeVisible] = useState(false);
   const initializedSplitMembers = useRef(false);
-  const selectedSplitMembers = splitMembersTouched ? splitMembers : memberIds;
+  const selectedSplitMembers = splitMembersTouched || isEditing ? splitMembers : memberIds;
   const selectedPaidBy = paidBy || defaultPayerId;
   const selectedCategory = watch("category");
   const selectedPayerName =
@@ -220,6 +228,38 @@ export default function AddExpenseScreen() {
   useEffect(() => {
     if (initializedSplitMembers.current || members.length === 0) return;
 
+    if (isEditing) {
+      const expense = expenseDetailQuery.data;
+      if (!expense) return;
+
+      const selectedMembers = Object.keys(expense.shares).filter((userId) =>
+        memberIds.includes(userId)
+      );
+      const editSplitMethod = expense.splitMethod === "equal" ? "equal" : "exact";
+      const editSplitValues =
+        editSplitMethod === "exact"
+          ? Object.fromEntries(
+              Object.entries(expense.shares).map(([userId, sharePaisa]) => [
+                userId,
+                sharePaisa / 100
+              ])
+            )
+          : {};
+
+      reset({
+        amountPaisa: expense.amountPaisa,
+        category: expense.category,
+        description: expense.description,
+        paidBy: memberIds.includes(expense.paidBy) ? expense.paidBy : defaultPayerId,
+        splitMembers: selectedMembers.length > 0 ? selectedMembers : memberIds,
+        splitMethod: editSplitMethod,
+        splitValues: editSplitValues
+      });
+      setSplitMembersTouched(true);
+      initializedSplitMembers.current = true;
+      return;
+    }
+
     const currentValues = getValues();
     const currentPaidBy = currentValues.paidBy;
 
@@ -229,7 +269,7 @@ export default function AddExpenseScreen() {
       splitMembers: memberIds
     });
     initializedSplitMembers.current = true;
-  }, [defaultPayerId, getValues, memberIds, members.length, reset]);
+  }, [defaultPayerId, expenseDetailQuery.data, getValues, isEditing, memberIds, members.length, reset]);
 
   function toggleMember(userId: string) {
     const current = new Set(selectedSplitMembers);
@@ -316,7 +356,19 @@ export default function AddExpenseScreen() {
             submissionValues.splitValues ?? {}
           );
 
-    const result = await createExpense.mutateAsync({
+    const result = isEditing
+      ? await updateExpense.mutateAsync({
+          amountPaisa: submissionValues.amountPaisa,
+          category: submissionValues.category,
+          description: submissionValues.description,
+          expenseId: expenseId as string,
+          groupId,
+          paidBy: submissionValues.paidBy,
+          splitMembers: submissionValues.splitMembers,
+          splitMethod: submissionValues.splitMethod,
+          splitValues: preparedSplitValues
+        })
+      : await createExpense.mutateAsync({
       amountPaisa: submissionValues.amountPaisa,
       category: submissionValues.category,
       description: submissionValues.description,
@@ -325,7 +377,7 @@ export default function AddExpenseScreen() {
       splitMembers: submissionValues.splitMembers,
       splitMethod: submissionValues.splitMethod,
       splitValues: preparedSplitValues
-    });
+        });
 
     if (result.status === "queued") {
       setQueuedNoticeVisible(true);
@@ -335,9 +387,60 @@ export default function AddExpenseScreen() {
     router.back();
   });
 
+  function handleDeletePress() {
+    if (!expenseId || !groupId) return;
+
+    Alert.alert(t("expense.edit.delete.confirm.title"), t("expense.edit.delete.confirm.body"), [
+      {
+        style: "cancel",
+        text: t("common.cancel")
+      },
+      {
+        onPress: () => {
+          void deleteExpense
+            .mutateAsync({
+              expenseId,
+              groupId
+            })
+            .then((result) => {
+              if (result.status === "queued") {
+                setQueuedNoticeVisible(true);
+                return;
+              }
+              router.back();
+            })
+            .catch(() => undefined);
+        },
+        style: "destructive",
+        text: t("expense.edit.delete.cta")
+      }
+    ]);
+  }
+
+  if (isEditing && expenseDetailQuery.isPending) {
+    return (
+      <View
+        style={{
+          alignItems: "center",
+          backgroundColor: colors.bgCanvas,
+          flex: 1,
+          justifyContent: "center",
+          padding: spacing.xl
+        }}
+      >
+        <Stack.Screen options={{ headerShown: false, title: t("expense.edit.title") }} />
+        <Text tone="muted" variant="body">
+          {t("common.loading")}
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <View style={{ backgroundColor: colors.bgCanvas, flex: 1 }}>
-      <Stack.Screen options={{ headerShown: false, title: t("expense.add.title") }} />
+      <Stack.Screen
+        options={{ headerShown: false, title: t(isEditing ? "expense.edit.title" : "expense.add.title") }}
+      />
       <View
         style={{
           alignItems: "center",
@@ -368,12 +471,32 @@ export default function AddExpenseScreen() {
           <X color={colors.inkOnBrand} size={20} />
         </Pressable>
         <Text style={{ color: colors.inkOnBrand, flex: 1 }} variant="h3">
-          {t("expense.add.title")}
+          {t(isEditing ? "expense.edit.title" : "expense.add.title")}
         </Text>
+        {isEditing ? (
+          <Pressable
+            accessibilityLabel={t("expense.edit.delete.cta")}
+            accessibilityRole="button"
+            disabled={deleteExpense.isPending}
+            onPress={handleDeletePress}
+            style={({ pressed }) => ({
+              alignItems: "center",
+              backgroundColor: "rgba(255,255,255,0.18)",
+              borderRadius: radii.pill,
+              height: 40,
+              justifyContent: "center",
+              opacity: deleteExpense.isPending ? 0.48 : pressed ? 0.72 : 1,
+              width: 40
+            })}
+            testID="expense-delete-cta"
+          >
+            <Trash2 color={colors.inkOnBrand} size={18} />
+          </Pressable>
+        ) : null}
         <Pressable
-          accessibilityLabel={t("expense.add.cta")}
+          accessibilityLabel={t(isEditing ? "expense.edit.cta" : "expense.add.cta")}
           accessibilityRole="button"
-          disabled={createExpense.isPending}
+          disabled={activeMutation.isPending}
           onPress={onSubmit}
           style={({ pressed }) => ({
             alignItems: "center",
@@ -382,14 +505,16 @@ export default function AddExpenseScreen() {
             flexDirection: "row",
             gap: spacing.xs,
             minHeight: 40,
-            opacity: createExpense.isPending ? 0.48 : pressed ? 0.82 : 1,
+            opacity: activeMutation.isPending ? 0.48 : pressed ? 0.82 : 1,
             paddingHorizontal: spacing.md
           })}
           testID="expense-save-cta"
         >
           <Check color={colors.brandPrimary} size={16} />
           <Text style={{ color: colors.brandPrimary }} variant="label">
-            {createExpense.isPending ? t("common.loading") : t("expense.add.cta")}
+            {activeMutation.isPending
+              ? t("common.loading")
+              : t(isEditing ? "expense.edit.cta" : "expense.add.cta")}
           </Text>
         </Pressable>
       </View>
@@ -736,9 +861,9 @@ export default function AddExpenseScreen() {
           totalLabel={t("expense.review.total")}
         />
 
-        {createExpense.error ? (
+        {activeMutation.error || deleteExpense.error ? (
           <Text style={{ color: colors.negative }} variant="caption">
-            {t("expense.add.error.generic")}
+            {t(isEditing ? "expense.edit.error.generic" : "expense.add.error.generic")}
           </Text>
         ) : null}
       </ScrollView>
