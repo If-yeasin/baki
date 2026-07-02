@@ -578,6 +578,11 @@ describeIfDb(suiteName, () => {
         from public.get_group_balances(${sqlLiteral(SEED.groupId)}::uuid)
         where user_id in (${sqlLiteral(SEED.tanvirId)}::uuid, ${sqlLiteral(SEED.riniId)}::uuid);
 
+        create temporary table expense_lifecycle_deleted_call (
+          id uuid primary key
+        ) on commit drop;
+
+        insert into expense_lifecycle_deleted_call (id)
         select public.delete_expense(
           p_expense_id := (select id from expense_lifecycle_delete),
           p_client_mutation_id := ${sqlLiteral(`expense-lifecycle-delete:${randomUUID()}`)}
