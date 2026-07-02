@@ -16,7 +16,12 @@ export type ActivityEventType =
   | "settled"
   | "member_joined"
   | "member_left"
-  | "group_renamed";
+  | "group_archived"
+  | "group_created"
+  | "group_deleted"
+  | "group_renamed"
+  | "group_template_changed"
+  | "invite_regenerated";
 
 export type ActivityLogItem = {
   actorId: string;
@@ -42,7 +47,12 @@ const activityEventTypes = new Set<ActivityEventType>([
   "settled",
   "member_joined",
   "member_left",
-  "group_renamed"
+  "group_archived",
+  "group_created",
+  "group_deleted",
+  "group_renamed",
+  "group_template_changed",
+  "invite_regenerated"
 ]);
 
 function isRecord(value: Json): value is Record<string, Json | undefined> {

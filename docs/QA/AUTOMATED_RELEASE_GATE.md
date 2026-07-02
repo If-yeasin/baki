@@ -65,7 +65,8 @@ mobile, and database levels:
 - temporary `create_expense` RPC errors return queued success
 - temporary `create_settlement` RPC errors return queued success
 - permanent money-write failures remain visible as failed queued mutations
-- queue replay calls `create_expense` and `create_settlement`, not direct table inserts
+- queue replay calls `create_group`, `create_expense`, and `create_settlement`, not direct table inserts
+- direct client inserts/updates into money tables and direct fake activity rows are denied by RLS tests
 - failed permanent mutations are skipped until explicit retry
 - `create_expense` idempotency prevents duplicate expenses, shares, and activity rows
 - `create_settlement` idempotency prevents duplicate settlements and activity rows
@@ -94,7 +95,7 @@ pass.
 
 ## Known Limitations
 
-- `group.create` can be queued but is not replayed yet because group creation is not idempotent.
+- Expense edit/delete queue types are reserved but not replayed yet because edit/delete RPCs are not implemented.
 - NetInfo is not installed; replay is driven by startup, foreground, interval, and manual retry.
 - Expo Go cannot validate the native offline-storage path.
 - EAS/Maestro preview E2E is optional until a real run passes and the team decides to make it required.

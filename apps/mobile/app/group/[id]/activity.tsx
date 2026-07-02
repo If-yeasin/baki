@@ -141,9 +141,9 @@ function toFeedItem({
         ? "settlement"
         : item.eventType.startsWith("member_")
           ? "member"
-          : item.eventType === "group_renamed"
-            ? "group"
-            : "expense",
+        : item.eventType.startsWith("group_") || item.eventType === "invite_regenerated"
+          ? "group"
+          : "expense",
     onPress,
     paidBySelf: item.actorId === currentUserId,
     payerLabel: actorLabel

@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import type { Database } from "@baki/db";
 
 type CreateExpensePayload = Database["public"]["Functions"]["create_expense"]["Args"];
+type CreateGroupPayload = Database["public"]["Functions"]["create_group"]["Args"];
 type CreateSettlementPayload = Database["public"]["Functions"]["create_settlement"]["Args"];
 
 export type QueuedMutationStatus = "pending" | "failed";
@@ -248,7 +249,11 @@ export async function processQueuedMutations(): Promise<ProcessQueuedMutationsRe
       continue;
     }
 
-    if (mutation.type !== "expense.create" && mutation.type !== "settlement.create") {
+    if (
+      mutation.type !== "expense.create" &&
+      mutation.type !== "settlement.create" &&
+      mutation.type !== "group.create"
+    ) {
       result.skipped += 1;
       continue;
     }
@@ -258,7 +263,9 @@ export async function processQueuedMutations(): Promise<ProcessQueuedMutationsRe
     const response =
       mutation.type === "expense.create"
         ? await supabase.rpc("create_expense", mutation.payload as CreateExpensePayload)
-        : await supabase.rpc("create_settlement", mutation.payload as CreateSettlementPayload);
+        : mutation.type === "settlement.create"
+          ? await supabase.rpc("create_settlement", mutation.payload as CreateSettlementPayload)
+          : await supabase.rpc("create_group", mutation.payload as CreateGroupPayload);
 
     if (response.error) {
       if (isPermanentQueuedMutationError(response.error)) {

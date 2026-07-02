@@ -139,7 +139,7 @@ Workflows in `.github/workflows/`:
 - `ci.yml` — runs on every PR: install, local Supabase reset, lint, typecheck, tests, i18n parity, DB checks, asset checks, E2E auth checks, release safety scan, aggregate `pnpm check`, and `git diff --check`
 - `eas-preview.yml` — on PR label `build:preview`: triggers `eas build --profile preview --platform ios`
 - `eas-preview.yml` — on PR label `build:preview-e2e`: triggers `eas build --profile preview-e2e --platform android`
-- `release.yml` — on tag `v*`: triggers production EAS build + submit to App Store
+- `release.yml` — on tag `v*`: runs the full automated safety gate, then triggers a production iOS EAS build. It does not submit to App Store automatically.
 
 EAS Workflows:
 
@@ -154,7 +154,7 @@ Required secrets:
 - `EXPO_PUBLIC_SUPABASE_ENV`
 - `EXPO_PUBLIC_SENTRY_DSN`
 - `SUPABASE_ACCESS_TOKEN`
-- `APPLE_APP_SPECIFIC_PASSWORD` (for submission)
+- `APPLE_APP_SPECIFIC_PASSWORD` (only needed for manual submission)
 
 ## Supabase local development
 
@@ -338,7 +338,7 @@ eas build --profile preview --platform ios
 eas submit --platform ios --profile production
 ```
 
-> **Submission blocker:** `apps/mobile/eas.json` currently contains placeholder values in `submit.production.ios` — `appleId: "your-apple-id@example.com"`, `ascAppId: "1234567890"`, `appleTeamId: "ABCDE12345"`. These must be replaced with real Apple Developer credentials **before** `eas submit` will succeed. Do not commit the real values; set them via `eas secret:create` or pass them inline via `EXPO_APPLE_ID`, `EXPO_ASC_APP_ID`, `EXPO_APPLE_TEAM_ID` environment variables.
+> **Submission blocker:** `apps/mobile/eas.json` currently contains placeholder values in `submit.production.ios` — `appleId: "your-apple-id@example.com"`, `ascAppId: "1234567890"`, `appleTeamId: "ABCDE12345"`. These must be replaced with real Apple Developer credentials **before** `eas submit` will succeed. Do not commit the real values; set them via `eas secret:create` or pass them inline via `EXPO_APPLE_ID`, `EXPO_ASC_APP_ID`, `EXPO_APPLE_TEAM_ID` environment variables. The GitHub `release.yml` workflow intentionally builds only; submission requires an explicit manual command.
 
 ### 4. Dev Client limitations & manual OTP step
 

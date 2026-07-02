@@ -27,6 +27,7 @@ export function isGroupTemplate(value: string): value is GroupTemplate {
 
 export type GroupSummary = {
   archivedAt: string | null;
+  createdAt: string;
   createdBy: string;
   id: string;
   inviteCode: string;
@@ -38,6 +39,7 @@ export type GroupSummary = {
 export function toGroupSummary(row: GroupRow): GroupSummary {
   return {
     archivedAt: row.archived_at,
+    createdAt: row.created_at,
     createdBy: row.created_by,
     id: row.id,
     inviteCode: row.invite_code,

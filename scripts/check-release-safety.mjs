@@ -12,9 +12,10 @@ const checks = [
     pattern: /service[_-]?role|SUPABASE_SERVICE_ROLE/i
   },
   {
-    message: "Mobile code must not insert directly into money tables.",
+    message: "Mobile code must not write directly to ledger lifecycle tables.",
     paths: ["apps/mobile"],
-    pattern: /\.from\(\s*["'`](expenses|expense_shares|settlements)["'`]\s*\)\s*\.insert/s
+    pattern:
+      /\.from\(\s*["'`](groups|group_members|expenses|expense_shares|settlements|activity_log)["'`]\s*\)\s*\.(insert|update|delete|upsert)/s
   },
   {
     message: "Use safer benchmark wording for product comparisons.",

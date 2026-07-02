@@ -1,5 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Stack, useRouter, type Href } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter, type Href } from "expo-router";
 import { ArrowLeft, CheckCircle2, Hash, ShieldCheck } from "lucide-react-native";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
@@ -23,14 +23,16 @@ type JoinForm = z.input<typeof joinSchema>;
 export default function JoinGroupScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const params = useLocalSearchParams<{ code?: string }>();
   const joinGroup = useJoinGroup();
   const { colors } = useTheme();
+  const initialInviteCode = typeof params.code === "string" ? params.code : "";
   const {
     control,
     formState: { errors },
     handleSubmit
   } = useForm<JoinForm>({
-    defaultValues: { inviteCode: "" },
+    defaultValues: { inviteCode: initialInviteCode.toUpperCase().slice(0, 6) },
     resolver: zodResolver(joinSchema)
   });
   const watchedInviteCode = useWatch({ control, name: "inviteCode" });

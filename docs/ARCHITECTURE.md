@@ -126,7 +126,7 @@ baki/
 ```
 
 - **Reads:** TanStack Query, with WatermelonDB as the offline cache. On mount, hydrate from WatermelonDB instantly, then fetch from Supabase to refresh.
-- **Writes:** optimistic — write to WatermelonDB first, mutation queue pushes to Supabase, Supabase Realtime fans out to other group members' devices.
+- **Writes:** validated RPC first for group lifecycle and money-changing actions. Temporary network/RPC failures are saved in the MMKV mutation queue with the same client mutation id and replayed through RPCs; WatermelonDB is the read/cache fallback for the current trusted-tester app.
 - **Conflicts:** last-write-wins by `updated_at`, with the loser's edit preserved in the activity feed as "previous version".
 
 ## Auth flow
@@ -175,4 +175,4 @@ baki/
 - Unit tests
 - i18n key parity check (every `bn` key has an `en` key and vice versa)
 - Database verification (`pnpm db:check`, backed by the DB test suite)
-- (Pre-release only) EAS preview build
+- (Optional until hosted green) EAS preview / preview-E2E build

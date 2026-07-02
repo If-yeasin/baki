@@ -9,6 +9,7 @@ import {
   Copy,
   Plus,
   ReceiptText,
+  Settings,
   Users
 } from "lucide-react-native";
 import { useMemo, useState } from "react";
@@ -247,6 +248,24 @@ export default function GroupDetailScreen() {
                   <ArrowLeft color={colors.inkOnBrand} size={22} />
                 </Pressable>
                 <View style={{ flex: 1 }} />
+                <Pressable
+                  accessibilityLabel={t("groups.settings.title")}
+                  accessibilityRole="button"
+                  hitSlop={8}
+                  onPress={() => router.push(`/group/${groupId}/settings` as Href)}
+                  style={({ pressed }) => ({
+                    alignItems: "center",
+                    backgroundColor: "rgba(255,255,255,0.16)",
+                    borderRadius: radii.pill,
+                    height: 40,
+                    justifyContent: "center",
+                    opacity: pressed ? 0.6 : 1,
+                    width: 40
+                  })}
+                  testID="group-settings-button"
+                >
+                  <Settings color={colors.inkOnBrand} size={21} />
+                </Pressable>
               </View>
 
               <View

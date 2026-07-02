@@ -21,6 +21,7 @@ export async function fetchGroups(): Promise<GroupSummary[]> {
     const { data, error } = await supabase
       .from("groups")
       .select("*")
+      .is("archived_at", null)
       .is("deleted_at", null)
       .order("updated_at", { ascending: false });
 

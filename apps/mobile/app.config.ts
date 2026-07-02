@@ -22,7 +22,7 @@ if (e2eMode && !allowedE2ESupabaseEnvs.has(supabaseEnv.toLowerCase())) {
 const config: ExpoConfig = {
   name: "বাকি",
   slug: "baki",
-  version: "0.1.0",
+  version: "0.9.0",
   orientation: "portrait",
   scheme: "baki",
   userInterfaceStyle: "automatic",

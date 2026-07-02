@@ -104,17 +104,17 @@ The dependency-aware build sequence the agents should follow:
 10. **F10 Settings** — finishing touches
 11. **Hardening** — RLS audit, accessibility, App Store metadata
 
-## Trusted tester status — 2026-07-01
+## Release candidate status — 2026-07-02
 
 | Area             | Status                     | Notes                                                                                                                                                                                         |
 | ---------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | F1 Auth          | Implemented                | Phone OTP/profile path exists; Maestro can use the dev/preview-only seeded E2E auth route, not a production auth feature.                                                                     |
-| F2 Groups        | Partial                    | Create/join/list exist; offline group-create replay is queued but not drained yet.                                                                                                            |
+| F2 Groups        | Partial                    | Create/join/list/detail/settings exist. `create_group` is idempotent and `group.create` replays from the offline queue. Rename, type change, archive, leave, safe delete, invite copy/share, and invite regeneration use RPCs. Receipt/avatar upload remains deferred. |
 | F3 Expenses      | Partial                    | Add expense uses `create_expense` with idempotency; temporary RPC failures queue as pending offline saves.                                                                                    |
 | F4 Balances      | Implemented for group view | `get_group_balances` remains source of truth, with local ledger fallback.                                                                                                                     |
 | F5 Settlement    | Partial                    | `simplify_debts` drives the settle plan; settlement writes queue on temporary failure and record outside-app payment.                                                                         |
 | F6 Activity feed | Partial                    | Group and tab activity read real `activity_log`; pagination/pull-to-refresh remain pending.                                                                                                   |
 | F7 Notifications | Pending                    | Expo Notifications configured, product notification flows not shipped.                                                                                                                        |
-| F8 Offline-first | Partial                    | Expense/settlement mutations queue and replay; temporary failures show saved-offline UX. Automated tests cover replay; preview E2E is optional; real-device Dev Client QA remains recommended before public beta. |
+| F8 Offline-first | Partial                    | Group create plus expense/settlement mutations queue and replay through idempotent RPCs; temporary failures show saved-offline UX. Automated tests cover replay; preview E2E is optional; real-device Dev Client QA remains recommended before public beta. |
 | F9 Localization  | Partial                    | BN/EN parity enforced; native Bengali review still required.                                                                                                                                  |
 | F10 Settings     | Partial                    | Language/theme/delete-account/sync details exist; export/support/legal links pending.                                                                                                         |

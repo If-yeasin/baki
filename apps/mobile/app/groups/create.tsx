@@ -1,12 +1,13 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Stack, useRouter, type Href } from "expo-router";
 import { ArrowLeft, Check, Share2, UsersRound, type LucideIcon } from "lucide-react-native";
+import { useState } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, View } from "react-native";
 import { z } from "zod";
 
-import { Button, Input, Text, radii, spacing, useTheme } from "@baki/ui";
+import { Button, Input, Text, Toast, radii, spacing, useTheme } from "@baki/ui";
 
 import { GroupTemplateMark } from "@/components/ledger-marks";
 import { useCreateGroup } from "@/features/groups/use-create-group";
@@ -38,12 +39,19 @@ export default function CreateGroupScreen() {
   });
   const watchedName = useWatch({ control, name: "name" });
   const watchedTemplate = useWatch({ control, name: "template" });
+  const [queuedNoticeVisible, setQueuedNoticeVisible] = useState(false);
   const previewName = watchedName.trim() || t("groups.create.name.placeholder");
   const previewTemplate = watchedTemplate ?? "custom";
 
   const onSubmit = handleSubmit(async (values) => {
-    const group = await createGroup.mutateAsync(values);
-    router.replace(`/group/${group.id}` as Href);
+    const result = await createGroup.mutateAsync(values);
+
+    if (result.status === "queued") {
+      setQueuedNoticeVisible(true);
+      return;
+    }
+
+    router.replace(`/group/${result.group.id}` as Href);
   });
 
   return (
@@ -94,6 +102,17 @@ export default function CreateGroupScreen() {
         keyboardShouldPersistTaps="handled"
         style={{ flex: 1 }}
       >
+        {queuedNoticeVisible ? (
+          <Toast
+            dismissLabel={t("common.dismiss")}
+            message={t("sync.offline.saved.body")}
+            onDismiss={() => setQueuedNoticeVisible(false)}
+            testID="group-queued-notice"
+            title={t("sync.offline.saved.title")}
+            variant="success"
+          />
+        ) : null}
+
         <View
           style={{
             backgroundColor: colors.bgSurface,

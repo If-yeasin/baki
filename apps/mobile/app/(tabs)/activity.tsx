@@ -100,7 +100,7 @@ export default function ActivityScreen() {
             ? ("settlement" as const)
             : item.eventType.startsWith("member_")
               ? ("member" as const)
-              : item.eventType === "group_renamed"
+              : item.eventType.startsWith("group_") || item.eventType === "invite_regenerated"
                 ? ("group" as const)
                 : ("expense" as const),
         onPress: () => router.push(`/group/${item.groupId}` as Href),

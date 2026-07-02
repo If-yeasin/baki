@@ -260,6 +260,7 @@ export type Database = {
         Row: {
           archived_at: string | null
           avatar_url: string | null
+          client_mutation_id: string | null
           created_at: string
           created_by: string
           deleted_at: string | null
@@ -272,6 +273,7 @@ export type Database = {
         Insert: {
           archived_at?: string | null
           avatar_url?: string | null
+          client_mutation_id?: string | null
           created_at?: string
           created_by: string
           deleted_at?: string | null
@@ -284,6 +286,7 @@ export type Database = {
         Update: {
           archived_at?: string | null
           avatar_url?: string | null
+          client_mutation_id?: string | null
           created_at?: string
           created_by?: string
           deleted_at?: string | null
@@ -409,6 +412,7 @@ export type Database = {
     }
     Functions: {
       accept_invite: { Args: { p_invite_code: string }; Returns: string }
+      archive_group: { Args: { p_group_id: string }; Returns: undefined }
       create_expense: {
         Args: {
           p_amount_paisa: number
@@ -422,6 +426,14 @@ export type Database = {
           p_receipt_url?: string
           p_shares: Json
           p_split_method: string
+        }
+        Returns: string
+      }
+      create_group: {
+        Args: {
+          p_client_mutation_id?: string
+          p_name: string
+          p_template: string
         }
         Returns: string
       }
@@ -446,6 +458,7 @@ export type Database = {
         Args: { target_group_id: string }
         Returns: boolean
       }
+      delete_group: { Args: { p_group_id: string }; Returns: undefined }
       delete_my_account: { Args: never; Returns: undefined }
       get_group_balances: {
         Args: { p_group_id: string }
@@ -454,6 +467,16 @@ export type Database = {
           user_id: string
         }[]
       }
+      group_has_outstanding_balances: {
+        Args: { p_group_id: string }
+        Returns: boolean
+      }
+      leave_group: { Args: { p_group_id: string }; Returns: undefined }
+      regenerate_group_invite: { Args: { p_group_id: string }; Returns: string }
+      rename_group: {
+        Args: { p_group_id: string; p_name: string }
+        Returns: undefined
+      }
       simplify_debts: {
         Args: { p_group_id: string }
         Returns: {
@@ -461,6 +484,14 @@ export type Database = {
           from_user: string
           to_user: string
         }[]
+      }
+      update_group_template: {
+        Args: { p_group_id: string; p_template: string }
+        Returns: undefined
+      }
+      user_has_group_balance: {
+        Args: { p_group_id: string; p_user_id: string }
+        Returns: boolean
       }
     }
     Enums: {

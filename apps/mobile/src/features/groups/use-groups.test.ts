@@ -30,6 +30,7 @@ import type { GroupRow, GroupSummary } from "./types";
 const remoteGroup = {
   archived_at: null,
   avatar_url: null,
+  client_mutation_id: null,
   created_at: "2026-07-01T00:00:00.000Z",
   created_by: "user-1",
   deleted_at: null,
@@ -42,6 +43,7 @@ const remoteGroup = {
 
 const localGroup = {
   archivedAt: null,
+  createdAt: "2026-06-30T00:00:00.000Z",
   createdBy: "user-2",
   id: "local-group",
   inviteCode: "LOCAL1",
@@ -87,6 +89,7 @@ describe("fetchGroups", () => {
     await expect(fetchGroups()).resolves.toEqual([
       {
         archivedAt: null,
+        createdAt: "2026-07-01T00:00:00.000Z",
         createdBy: "user-1",
         id: "group-1",
         inviteCode: "ABC123",
