@@ -408,7 +408,7 @@ Only `SELECT`, `INSERT`, and `UPDATE` policies are defined for `public.expense_s
 
 ### Type-generation note
 
-`packages/db/src/types.ts` is regenerated against a local Supabase with all migrations applied through `20260702124812_v1_expense_lifecycle_rpc.sql` as of 2026-07-02. `Database["public"]["Functions"]` includes `get_group_balances`, `delete_my_account`, `create_expense`, `edit_expense`, `delete_expense`, `create_settlement`, `create_group`, and the group lifecycle RPCs. `GroupBalanceRow` in `packages/db/src/index.ts` is derived from that generated type, so the mobile app calls typed RPCs with no casts. Re-run `pnpm --filter db gen:types` after any new migration that touches a table, enum, relationship, function, or return shape.
+`packages/db/src/types.ts` includes the typed shape expected after migrations through `20260702131351_v1_notification_preferences.sql`, including `notification_preferences`, `expense_mutation_receipts`, `edit_expense`, and `delete_expense`. During the 2026-07-02 stabilization pass, local Supabase/Docker access was not responsive enough to complete `pnpm --filter @baki/db gen:types`, so the generated file was restored and updated with the expected migration deltas. Re-run `pnpm --filter @baki/db gen:types` against a responsive local or live Supabase database after any new migration that touches a table, enum, relationship, function, or return shape, then commit the regenerated output with the migration.
 
 ## Account deletion
 
