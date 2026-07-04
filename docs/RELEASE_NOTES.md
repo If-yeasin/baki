@@ -51,8 +51,8 @@
 ## 0.2.5 — Repo stabilization pass (2026-06-30)
 
 - Replaced the remaining unsafe product comparison with safer Bengali-first
-  ledger positioning while preserving Splitwise only as a
-  usability benchmark boundary in design docs.
+  ledger positioning while preserving only the approved Splitwise-level
+  usability benchmark language in design docs.
 - Updated stale architecture notes for the current Expo SDK 54 / React Native
   0.81.5 / Reanimated 4 workspace and the generated Supabase types location.
 - Aligned create-khata validation with the database `groups.name` 50-character

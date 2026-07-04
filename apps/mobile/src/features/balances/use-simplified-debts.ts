@@ -41,38 +41,50 @@ export function buildRawBalanceFallbackPlan(
   currentUserId: string
 ): UserSettlementTransfer[] {
   const selfRow = balances.find((row) => row.user_id === currentUserId);
-  if (!selfRow || selfRow.net_paisa >= 0) return [];
+  if (!selfRow || selfRow.net_paisa === 0) return [];
 
-  const creditorRows = balances.filter((row) => row.user_id !== currentUserId && row.net_paisa > 0);
-  const totalCredit = creditorRows.reduce((sum, row) => sum + row.net_paisa, 0);
-  if (totalCredit <= 0) return [];
+  const direction: UserSettlementTransfer["direction"] =
+    selfRow.net_paisa < 0 ? "pay" : "receive";
+  const absoluteSelfNet = Math.abs(selfRow.net_paisa);
+  const counterpartyRows = balances
+    .filter((row) =>
+      direction === "pay"
+        ? row.user_id !== currentUserId && row.net_paisa > 0
+        : row.user_id !== currentUserId && row.net_paisa < 0
+    )
+    .map((row) => ({
+      userId: row.user_id,
+      weightPaisa: Math.abs(row.net_paisa)
+    }));
 
-  const selfDebt = -selfRow.net_paisa;
-  const selfDebtPaisa = BigInt(selfDebt);
-  const totalCreditPaisa = BigInt(totalCredit);
-  const draft = creditorRows.map((row) => ({
-    amountPaisa: Number((BigInt(row.net_paisa) * selfDebtPaisa) / totalCreditPaisa),
-    counterpartyId: row.user_id,
-    credit: row.net_paisa,
-    direction: "pay" as const,
-    fromUser: currentUserId,
-    toUser: row.user_id
+  const totalWeight = counterpartyRows.reduce((sum, row) => sum + row.weightPaisa, 0);
+  if (totalWeight <= 0) return [];
+
+  const absoluteSelfNetPaisa = BigInt(absoluteSelfNet);
+  const totalWeightPaisa = BigInt(totalWeight);
+  const draft = counterpartyRows.map((row) => ({
+    amountPaisa: Number((BigInt(row.weightPaisa) * absoluteSelfNetPaisa) / totalWeightPaisa),
+    counterpartyId: row.userId,
+    direction,
+    fromUser: direction === "pay" ? currentUserId : row.userId,
+    toUser: direction === "pay" ? row.userId : currentUserId,
+    weightPaisa: row.weightPaisa
   }));
 
   const allocated = draft.reduce((sum, row) => sum + row.amountPaisa, 0);
-  const remainder = selfDebt - allocated;
+  const remainder = absoluteSelfNet - allocated;
   if (remainder > 0 && draft.length > 0) {
     let largestIdx = 0;
     for (let i = 1; i < draft.length; i++) {
       const candidate = draft[i];
       const current = draft[largestIdx];
-      if (candidate && current && candidate.credit > current.credit) largestIdx = i;
+      if (candidate && current && candidate.weightPaisa > current.weightPaisa) largestIdx = i;
     }
     const target = draft[largestIdx];
     if (target) target.amountPaisa += remainder;
   }
 
-  return draft.map(({ credit: _credit, ...row }) => row);
+  return draft.map(({ weightPaisa: _weightPaisa, ...row }) => row);
 }
 
 async function fetchSimplifiedDebts(groupId: string): Promise<SimplifiedDebtRow[]> {

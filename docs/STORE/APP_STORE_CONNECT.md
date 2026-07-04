@@ -1,6 +1,6 @@
 # App Store Connect Draft
 
-Updated: 2026-07-02
+Updated: 2026-07-04
 
 ## App Identity
 
@@ -41,6 +41,6 @@ Provide a seeded reviewer/test account only for a preview or review Supabase env
 ## Current Submission Blockers
 
 - Real App Store Connect IDs are placeholders in `apps/mobile/eas.json`.
-- Privacy policy and support URLs must be hosted before submission.
+- Privacy policy, terms, support, and account-deletion pages are prepared in `docs-site/`, but the final hosted URLs must be deployed before submission.
 - Closed-beta screenshots need to be captured from the current build.
 - Production Supabase migrations and `delete-account` function deployment must be verified.

@@ -1,6 +1,6 @@
 # Google Play Draft
 
-Updated: 2026-07-02
+Updated: 2026-07-04
 
 ## App Identity
 
@@ -30,9 +30,10 @@ Baki does not process payments or hold money. It only records the ledger and hel
 ## Closed Testing Checklist
 
 - Prepare a closed testing track.
-- Add at least 12 testers and keep the app available for the required testing window if Google Play's current policy applies to the developer account.
+- For a new personal developer account, add at least 12 opted-in testers for 14 continuous days before applying for production access. Organization-account requirements may differ; verify in the active Play Console before submission.
 - Use preview/test Supabase for seeded test accounts; do not enable E2E seed auth against production.
 - Verify Android bKash/Nagad handoff behavior separately from iOS before public Android release.
+- Deploy the static legal/support pages from `docs-site/` and enter the final privacy/support URLs in Play Console.
 
 ## Reviewer Notes
 
@@ -42,4 +43,4 @@ Baki is an expense tracker and shared ledger. It does not transfer money, hold f
 
 - Android production release is v1.1 by roadmap.
 - Need device QA on common Bangladesh Android devices before public Play release.
-- Need Play Console privacy policy URL, data safety form, and screenshots.
+- Need Play Console privacy policy URL deployment, data safety form, and screenshots.

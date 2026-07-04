@@ -106,12 +106,40 @@ describe("buildRawBalanceFallbackPlan", () => {
     ]);
   });
 
-  it("returns no fallback transfers when the current user does not owe", () => {
+  it("allocates the current user's receivable to debtors using integer paisa", () => {
     expect(
       buildRawBalanceFallbackPlan(
         [
-          { net_paisa: 500, user_id: "tanvir" },
-          { net_paisa: -500, user_id: "rini" }
+          { net_paisa: 1000, user_id: "tanvir" },
+          { net_paisa: -700, user_id: "rini" },
+          { net_paisa: -300, user_id: "ahsan" }
+        ],
+        "tanvir"
+      )
+    ).toEqual([
+      {
+        amountPaisa: 700,
+        counterpartyId: "rini",
+        direction: "receive",
+        fromUser: "rini",
+        toUser: "tanvir"
+      },
+      {
+        amountPaisa: 300,
+        counterpartyId: "ahsan",
+        direction: "receive",
+        fromUser: "ahsan",
+        toUser: "tanvir"
+      }
+    ]);
+  });
+
+  it("returns no fallback transfers when the current user is settled", () => {
+    expect(
+      buildRawBalanceFallbackPlan(
+        [
+          { net_paisa: 0, user_id: "tanvir" },
+          { net_paisa: 0, user_id: "rini" }
         ],
         "tanvir"
       )

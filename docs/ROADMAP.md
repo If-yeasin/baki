@@ -5,16 +5,17 @@
 ### v1.0 — iOS Closed Beta / Release Candidate
 
 - Bengali-first shared expense khata for Bangladesh.
-- Phone OTP auth, profile, create/join khata, group settings, add expense, balances, settlement suggestions, outside-app settlement recording, activity, sync details, and account deletion.
-- Offline queue covers group create, expense create, and settlement create through idempotent RPCs.
-- Store readiness docs, release safety checks, DB tests, and preview-E2E guardrails must be green before a trusted-tester build.
-- Deferred from v1.0 unless completed safely: expense edit/delete, CSV export, push delivery, receipt uploads, and hosted EAS/Maestro as a required gate.
+- Phone OTP auth, profile, create/join khata, group settings, add/edit/delete expense, balances, settlement suggestions, outside-app settlement recording, activity, sync details, CSV export, notification token/preferences, privacy/terms/support screens, and account deletion.
+- Offline queue covers group create, expense create/edit/delete, and settlement create through idempotent RPCs.
+- Store readiness docs, release safety checks, DB tests, generated-type integrity checks, and preview-E2E guardrails must be green before a trusted-tester build.
+- Still blocked or partial for beta readiness: server-side push delivery, receipt uploads or honest deferred UI/docs, hosted legal/support URL deployment, screenshot package, live Supabase deployment evidence, settlement note/reference polish, and hosted EAS/Maestro as a required gate.
 
 ### v1.1 — Android + Completion Polish
 
 - Android closed testing and common Bangladesh device QA.
-- Expense edit/delete if not completed before iOS beta.
-- CSV export, notification preferences/token registration, and hosted support/privacy URLs.
+- Hosted EAS/Maestro preview E2E can become a required gate after a green hosted run.
+- Receipt upload and server-side push delivery if they remain blocked by Storage policy design or missing push credentials during iOS beta.
+- Hosted support/privacy URL refinement, screenshot automation, accessibility/native Bengali copy review, and Android-specific bKash/Nagad handoff polish.
 - Promote EAS/Maestro preview E2E to a release gate after a green hosted run.
 
 ### Later

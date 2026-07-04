@@ -136,8 +136,40 @@ function runAsAnon(sql: string): string {
   `);
 }
 
+function runAsAuthenticatedAfterAdminSql(userId: string, adminSql: string, sql: string): string {
+  const claims = JSON.stringify({
+    role: "authenticated",
+    sub: userId
+  });
+
+  return runSql(`
+    begin;
+    ${adminSql}
+
+    set local "request.jwt.claim.sub" = ${sqlLiteral(userId)};
+    set local "request.jwt.claim.role" = 'authenticated';
+    set local "request.jwt.claims" = ${sqlLiteral(claims)};
+    set local role authenticated;
+
+    ${sql}
+
+    rollback;
+  `);
+}
+
 function runJsonAsAuthenticated<T>(userId: string, sql: string): T {
   return JSON.parse(runAsAuthenticated(userId, sql)) as T;
+}
+
+function expectSqlToRaise(run: () => void, expectedMessage: string) {
+  let errorText = "no error raised";
+  try {
+    run();
+  } catch (err) {
+    errorText = String(err);
+  }
+
+  expect(errorText).toContain(expectedMessage);
 }
 
 function createOutsiderFixture(): void {
@@ -200,6 +232,51 @@ function createExpenseSql(description: string): string {
       ])},
       p_client_mutation_id := ${sqlLiteral(`expense-lifecycle-create:${randomUUID()}`)}
     )
+  `;
+}
+
+function createDirectExpenseTargetSql(description: string, tableName: string): string {
+  return `
+    create temporary table ${tableName} (
+      id uuid primary key
+    ) on commit drop;
+
+    with inserted_expense as (
+      insert into public.expenses (
+        group_id,
+        amount_paisa,
+        description,
+        category,
+        paid_by,
+        split_method,
+        created_by
+      ) values (
+        ${sqlLiteral(SEED.groupId)}::uuid,
+        1000,
+        ${sqlLiteral(description)},
+        'food',
+        ${sqlLiteral(SEED.tanvirId)}::uuid,
+        'equal',
+        ${sqlLiteral(SEED.tanvirId)}::uuid
+      )
+      returning id
+    ),
+    inserted_shares as (
+      insert into public.expense_shares (expense_id, user_id, share_paisa)
+      select inserted_expense.id, split.user_id, split.share_paisa
+      from inserted_expense
+      cross join (
+        values
+          (${sqlLiteral(SEED.tanvirId)}::uuid, 500::bigint),
+          (${sqlLiteral(SEED.riniId)}::uuid, 500::bigint)
+      ) as split(user_id, share_paisa)
+      returning 1
+    )
+    insert into ${tableName} (id)
+    select id
+    from inserted_expense;
+
+    grant select on ${tableName} to authenticated;
   `;
 }
 
@@ -526,6 +603,49 @@ describeIfDb(suiteName, () => {
     expect(raised).toBe(true);
   });
 
+  it("rejects editing expenses in archived or deleted groups", () => {
+    const inactiveGroupCases = [
+      {
+        label: "archived",
+        tableName: "expense_lifecycle_archived_edit",
+        sql: `update public.groups set archived_at = now() where id = ${sqlLiteral(SEED.groupId)}::uuid;`
+      },
+      {
+        label: "deleted",
+        tableName: "expense_lifecycle_deleted_group_edit",
+        sql: `update public.groups set deleted_at = now() where id = ${sqlLiteral(SEED.groupId)}::uuid;`
+      }
+    ];
+
+    for (const inactiveGroupCase of inactiveGroupCases) {
+      expectSqlToRaise(
+        () =>
+          runAsAuthenticatedAfterAdminSql(
+            SEED.riniId,
+            `
+              ${createDirectExpenseTargetSql(
+                `Lifecycle ${inactiveGroupCase.label} group edit ${randomUUID()}`,
+                inactiveGroupCase.tableName
+              )}
+              ${inactiveGroupCase.sql}
+            `,
+            `
+              select ${editExpenseSql({
+                amountPaisa: 1000,
+                description: `Lifecycle ${inactiveGroupCase.label} group edit changed`,
+                expenseIdExpression: `(select id from ${inactiveGroupCase.tableName})`,
+                shares: shareObject([
+                  [SEED.tanvirId, 500],
+                  [SEED.riniId, 500]
+                ])
+              })};
+            `
+          ),
+        "group_not_active"
+      );
+    }
+  });
+
   it("rejects edit split users who are not group members", () => {
     let raised = false;
     try {
@@ -709,6 +829,46 @@ describeIfDb(suiteName, () => {
 
     expect(result.secondExpenseId).toBe(result.firstExpenseId);
     expect(result.activityCount).toBe(1);
+  });
+
+  it("rejects deleting expenses in archived or deleted groups", () => {
+    const inactiveGroupCases = [
+      {
+        label: "archived",
+        tableName: "expense_lifecycle_archived_delete",
+        sql: `update public.groups set archived_at = now() where id = ${sqlLiteral(SEED.groupId)}::uuid;`
+      },
+      {
+        label: "deleted",
+        tableName: "expense_lifecycle_deleted_group_delete",
+        sql: `update public.groups set deleted_at = now() where id = ${sqlLiteral(SEED.groupId)}::uuid;`
+      }
+    ];
+
+    for (const inactiveGroupCase of inactiveGroupCases) {
+      expectSqlToRaise(
+        () =>
+          runAsAuthenticatedAfterAdminSql(
+            SEED.riniId,
+            `
+              ${createDirectExpenseTargetSql(
+                `Lifecycle ${inactiveGroupCase.label} group delete ${randomUUID()}`,
+                inactiveGroupCase.tableName
+              )}
+              ${inactiveGroupCase.sql}
+            `,
+            `
+              select public.delete_expense(
+                p_expense_id := (select id from ${inactiveGroupCase.tableName}),
+                p_client_mutation_id := ${sqlLiteral(
+                  `expense-lifecycle-delete-inactive:${randomUUID()}`
+                )}
+              );
+            `
+          ),
+        "group_not_active"
+      );
+    }
   });
 
   it("rejects editing a deleted expense", () => {

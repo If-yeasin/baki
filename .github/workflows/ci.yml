@@ -8,6 +8,9 @@ on:
 jobs:
   checks:
     runs-on: ubuntu-latest
+    env:
+      BAKI_DB_TESTS_REQUIRED: "true"
+      BAKI_DB_TYPES_REQUIRED: "true"
 
     steps:
       - uses: actions/checkout@v4
@@ -21,6 +24,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @baki/db exec supabase db start --workdir ../..
       - run: pnpm --filter @baki/db exec supabase db reset --workdir ../..
+      - run: pnpm db:types:check
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test

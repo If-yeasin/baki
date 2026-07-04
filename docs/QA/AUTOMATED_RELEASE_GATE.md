@@ -38,6 +38,7 @@ GitHub Actions `CI` runs on pull requests and pushes to `main`:
 
 - `pnpm install --frozen-lockfile`
 - local Supabase database start + `supabase db reset`
+- `pnpm db:types:check`
 - `pnpm lint`
 - `pnpm typecheck`
 - `pnpm test`
@@ -52,7 +53,7 @@ GitHub Actions `CI` runs on pull requests and pushes to `main`:
 `pnpm check` also runs `pnpm release:safety`, which scans for:
 
 - Supabase service-role references in mobile code
-- direct client inserts into `expenses`, `expense_shares`, or `settlements`
+- direct client writes into group lifecycle, money, or activity tables
 - unsafe benchmark wording
 
 The automated tests cover the trusted-tester offline money-write gate at code,
@@ -62,13 +63,16 @@ mobile, and database levels:
 - E2E/test-auth is disabled for production profiles/channels
 - E2E seed sign-in only persists the expected seeded user id
 - local seed data includes users, group, expenses, settlement, activity, and a simplified debt plan
-- temporary `create_expense` RPC errors return queued success
+- temporary `create_expense` and `edit_expense` RPC errors return queued success
+- temporary `delete_expense` RPC errors remain replayable through the queue
 - temporary `create_settlement` RPC errors return queued success
 - permanent money-write failures remain visible as failed queued mutations
-- queue replay calls `create_group`, `create_expense`, and `create_settlement`, not direct table inserts
-- direct client inserts/updates into money tables and direct fake activity rows are denied by RLS tests
+- queue replay calls `create_group`, `create_expense`, `edit_expense`, `delete_expense`, and `create_settlement`, not direct table writes
+- direct client inserts/updates/deletes into group lifecycle, money, and activity tables are denied by RLS tests
+- money-writing RPCs reject archived and soft-deleted groups for create/edit/delete expense and create settlement
 - failed permanent mutations are skipped until explicit retry
 - `create_expense` idempotency prevents duplicate expenses, shares, and activity rows
+- `edit_expense` and `delete_expense` idempotency prevent duplicate activity through mutation receipts
 - `create_settlement` idempotency prevents duplicate settlements and activity rows
 - sync indicator state priority is deterministic
 - Settings -> Sync metric and failed-row presentation logic is deterministic
@@ -95,11 +99,11 @@ pass.
 
 ## Known Limitations
 
-- Expense edit/delete queue types are reserved but not replayed yet because edit/delete RPCs are not implemented.
 - NetInfo is not installed; replay is driven by startup, foreground, interval, and manual retry.
 - Expo Go cannot validate the native offline-storage path.
 - EAS/Maestro preview E2E is optional until a real run passes and the team decides to make it required.
 - OS-level Airplane Mode is not automated in Maestro; queue/replay behavior is covered by unit/integration tests.
+- Receipt upload and server-side push delivery are not covered by the current automated gate until those server boundaries land.
 
 ## Trigger CI
 
@@ -163,6 +167,7 @@ pnpm typecheck
 pnpm test
 pnpm i18n:check
 pnpm db:check
+pnpm db:types:check
 pnpm --filter mobile check:assets
 pnpm e2e:auth:check
 pnpm release:safety
