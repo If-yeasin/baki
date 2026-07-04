@@ -108,39 +108,6 @@ export type Database = {
           },
         ]
       }
-      expense_shares: {
-        Row: {
-          expense_id: string
-          share_paisa: number
-          user_id: string
-        }
-        Insert: {
-          expense_id: string
-          share_paisa: number
-          user_id: string
-        }
-        Update: {
-          expense_id?: string
-          share_paisa?: number
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "expense_shares_expense_id_fkey"
-            columns: ["expense_id"]
-            isOneToOne: false
-            referencedRelation: "expenses"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "expense_shares_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       expense_mutation_receipts: {
         Row: {
           actor_id: string
@@ -189,6 +156,39 @@ export type Database = {
             columns: ["group_id"]
             isOneToOne: false
             referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      expense_shares: {
+        Row: {
+          expense_id: string
+          share_paisa: number
+          user_id: string
+        }
+        Insert: {
+          expense_id: string
+          share_paisa: number
+          user_id: string
+        }
+        Update: {
+          expense_id?: string
+          share_paisa?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expense_shares_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expense_shares_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -552,11 +552,11 @@ export type Database = {
         Args: { target_group_id: string }
         Returns: boolean
       }
-      delete_group: { Args: { p_group_id: string }; Returns: undefined }
       delete_expense: {
         Args: { p_client_mutation_id?: string; p_expense_id: string }
         Returns: string
       }
+      delete_group: { Args: { p_group_id: string }; Returns: undefined }
       delete_my_account: { Args: never; Returns: undefined }
       edit_expense: {
         Args: {
