@@ -19,8 +19,8 @@ export function createBkashSendMoneyPlan(intent: MoneyTransferIntent): PaymentLi
     fallbackLabel: number,
     provider: "bkash",
     urls: [
-      `https://www.bkash.com/send-money?${params.toString()}`,
-      `bkashopen://send?${params.toString()}`
+      `bkashopen://send?${params.toString()}`,
+      `https://www.bkash.com/send-money?${params.toString()}`
     ]
   };
 }

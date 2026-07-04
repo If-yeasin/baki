@@ -20,6 +20,7 @@
 
 ### Later
 
+- Monetization readiness follows `docs/MONETIZATION_READINESS.md`: keep the free core viral loop open, prepare Baki Plus / Khata Pro / Teams foundations, and avoid payment processing or settlement fees.
 - Receipt OCR, recurring expenses, bKash merchant API, web app, admin dashboard, multi-currency, friends without groups, group photo uploads, and expense comments.
 
 ## Phases

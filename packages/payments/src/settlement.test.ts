@@ -5,6 +5,7 @@ import {
   createBkashSendMoneyPlan,
   isValidBdPhone,
   MAX_SETTLEMENT_PAISA,
+  normalizeBdPhone,
   parseMoneyTransferIntent,
   PaymentInputError,
   safeSettlementLogFields
@@ -19,9 +20,10 @@ describe("settlement validation", () => {
     });
 
     expect(plan.provider).toBe("bkash");
+    expect(plan.urls[0]).toContain("bkashopen://send");
     expect(plan.urls[0]).toContain("amount=450");
-    expect(plan.urls[1]).toContain("bkashopen://send");
-    expect(plan.fallbackLabel).toBe("+8801700123456");
+    expect(plan.urls[1]).toContain("https://www.bkash.com/send-money");
+    expect(plan.fallbackLabel).toBe(normalizeBdPhone("01700123456"));
   });
 
   it("rejects invalid amounts with PaymentInputError", () => {

@@ -6,17 +6,35 @@ const appChannel = process.env.EXPO_PUBLIC_APP_CHANNEL ?? "";
 const supabaseEnv = process.env.EXPO_PUBLIC_SUPABASE_ENV ?? "";
 const productionMarkers = new Set(["production", "prod"]);
 const allowedE2ESupabaseEnvs = new Set(["local", "preview", "test"]);
+const isProductionVariant =
+  productionMarkers.has(easBuildProfile.toLowerCase()) ||
+  productionMarkers.has(appChannel.toLowerCase());
 
-if (
-  e2eMode &&
-  (productionMarkers.has(easBuildProfile.toLowerCase()) ||
-    productionMarkers.has(appChannel.toLowerCase()))
-) {
+if (e2eMode && isProductionVariant) {
   throw new Error("EXPO_PUBLIC_E2E_MODE cannot be enabled for production builds.");
 }
 
 if (e2eMode && !allowedE2ESupabaseEnvs.has(supabaseEnv.toLowerCase())) {
   throw new Error("EXPO_PUBLIC_E2E_MODE requires EXPO_PUBLIC_SUPABASE_ENV=local|preview|test.");
+}
+
+if (isProductionVariant) {
+  const requiredProductionEnv = [
+    "EAS_PROJECT_ID",
+    "EXPO_PUBLIC_SUPABASE_ANON_KEY",
+    "EXPO_PUBLIC_SUPABASE_URL"
+  ];
+  const missingProductionEnv = requiredProductionEnv.filter((key) => !process.env[key]);
+
+  if (missingProductionEnv.length > 0) {
+    throw new Error(
+      `Production builds require ${missingProductionEnv.join(", ")} to be configured.`
+    );
+  }
+
+  if (supabaseEnv.toLowerCase() !== "production") {
+    throw new Error("Production builds require EXPO_PUBLIC_SUPABASE_ENV=production.");
+  }
 }
 
 const config: ExpoConfig = {

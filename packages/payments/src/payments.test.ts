@@ -16,8 +16,9 @@ describe("payments helpers", () => {
     });
 
     expect(plan.provider).toBe("bkash");
+    expect(plan.urls[0]).toContain("bkashopen://send");
     expect(plan.urls[0]).toContain("amount=450");
-    expect(plan.urls[1]).toContain("bkashopen://send");
+    expect(plan.urls[1]).toContain("https://www.bkash.com/send-money");
   });
 
   it("masks MFS numbers for logs", () => {
