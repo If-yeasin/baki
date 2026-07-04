@@ -1,5 +1,6 @@
-import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -47,6 +48,26 @@ try {
 const committed = normalize(readFileSync(generatedTypesPath, "utf8"));
 
 if (normalize(generated) !== committed) {
+  const tmpRoot = mkdtempSync(resolve(tmpdir(), "baki-db-types-"));
+  const generatedPath = resolve(tmpRoot, "generated-types.ts");
+  writeFileSync(generatedPath, generated, "utf8");
+
+  const diff = spawnSync(
+    "git",
+    ["diff", "--no-index", "--", generatedTypesPath, generatedPath],
+    {
+      cwd: packageRoot,
+      encoding: "utf8",
+      maxBuffer: 20 * 1024 * 1024
+    }
+  );
+
+  const diffOutput = diff.stdout.trim() || diff.stderr.trim();
+  if (diffOutput) {
+    console.error(`[db types] Diff against generated output:\n${diffOutput}`);
+  }
+
+  rmSync(tmpRoot, { recursive: true, force: true });
   console.error(
     [
       "[db types] packages/db/src/types.ts is stale.",
