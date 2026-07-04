@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Baki Privacy Policy</title>
+    <link rel="stylesheet" href="../styles.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Baki Privacy Policy</h1>
+        <p class="updated">Last updated: July 4, 2026</p>
+        <nav>
+          <a href="../">Home</a>
+          <a href="../terms/">Terms</a>
+          <a href="../support/">Support</a>
+          <a href="../account-deletion/">Account deletion</a>
+        </nav>
+      </header>
+      <article>
+        <p>
+          Baki is a Bengali-first shared expense ledger for Bangladesh. Baki
+          helps groups record expenses, calculate balances, and open bKash/Nagad
+          settlement handoffs. Baki does not hold money, process payments, or
+          act as a bank.
+        </p>
+        <h2>Data We Collect</h2>
+        <ul>
+          <li>Phone number for OTP sign-in.</li>
+          <li>Display name and app language preference.</li>
+          <li>Khata membership, expenses, shares, settlements, activity logs, invite codes, and offline sync metadata.</li>
+          <li>Optional bKash or Nagad number if the user chooses to save one for settlement handoff.</li>
+          <li>Expo push token and notification preferences after the user enables notifications.</li>
+          <li>Crash and diagnostic context through Sentry, without raw OTP codes, JWTs, bKash/Nagad numbers, or settlement transaction references.</li>
+        </ul>
+        <h2>How We Use Data</h2>
+        <ul>
+          <li>Authenticate the user and show shared khata history to authorized group members.</li>
+          <li>Calculate balances, simplify settlement plans, and keep offline changes replayable.</li>
+          <li>Send notification reminders if enabled and server delivery is configured.</li>
+          <li>Diagnose crashes, sync failures, and release issues.</li>
+        </ul>
+        <h2>Payment Boundary</h2>
+        <p>
+          Baki can open bKash, Nagad, cash, or other settlement flows, but payment
+          happens outside Baki. Baki stores only the ledger record users choose
+          to enter.
+        </p>
+        <h2>Deletion</h2>
+        <p>
+          Users can request account deletion in Settings. Deletion removes the
+          user's profile, membership, push tokens, and payment details after
+          their own active balances are settled. Shared ledger history remains
+          for other members with the deleted user replaced by a deleted-user label.
+        </p>
+        <h2>Contact</h2>
+        <p>Support: <a href="mailto:support@baki.app">support@baki.app</a></p>
+      </article>
+    </main>
+  </body>
+</html>

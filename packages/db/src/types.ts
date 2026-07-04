@@ -540,6 +540,10 @@ export type Database = {
         }
         Returns: string
       }
+      current_user_can_write_group: {
+        Args: { target_group_id: string }
+        Returns: boolean
+      }
       current_user_is_group_admin: {
         Args: { target_group_id: string }
         Returns: boolean

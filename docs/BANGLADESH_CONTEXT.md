@@ -125,7 +125,7 @@ Out of scope for v1. Allow "Other" as a settlement method with a free-text note.
 ## Legal & compliance
 
 - We are not a payment processor. We never hold user funds.
-- Privacy policy explicit about: phone number storage, optional bKash/Nagad number storage (encrypted at rest), no NID, no financial KYC
+- Privacy policy explicit about: phone number storage, optional bKash/Nagad number storage for settlement handoff, no raw MFS numbers in logs/support screenshots, no NID, no financial KYC
 - Terms: arbitration in Dhaka, governing law of Bangladesh
 - Apple App Store: classify as "Finance" but emphasize "expense tracker" in metadata to avoid "Money Transmitter" scrutiny
 - DPI laws of Bangladesh (Digital Security Act): be mindful of user data; do not log message contents

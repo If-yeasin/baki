@@ -1,6 +1,6 @@
 # V1 Release Candidate Gap Map
 
-Updated: 2026-07-02
+Updated: 2026-07-04
 
 ## Current Implemented Features
 
@@ -11,48 +11,45 @@ Updated: 2026-07-02
 - Settlement plan through `simplify_debts`, raw-balance fallback, bKash/Nagad/cash/other outside-app settlement copy, and `create_settlement` idempotent replay.
 - Activity reads real `activity_log` rows for group and tab views, with local fallback, actor hydration, pull-to-refresh, and load-more pagination.
 - Settings -> Sync shows pending/failed counts, failed item details, manual retry, per-item retry, redacted debug copy, and guarded dismiss for permanent failures.
-- Settings includes CSV ledger export, Expo push token registration/preferences, privacy/terms, and support screens.
+- Settings includes CSV ledger export, Expo push token registration/preferences with token-aware device status, privacy/terms, and support screens.
 - Group settings can rename, change type, archive, leave, safe-delete, copy/share/regenerate invites, and show member/admin/created-date metadata through server RPCs.
-- `create_group`, `create_expense`, `edit_expense`, `delete_expense`, and `create_settlement` are idempotent RPC replay paths; direct client writes to group lifecycle, activity, and money tables are denied.
+- `create_group`, `create_expense`, `edit_expense`, `delete_expense`, and `create_settlement` are idempotent RPC replay paths; direct client writes to group lifecycle, activity, and money tables are denied, and money-writing RPCs reject archived/deleted groups.
 - Preview-only E2E auth is guarded by app-channel and Supabase-environment checks.
-- CI runs lint, typecheck, tests, i18n parity, DB checks, mobile asset checks, E2E auth guard checks, release safety, aggregate `pnpm check`, and `git diff --check`.
+- CI runs lint, typecheck, tests, i18n parity, DB checks, generated DB type checks, mobile asset checks, E2E auth guard checks, release safety, aggregate `pnpm check`, and `git diff --check`.
 
 ## Partial Features
 
 - Group lifecycle: user-facing settings and RPCs exist, but richer member management and custom avatar upload remain deferred.
 - Expense lifecycle: create/edit/delete exist; receipt attachment remains deferred.
-- Settlement lifecycle: create exists; settlement notes/references remain incomplete.
+- Settlement lifecycle: create exists and the screen offers simplified versus raw-balance views; settlement notes/references remain incomplete.
 - Activity feed: real rows render with refresh/pagination; richer event-specific rendering remains future polish.
-- Notifications: Expo token registration and user preferences exist; server delivery is not implemented.
+- Notifications: Expo token registration and user preferences exist with token-aware device status; server delivery is not implemented.
 - Settings/legal/export: CSV export and in-app privacy/terms/support screens exist; hosted store-review URLs and final legal review are not complete.
-- Localization: Bengali/English catalogs are parity-checked and Bengali numerals render in existing formatters, but final native copy review is not recorded.
+- Localization: Bengali/English catalogs are parity-checked, Bengali numerals render in existing formatters, and `docs/I18N_COPY_REVIEW.md` is prepared, but final native copy review is not recorded.
 
 ## Missing V1 Features
 
 - Optional receipt attachment boundary with storage policies, or explicit deferred UI/docs if Storage is not configured.
-- Raw versus simplified settlement toggle on the settlement screen.
 - Server-side push notification delivery.
-- Hosted legal/support/privacy URLs for store review.
-- Store listing docs for App Store Connect, Google Play, screenshots, privacy/data-safety answers, and reviewer notes.
+- Hosted legal/support/privacy URLs for store review; static pages are prepared in `docs-site/` but not deployed.
+- Final store listing package: draft docs exist, but screenshots, hosted URLs, final account credentials, privacy/data-safety submission evidence, and reviewer test-account evidence are missing.
 - Expanded Maestro flows for edit/delete expense, group settings, language toggle, sync failure, notification preferences, and export if automatable.
 
 ## Risky Areas
 
 - Money writes must remain RPC-only. Direct client inserts/updates to `expenses`, `expense_shares`, or `settlements` would break the release safety boundary.
-- Expense edit/delete queue claims can overpromise until idempotent RPCs exist, so those queue types remain reserved only.
-- Expense edit/delete changes must preserve audit rows, bigint-paisa invariants, share-total validation, and idempotency.
+- Expense edit/delete paths must continue to preserve audit rows, bigint-paisa invariants, share-total validation, idempotency, and RPC-only replay.
 - New Supabase tables may need explicit grants and RLS review because current Supabase projects may not expose public tables to the Data API automatically.
 - Notification implementation requires Expo credentials and a service-side sender; mobile must never receive a service-role key.
 - EAS/Maestro preview E2E is optional until a hosted run is actually green.
 
-## This Sprint Will Implement
+## Beta Production-Readiness Sprint
 
-- Release-candidate docs and stale-task cleanup so the repo no longer claims merged PR work is still pending.
-- Direct-write security hardening and group lifecycle completion where it fits the existing schema/RLS patterns.
-- Expense edit/delete backend and mobile surfaces only in a later slice if they can preserve RPC-only money writes and test coverage.
-- Sync/settings UX improvements that are safe without changing the ledger model.
-- Store-readiness docs and release checklists.
-- Tests for any backend RPCs, form validation, view models, or queue behavior changed in this sprint.
+- Release-truth cleanup so docs no longer claim merged PR work is still pending.
+- Database/typegen integrity gates: fresh migration reset, no silent CI DB-test skips, generated-type stale check, and direct-write/RPC grant assertions.
+- Receipt attachment either implemented with safe Storage policies and tests, or explicitly deferred without UI/docs overclaiming upload support.
+- Server-side push notification boundary implemented or exactly blocked by missing credentials/secrets.
+- Settlement copy/reference polish, hosted legal/support deployment, store/screenshot package, EAS/Maestro blocker evidence, release/build metadata, and real-device accessibility/i18n audit evidence.
 
 ## Out Of Scope For This Sprint
 
@@ -64,7 +61,7 @@ Updated: 2026-07-02
 
 ## Release-Blocking Items
 
-- Required automated checks must pass: install, lint, typecheck, tests, i18n, DB checks, asset checks, E2E auth guard, release safety, aggregate check, and whitespace diff check.
+- Required automated checks must pass: install, lint, typecheck, tests, i18n, DB checks, generated DB type checks, asset checks, E2E auth guard, release safety, aggregate check, and whitespace diff check.
 - No direct client money-table writes.
 - No service-role key in mobile code or env examples.
 - Account deletion function deployment instructions and user-facing copy must remain accurate.
@@ -76,5 +73,5 @@ Updated: 2026-07-02
 - Android production release after iOS closed beta.
 - Hosted EAS/Maestro as a required release gate after a green preview-E2E run.
 - Full push delivery if Expo push credentials or server-side secret setup block this sprint.
-- Receipt upload if Supabase Storage policy design is not complete.
+- Receipt upload if Supabase Storage policy design or offline upload behavior is not completed safely.
 - Native Bengali copy review and real-device VoiceOver/TalkBack audit.

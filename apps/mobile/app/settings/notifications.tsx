@@ -9,6 +9,7 @@ import { useSession } from "@/features/auth/use-session";
 import {
   useNotificationPreferences,
   useRegisterDeviceForPushNotifications,
+  useRegisteredDeviceTokenCount,
   useUpdateNotificationPreferences,
   type NotificationPreferencePatch,
   type NotificationPreferences
@@ -38,10 +39,12 @@ export default function NotificationSettingsScreen() {
   const { colors } = useTheme();
   const session = useSession();
   const preferencesQuery = useNotificationPreferences(session.userId);
+  const registeredDeviceTokenCountQuery = useRegisteredDeviceTokenCount(session.userId);
   const updatePreferences = useUpdateNotificationPreferences(session.userId);
   const registerDevice = useRegisterDeviceForPushNotifications();
   const [notice, setNotice] = useState<Notice | null>(null);
   const preferences = preferencesQuery.data;
+  const hasRegisteredDevice = (registeredDeviceTokenCountQuery.data ?? 0) > 0;
 
   function handleRegister() {
     registerDevice.mutate(undefined, {
@@ -54,6 +57,7 @@ export default function NotificationSettingsScreen() {
       },
       onSuccess: () => {
         void preferencesQuery.refetch();
+        void registeredDeviceTokenCountQuery.refetch();
         setNotice({
           body: t("settings.notifications.register.success.body"),
           title: t("settings.notifications.register.success.title"),
@@ -100,6 +104,7 @@ export default function NotificationSettingsScreen() {
 
       <SettingsSection title={t("settings.notifications.register.title")}>
         <SettingsRow
+          accessibilityLabel={t("settings.notifications.register.cta")}
           disabled={registerDevice.isPending}
           icon={<BellRing color={colors.brandPrimary} size={19} />}
           onPress={handleRegister}
@@ -112,9 +117,9 @@ export default function NotificationSettingsScreen() {
               : t("settings.notifications.register.cta")
           }
           trailing={
-            preferences?.push_enabled ? (
+            hasRegisteredDevice ? (
               <SettingsStatusPill tone="brand">
-                {t("settings.notifications.status.enabled")}
+                {t("settings.notifications.status.registered")}
               </SettingsStatusPill>
             ) : undefined
           }
@@ -130,6 +135,7 @@ export default function NotificationSettingsScreen() {
         ) : (
           preferenceKeys.map((key, index) => (
             <SettingsRow
+              accessibilityLabel={t(`settings.notifications.preference.${key}.title`)}
               icon={<Bell color={colors.brandPrimary} size={19} />}
               key={key}
               onPress={() => handleToggle(key, !(preferences?.[key] ?? true))}
@@ -138,6 +144,7 @@ export default function NotificationSettingsScreen() {
               title={t(`settings.notifications.preference.${key}.title`)}
               trailing={
                 <Switch
+                  accessibilityLabel={t(`settings.notifications.preference.${key}.title`)}
                   ios_backgroundColor={colors.borderStrong}
                   onValueChange={(value) => handleToggle(key, value)}
                   thumbColor={colors.bgSurface}

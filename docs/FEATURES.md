@@ -29,7 +29,7 @@
   - **Percent** — specify percent per person (must sum to 100)
   - **Shares** — specify "shares" per person (e.g., 2:1:1)
 - Edit and delete (with confirmation; reflected in audit trail)
-- Attach a photo (receipt) — optional, stored in Supabase Storage
+- Receipt attachment — deferred for beta until private Supabase Storage policies, upload UI, and offline retry behavior are implemented
 
 ## F4. Balances
 
@@ -46,7 +46,7 @@
   - **Nagad send money** — deep link or USSD copy-to-clipboard
   - **Cash** — manual mark-as-paid
 - After confirming, expense is logged as a "settlement" transaction (not deleted)
-- Push notification to the other party: "Tanvir marked ৳450 as paid via bKash"
+- Push notification to the other party — deferred until the server-side push delivery boundary is enabled
 
 ## F6. Activity feed
 
@@ -56,7 +56,7 @@
 
 ## F7. Notifications
 
-- Push (Expo Notifications):
+- Push (Expo Notifications; token/preferences implemented, server delivery deferred):
   - New expense added in your group
   - Someone settled with you
   - Someone joined your group via invite link
@@ -112,9 +112,9 @@ The dependency-aware build sequence the agents should follow:
 | F2 Groups        | Partial                    | Create/join/list/detail/settings exist. `create_group` is idempotent and `group.create` replays from the offline queue. Rename, type change, archive, leave, safe delete, invite copy/share, and invite regeneration use RPCs. Receipt/avatar upload remains deferred. |
 | F3 Expenses      | Partial                    | Add/edit/delete expense use RPC-only ledger writes with idempotency; temporary RPC failures queue as pending offline saves. Receipt attachment remains deferred.                               |
 | F4 Balances      | Implemented for group view | `get_group_balances` remains source of truth, with local ledger fallback.                                                                                                                     |
-| F5 Settlement    | Partial                    | `simplify_debts` drives the settle plan; settlement writes queue on temporary failure and record outside-app payment.                                                                         |
+| F5 Settlement    | Partial                    | `simplify_debts` drives the settle plan with a raw-balance toggle; settlement writes queue on temporary failure and record outside-app payment. Settlement note/reference polish remains.       |
 | F6 Activity feed | Partial                    | Group and tab activity read real `activity_log` with pull-to-refresh and load-more pagination; richer event-specific rendering remains future polish.                                          |
-| F7 Notifications | Partial                    | Expo token registration and in-app notification preferences exist; server-side push delivery remains a follow-up.                                                                              |
+| F7 Notifications | Partial                    | Expo token registration and in-app notification preferences exist; device registration is token-aware, but server-side push delivery remains a follow-up.                                      |
 | F8 Offline-first | Partial                    | Group create plus expense create/edit/delete and settlement mutations queue and replay through idempotent RPCs; failed sync rows expose retry, redacted debug copy, and guarded dismiss. Automated tests cover replay; preview E2E is optional; real-device Dev Client QA remains recommended before public beta. |
 | F9 Localization  | Partial                    | BN/EN parity enforced; native Bengali review still required.                                                                                                                                  |
-| F10 Settings     | Partial                    | Language/theme/delete-account/sync details, CSV export, notification preferences, privacy/terms, and support screens exist; hosted legal/support URLs remain store-submission follow-up.       |
+| F10 Settings     | Partial                    | Language/theme/delete-account/sync details, CSV export, notification preferences, privacy/terms, and support screens exist; `docs-site/` prepares legal/support pages, but hosted URLs remain store-submission follow-up. |

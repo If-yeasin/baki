@@ -21,6 +21,7 @@ import {
   canDismissFailedQueuedMutation,
   formatFailedQueuedMutationSubtitle,
   formatSyncCount,
+  redactSensitiveSyncText,
   selectFailedQueuedMutations
 } from "@/features/offline/sync-details-view-model";
 import { runQueuedMutationSync } from "@/features/offline/sync-orchestrator";
@@ -69,7 +70,7 @@ export default function SyncDetailsScreen() {
       });
     } catch (error) {
       setNotice({
-        body: error instanceof Error ? error.message : undefined,
+        body: error instanceof Error ? redactSensitiveSyncText(error.message) : undefined,
         title: t("sync.details.retryFailed.title"),
         variant: "error"
       });
@@ -313,7 +314,7 @@ export default function SyncDetailsScreen() {
             {snapshot.lastErrorCode ?? t("sync.details.lastError")}
           </Text>
           <Text style={{ color: colors.inkSecondary }} variant="caption">
-            {snapshot.lastErrorMessage}
+            {redactSensitiveSyncText(snapshot.lastErrorMessage)}
           </Text>
         </View>
       ) : null}

@@ -136,8 +136,40 @@ function runAsAnon(sql: string): string {
   `);
 }
 
+function runAsAuthenticatedAfterAdminSql(userId: string, adminSql: string, sql: string): string {
+  const claims = JSON.stringify({
+    role: "authenticated",
+    sub: userId
+  });
+
+  return runSql(`
+    begin;
+    ${adminSql}
+
+    set local "request.jwt.claim.sub" = ${sqlLiteral(userId)};
+    set local "request.jwt.claim.role" = 'authenticated';
+    set local "request.jwt.claims" = ${sqlLiteral(claims)};
+    set local role authenticated;
+
+    ${sql}
+
+    rollback;
+  `);
+}
+
 function runJsonAsAuthenticated<T>(userId: string, sql: string): T {
   return JSON.parse(runAsAuthenticated(userId, sql)) as T;
+}
+
+function expectSqlToRaise(run: () => void, expectedMessage: string) {
+  let raised = false;
+  try {
+    run();
+  } catch (err) {
+    raised = String(err).includes(expectedMessage);
+  }
+
+  expect(raised).toBe(true);
 }
 
 function createOutsiderFixture(): void {
@@ -526,6 +558,39 @@ describeIfDb(suiteName, () => {
     }
 
     expect(raised).toBe(true);
+  });
+
+  it("rejects creating expenses in archived or deleted groups", () => {
+    const inactiveGroupCases = [
+      {
+        label: "archived",
+        sql: `update public.groups set archived_at = now() where id = ${sqlLiteral(SEED.groupId)}::uuid;`
+      },
+      {
+        label: "deleted",
+        sql: `update public.groups set deleted_at = now() where id = ${sqlLiteral(SEED.groupId)}::uuid;`
+      }
+    ];
+
+    for (const inactiveGroupCase of inactiveGroupCases) {
+      expectSqlToRaise(
+        () =>
+          runAsAuthenticatedAfterAdminSql(
+            SEED.tanvirId,
+            inactiveGroupCase.sql,
+            createExpenseSql({
+              amountPaisa: 1_000,
+              description: `RPC inactive ${inactiveGroupCase.label} group`,
+              shares: shareObject([
+                [SEED.tanvirId, 500],
+                [SEED.riniId, 500]
+              ]),
+              splitMethod: "equal"
+            })
+          ),
+        "group_not_active"
+      );
+    }
   });
 
   it("rejects paid_by when the payer is not a group member", () => {

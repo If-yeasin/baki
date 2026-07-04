@@ -137,6 +137,27 @@ function runAsAnon(sql: string): string {
   `);
 }
 
+function runAsAuthenticatedAfterAdminSql(userId: string, adminSql: string, sql: string): string {
+  const claims = JSON.stringify({
+    role: "authenticated",
+    sub: userId
+  });
+
+  return runSql(`
+    begin;
+    ${adminSql}
+
+    set local "request.jwt.claim.sub" = ${sqlLiteral(userId)};
+    set local "request.jwt.claim.role" = 'authenticated';
+    set local "request.jwt.claims" = ${sqlLiteral(claims)};
+    set local role authenticated;
+
+    ${sql}
+
+    rollback;
+  `);
+}
+
 function runJsonAsAuthenticated<T>(userId: string, sql: string): T {
   return JSON.parse(runAsAuthenticated(userId, sql)) as T;
 }
@@ -391,6 +412,34 @@ describeIfDb(suiteName, () => {
         ),
       "not_group_member"
     );
+  });
+
+  it("rejects creating settlements in archived or deleted groups", () => {
+    const inactiveGroupCases = [
+      {
+        label: "archived",
+        sql: `update public.groups set archived_at = now() where id = ${sqlLiteral(SEED.groupId)}::uuid;`
+      },
+      {
+        label: "deleted",
+        sql: `update public.groups set deleted_at = now() where id = ${sqlLiteral(SEED.groupId)}::uuid;`
+      }
+    ];
+
+    for (const inactiveGroupCase of inactiveGroupCases) {
+      expectSqlToRaise(
+        () =>
+          runAsAuthenticatedAfterAdminSql(
+            SEED.tanvirId,
+            inactiveGroupCase.sql,
+            createSettlementSql({
+              amountPaisa: 1_000,
+              externalRef: `${inactiveGroupCase.label}-${randomUUID()}`
+            })
+          ),
+        "group_not_active"
+      );
+    }
   });
 
   it("rejects settlement parties who are not group members", () => {

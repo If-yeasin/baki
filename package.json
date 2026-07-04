@@ -22,10 +22,11 @@
     "format": "prettier --write .",
     "i18n:check": "pnpm --filter @baki/i18n check",
     "db:check": "pnpm --filter @baki/db test",
+    "db:types:check": "pnpm --filter @baki/db gen:types:check",
     "e2e": "echo \"Run \\`maestro test e2e/maestro\\` manually after starting the dev server\"",
     "e2e:auth:check": "pnpm --filter mobile test -- src/features/e2e",
     "release:safety": "node scripts/check-release-safety.mjs",
-    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm i18n:check && pnpm db:check && pnpm --filter mobile check:assets && pnpm release:safety"
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm i18n:check && pnpm db:check && pnpm db:types:check && pnpm --filter mobile check:assets && pnpm release:safety"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.47.0",

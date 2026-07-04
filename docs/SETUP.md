@@ -136,7 +136,7 @@ pnpm --filter mobile check:assets
 
 Workflows in `.github/workflows/`:
 
-- `ci.yml` — runs on every PR: install, local Supabase reset, lint, typecheck, tests, i18n parity, DB checks, asset checks, E2E auth checks, release safety scan, aggregate `pnpm check`, and `git diff --check`
+- `ci.yml` — runs on every PR: install, local Supabase reset, generated DB type freshness check, lint, typecheck, tests, i18n parity, DB checks, asset checks, E2E auth checks, release safety scan, aggregate `pnpm check`, and `git diff --check`
 - `eas-preview.yml` — on PR label `build:preview`: triggers `eas build --profile preview --platform ios`
 - `eas-preview.yml` — on PR label `build:preview-e2e`: triggers `eas build --profile preview-e2e --platform android`
 - `release.yml` — on tag `v*`: runs the full automated safety gate, then triggers a production iOS EAS build. It does not submit to App Store automatically.
@@ -202,7 +202,7 @@ do not add service-role keys to mobile env or EAS Secrets.
 - [ ] Content rating questionnaire complete
 - [ ] Privacy policy URL
 - [ ] Data safety form filled
-- [ ] Closed testing track with ≥ 20 testers running ≥ 14 days (Play's recent requirement)
+- [ ] Closed testing track with at least 12 opted-in testers for 14 continuous days if the Play Console account is a new personal developer account; organization-account requirements may differ.
 
 ## Local Supabase migrations workflow
 
@@ -210,7 +210,8 @@ do not add service-role keys to mobile env or EAS Secrets.
 2. Write SQL in `packages/db/migrations/NNN_name.sql` (sequentially numbered)
 3. Run `pnpm --filter @baki/db migrate:local` to apply
 4. Run `pnpm --filter @baki/db gen:types` to regenerate `types.ts`
-5. Commit migration + types together
+5. Run `pnpm db:types:check` to confirm generated types are committed
+6. Commit migration + types together
 
 ## Troubleshooting cheatsheet
 
@@ -315,8 +316,8 @@ The preview build pulls `EXPO_PUBLIC_*` values from **EAS Secrets** (set via `ea
 ### 2. Pre-build checklist
 
 - [ ] `pnpm install --frozen-lockfile` runs clean on a fresh clone.
-- [ ] `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm i18n:check`, `pnpm db:check` all green on `main`.
-- [ ] `pnpm --filter @baki/db gen:types` re-run against the **live** Supabase project so `get_group_balances` is in the generated `Database` type (not just the local one).
+- [ ] `pnpm typecheck`, `pnpm lint`, `pnpm test`, `pnpm i18n:check`, `pnpm db:check`, and `pnpm db:types:check` all green on `main`.
+- [ ] `pnpm --filter @baki/db gen:types` re-run against the **live** Supabase project so the generated `Database` type reflects every migration in this branch, not only a local expectation.
 - [ ] `supabase db push` against the live project — all migrations in `packages/db/migrations/` applied, including the idempotent expense/settlement RPC migrations.
 - [ ] `supabase functions deploy delete-account` against the live project — `supabase/config.toml` sets `[functions.delete-account].verify_jwt = false` so the function can translate auth failures into Baki's JSON error contract, then call `public.delete_my_account()` with the caller's bearer token and the anon key.
 - [ ] RLS verified end-to-end with two test users (see `packages/db/tests/rls-policies.test.ts`).
@@ -340,7 +341,7 @@ eas submit --platform ios --profile production
 
 > **Submission blocker:** `apps/mobile/eas.json` currently contains placeholder values in `submit.production.ios` — `appleId: "your-apple-id@example.com"`, `ascAppId: "1234567890"`, `appleTeamId: "ABCDE12345"`. These must be replaced with real Apple Developer credentials **before** `eas submit` will succeed. Do not commit the real values; set them via `eas secret:create` or pass them inline via `EXPO_APPLE_ID`, `EXPO_ASC_APP_ID`, `EXPO_APPLE_TEAM_ID` environment variables. The GitHub `release.yml` workflow intentionally builds only; submission requires an explicit manual command.
 
-### 4. Dev Client limitations & manual OTP step
+### 4. Dev Client limitations & auth/E2E step
 
 - The app depends on native modules (`react-native-mmkv`, `@nozbe/watermelondb`, `react-native-reanimated`, `@sentry/react-native`) that **Expo Go cannot host**. You must build the Dev Client at least once:
   ```bash
@@ -348,13 +349,13 @@ eas submit --platform ios --profile production
   ```
   Install the resulting `.ipa` on a device via the EAS install link after `eas device:create`. For a Simulator-only dev client, use `eas build --profile development --platform ios` instead.
 - **First-run OTP for testers:** Bangladeshi SMS providers (SSL Wireless, Twilio) may not deliver to certain Apple-internal test numbers used by App Review. For local QA, retrieve the OTP from Supabase Studio → Auth → Users → "Send magic link", or read directly from `auth.audit_log_entries` for the test number.
-- **Maestro flows assume a signed-in state at launch.** Document the manual sign-in step in the flow README so a fresh tester knows to log in once before invoking `maestro test`.
+- **Preview Maestro can use seed auth only in local/preview/test builds.** The route `baki://e2e/seed-auth` is guarded by `EXPO_PUBLIC_E2E_MODE=true`, non-production channel/profile checks, and `EXPO_PUBLIC_SUPABASE_ENV=local|preview|test`. Do not enable it in production. Manual OTP sign-in remains the path for normal reviewer/tester builds.
 
 ### 5. Physical device test plan (must complete before TestFlight upload)
 
 - [ ] **iPhone SE (2nd gen) minimum** — the oldest supported device per `docs/DESIGN_SYSTEM.md`. Bengali rendering and Hind Siliguri font metrics must be verified on real hardware, not just the Simulator.
 - [ ] Verify the dark-mode loading screen renders cleanly (the theme-aware splash just landed in this wave).
-- [ ] Run all five Maestro flows manually if Maestro Cloud is not yet configured.
+- [ ] Run the Maestro critical-path flows in `e2e/maestro/` if hosted Maestro Cloud is not yet configured; the preview trusted-tester flow can seed auth only against local/preview/test Supabase.
 - [ ] Verify bKash deep link opens the bKash app on a device that has bKash installed; verify the Nagad fallback copies the USSD string to the clipboard (Nagad has no documented universal deep link — copy-to-clipboard is the contract).
 - [ ] Airplane-mode test: add an expense, kill app, restore connectivity, confirm WatermelonDB → Supabase sync converges.
 

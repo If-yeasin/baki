@@ -19,12 +19,13 @@ export type NotificationPreferencePatch = Partial<
 
 export const notificationKeys = {
   all: ["notifications"] as const,
+  deviceTokens: (userId: string) => [...notificationKeys.all, "device-tokens", userId] as const,
   preferences: (userId: string) => [...notificationKeys.all, "preferences", userId] as const
 };
 
 const defaultPreferences = {
   expense_activity: true,
-  push_enabled: true,
+  push_enabled: false,
   reminders: true,
   settlement_activity: true
 } satisfies NotificationPreferencePatch;
@@ -84,6 +85,19 @@ export async function fetchNotificationPreferences(
   }
 
   return inserted;
+}
+
+export async function fetchRegisteredDeviceTokenCount(userId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from("device_tokens")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId);
+
+  if (error) {
+    throw error;
+  }
+
+  return count ?? 0;
 }
 
 export async function updateNotificationPreferences({
@@ -157,6 +171,16 @@ export function useNotificationPreferences(userId: string | null) {
     enabled: Boolean(userId),
     queryFn: () => fetchNotificationPreferences(userId as string),
     queryKey: userId ? notificationKeys.preferences(userId) : ["notifications", "unknown"]
+  });
+}
+
+export function useRegisteredDeviceTokenCount(userId: string | null) {
+  return useQuery({
+    enabled: Boolean(userId),
+    queryFn: () => fetchRegisteredDeviceTokenCount(userId as string),
+    queryKey: userId
+      ? notificationKeys.deviceTokens(userId)
+      : ["notifications", "device-tokens", "unknown"]
   });
 }
 

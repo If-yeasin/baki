@@ -187,14 +187,15 @@ create table public.device_tokens (
 
 ### `notification_preferences`
 
-Per-user push preference switches. Defaults are opt-in after the user grants
-device notification permission; the mobile app can turn any channel off without
-removing the device token.
+Per-user push preference switches. `push_enabled` defaults to false for fresh
+rows and is switched on only after the user grants device notification
+permission and the app saves an Expo push token. The mobile app can turn any
+channel off without removing the device token.
 
 ```sql
 create table public.notification_preferences (
   user_id uuid primary key references public.profiles(id) on delete cascade,
-  push_enabled boolean not null default true,
+  push_enabled boolean not null default false,
   expense_activity boolean not null default true,
   settlement_activity boolean not null default true,
   reminders boolean not null default true,
@@ -283,6 +284,7 @@ Atomic expense writer used by the mobile app.
 - `p_client_mutation_id` is optional. When present, retries for the same `group_id`, caller, and client mutation id return the existing expense id instead of inserting another expense or duplicate share rows.
 - Requires `auth.uid()`; raises `not_authenticated` (`28000`) for anonymous callers
 - Verifies the caller is a current group member; raises `not_group_member` (`42501`) otherwise
+- Verifies the group is not archived or soft-deleted before writing; raises `group_not_active` (`42501`) otherwise
 - Verifies `p_paid_by` is a current group member; raises `paid_by_not_group_member` (`42501`) otherwise
 - Verifies every share user is a current group member; raises `split_user_not_group_member` (`42501`) otherwise
 - Verifies all share values are non-negative integer paisa and sum exactly to `p_amount_paisa`; raises `split_total_mismatch` (`23514`) if the total is wrong
@@ -298,6 +300,7 @@ Atomic expense editor used by the mobile app.
 - `p_client_mutation_id` is optional. When present, retries for the same actor and client mutation id return the original edited expense id from `expense_mutation_receipts` without applying a second update or duplicate activity event.
 - Requires `auth.uid()`; raises `not_authenticated` (`28000`) for anonymous callers.
 - Verifies the target expense exists, is not soft-deleted, and belongs to a group where the caller is a current member; raises `expense_not_found` (`22023`) or `not_group_member` (`42501`) otherwise.
+- Verifies the target group is not archived or soft-deleted before writing; raises `group_not_active` (`42501`) otherwise.
 - Verifies `p_paid_by` and every split user are current group members, verifies amount/category/split method/description validity, and verifies all share values are non-negative integer paisa summing exactly to `p_amount_paisa`.
 - Updates the parent `expenses` row and replaces all `expense_shares` rows in one Postgres transaction. The deferrable share-sum trigger validates the final split total at commit.
 - Sets a transaction-local activity actor so the existing `expenses_log_activity` trigger writes `expense_edited` with the editor's user id, not necessarily the original creator.
@@ -311,6 +314,7 @@ Soft-deletes an expense through the ledger-safe RPC path.
 - `p_client_mutation_id` is optional. When present, retries for the same actor and client mutation id return the original deleted expense id from `expense_mutation_receipts` without writing a duplicate activity event.
 - Requires `auth.uid()`; raises `not_authenticated` (`28000`) for anonymous callers.
 - Verifies the target expense exists and belongs to a group where the caller is a current member; raises `expense_not_found` (`22023`) or `not_group_member` (`42501`) otherwise.
+- Verifies the target group is not archived or soft-deleted before writing; raises `group_not_active` (`42501`) otherwise.
 - Sets `expenses.deleted_at` instead of deleting rows. Existing share rows remain for audit, and balance helpers ignore soft-deleted expenses.
 - Sets a transaction-local activity actor so the existing `expenses_log_activity` trigger writes `expense_deleted` with the deleting member's user id.
 - `SECURITY DEFINER`; no direct `expenses` delete/update policy exists for clients.
@@ -323,6 +327,7 @@ Atomic settlement writer used by the mobile app.
 - `p_client_mutation_id` is optional. When present, retries for the same `group_id`, `from_user`, and client mutation id return the existing settlement id instead of inserting another settlement or duplicate activity row.
 - Requires `auth.uid()`; raises `not_authenticated` (`28000`) for anonymous callers
 - Verifies the caller is a current group member; raises `not_group_member` (`42501`) otherwise
+- Verifies the group is not archived or soft-deleted before writing; raises `group_not_active` (`42501`) otherwise
 - Verifies both settlement parties are current group members; raises `from_user_not_group_member` or `to_user_not_group_member` (`42501`) otherwise
 - Verifies the caller is one side of the settlement; raises `settlement_party_required` (`42501`) otherwise
 - Verifies `p_from_user` and `p_to_user` are different, `p_amount_paisa` is positive, and `p_method` is one of `bkash`, `nagad`, `cash`, or `other`
@@ -389,26 +394,30 @@ Only `SELECT`, `INSERT`, and `UPDATE` policies are defined for `public.expense_s
 
 `20260702114947_v1_group_lifecycle_and_write_hardening.sql` removed direct client insert/update policies on `expenses`, `expense_shares`, `settlements`, and `activity_log`. Mobile money writes must use `create_expense`, `edit_expense`, `delete_expense`, and `create_settlement`.
 
+### Active group money-write guard
+
+`20260704150350_beta_active_group_money_write_guard.sql` adds `current_user_can_write_group(group_id)` and updates `create_expense`, `edit_expense`, `delete_expense`, and `create_settlement` so authenticated current members can write money rows only while the group is not archived and not soft-deleted. Regression tests cover archived/deleted-group rejection for all four RPC paths.
+
 ### `device_tokens`
 
 `device_tokens_own_rows` is `FOR ALL` (SELECT/INSERT/UPDATE/DELETE) gated to `user_id = auth.uid()`. The doc bullet ("ALL: only own rows") matches the migration.
 
 ### `notification_preferences`
 
-`20260702131351_v1_notification_preferences.sql` adds own-row push preference storage with SELECT/INSERT/UPDATE policies and no direct DELETE policy. The table cascades when a profile is deleted.
+`20260702131351_v1_notification_preferences.sql` adds own-row push preference storage with SELECT/INSERT/UPDATE policies and no direct DELETE policy. The table cascades when a profile is deleted. `20260704162000_notification_preferences_delivery_boundary.sql` changes the fresh-row `push_enabled` default to false so preferences do not imply delivery before a device token is registered.
 
 ### Database functions added since 0001
 
 - `get_group_balances(p_group_id uuid) returns table(user_id uuid, net_paisa bigint)` — added in `0003_balances_helper.sql`. `SECURITY DEFINER`, raises `not_group_member` (SQLSTATE `42501`) if the caller is not a current member. Returns one row per member who has a non-zero net (creditor positive, debtor negative). The mobile app uses this for the per-member balance strip without re-running `simplify_debts`.
-- `create_expense(...) returns uuid` — added in `20260630230837_create_expense_rpc.sql`, made idempotent in `20260630235302_retry_safe_money_rpc.sql`, and switched to `SECURITY DEFINER` in `20260702114947_v1_group_lifecycle_and_write_hardening.sql` after direct money-table writes were revoked. Raises `not_authenticated` (`28000`) for anon callers, `not_group_member` / `paid_by_not_group_member` / `split_user_not_group_member` (`42501`) for membership failures, and `split_total_mismatch` (`23514`) when shares do not sum to the expense amount. Returns the inserted expense UUID, or the existing UUID for a retry with the same non-null client mutation id.
-- `edit_expense(...) returns uuid` — added in `20260702124812_v1_expense_lifecycle_rpc.sql`. Validates caller membership, payer membership, split-user membership, amount/category/split method/description, and final share total before replacing the expense fields and split rows. Returns the edited expense UUID, or the existing UUID for a retry with the same actor and non-null client mutation id. The activity trigger records `expense_edited` with the actual editor.
-- `delete_expense(...) returns uuid` — added in `20260702124812_v1_expense_lifecycle_rpc.sql`. Validates caller membership before soft-deleting the expense. Returns the deleted expense UUID, or the existing UUID for a retry with the same actor and non-null client mutation id. The activity trigger records `expense_deleted` with the actual deleting member.
-- `create_settlement(...) returns uuid` — added in `20260630235302_retry_safe_money_rpc.sql`, made idempotent in `20260701073918_settlement_idempotency_and_queue_replay.sql`, and switched to `SECURITY DEFINER` in `20260702114947_v1_group_lifecycle_and_write_hardening.sql` after direct settlement inserts were revoked. Validates caller membership, settlement parties, amount, method, and party participation before inserting the settlement. The `settlements_log_activity` trigger writes the `settled` event in the same transaction. Returns the inserted settlement UUID, or the existing UUID for a retry with the same non-null client mutation id.
+- `create_expense(...) returns uuid` — added in `20260630230837_create_expense_rpc.sql`, made idempotent in `20260630235302_retry_safe_money_rpc.sql`, switched to `SECURITY DEFINER` in `20260702114947_v1_group_lifecycle_and_write_hardening.sql`, and tightened in `20260704150350_beta_active_group_money_write_guard.sql` after direct money-table writes were revoked. Raises `not_authenticated` (`28000`) for anon callers, `not_group_member` / `paid_by_not_group_member` / `split_user_not_group_member` (`42501`) for membership failures, `group_not_active` (`42501`) for archived/deleted groups, and `split_total_mismatch` (`23514`) when shares do not sum to the expense amount. Returns the inserted expense UUID, or the existing UUID for a retry with the same non-null client mutation id.
+- `edit_expense(...) returns uuid` — added in `20260702124812_v1_expense_lifecycle_rpc.sql` and tightened in `20260704150350_beta_active_group_money_write_guard.sql`. Validates caller membership, active group state, payer membership, split-user membership, amount/category/split method/description, and final share total before replacing the expense fields and split rows. Returns the edited expense UUID, or the existing UUID for a retry with the same actor and non-null client mutation id. The activity trigger records `expense_edited` with the actual editor.
+- `delete_expense(...) returns uuid` — added in `20260702124812_v1_expense_lifecycle_rpc.sql` and tightened in `20260704150350_beta_active_group_money_write_guard.sql`. Validates caller membership and active group state before soft-deleting the expense. Returns the deleted expense UUID, or the existing UUID for a retry with the same actor and non-null client mutation id. The activity trigger records `expense_deleted` with the actual deleting member.
+- `create_settlement(...) returns uuid` — added in `20260630235302_retry_safe_money_rpc.sql`, made idempotent in `20260701073918_settlement_idempotency_and_queue_replay.sql`, switched to `SECURITY DEFINER` in `20260702114947_v1_group_lifecycle_and_write_hardening.sql`, and tightened in `20260704150350_beta_active_group_money_write_guard.sql` after direct settlement inserts were revoked. Validates caller membership, active group state, settlement parties, amount, method, and party participation before inserting the settlement. The `settlements_log_activity` trigger writes the `settled` event in the same transaction. Returns the inserted settlement UUID, or the existing UUID for a retry with the same non-null client mutation id.
 - `create_group(...)`, `rename_group(...)`, `update_group_template(...)`, `archive_group(...)`, `leave_group(...)`, `delete_group(...)`, and `regenerate_group_invite(...)` — added in `20260702114947_v1_group_lifecycle_and_write_hardening.sql` for safe group lifecycle.
 
 ### Type-generation note
 
-`packages/db/src/types.ts` includes the typed shape expected after migrations through `20260702131351_v1_notification_preferences.sql`, including `notification_preferences`, `expense_mutation_receipts`, `edit_expense`, and `delete_expense`. During the 2026-07-02 stabilization pass, local Supabase/Docker access was not responsive enough to complete `pnpm --filter @baki/db gen:types`, so the generated file was restored and updated with the expected migration deltas. Re-run `pnpm --filter @baki/db gen:types` against a responsive local or live Supabase database after any new migration that touches a table, enum, relationship, function, or return shape, then commit the regenerated output with the migration.
+`packages/db/src/types.ts` must match all migrations through the current branch. Run `pnpm --filter @baki/db gen:types` against a responsive local Supabase database after any migration that touches a table, enum, relationship, function, or return shape, then commit the regenerated output with the migration. CI runs `pnpm db:types:check` with `BAKI_DB_TYPES_REQUIRED=true` so stale generated types fail the automated gate instead of silently skipping.
 
 ## Account deletion
 

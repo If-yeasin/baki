@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, View } from "react-native";
 
 import { formatMoney } from "@baki/i18n";
-import { Avatar, Skeleton, Text, Toast, radii, spacing, useTheme } from "@baki/ui";
+import { Avatar, Skeleton, Tabs, Text, Toast, radii, spacing, useTheme } from "@baki/ui";
 import { PaymentInputError, isValidBdPhone } from "@baki/payments";
 
 import { BakiEmptyState } from "@/components/baki-empty-state";
@@ -39,6 +39,7 @@ type Creditor = {
 };
 
 type SettlementProvider = "bkash" | "nagad" | "cash" | "other";
+type SettlementPlanMode = "raw" | "simplified";
 
 type SettlementNotice = {
   bodyKey?: string;
@@ -139,6 +140,7 @@ export default function SettleScreen() {
     provider: SettlementProvider;
   } | null>(null);
   const [settlementNotice, setSettlementNotice] = useState<SettlementNotice | null>(null);
+  const [planMode, setPlanMode] = useState<SettlementPlanMode>("simplified");
 
   const detailQuery = useGroupDetail(groupId);
   const balancesQuery = useGroupBalances(groupId);
@@ -155,8 +157,25 @@ export default function SettleScreen() {
     return buildRawBalanceFallbackPlan(balancesQuery.data ?? [], session.userId);
   }, [balancesQuery.data, session.userId]);
 
+  const activePlanMode: SettlementPlanMode = simplifiedDebtsQuery.isError ? "raw" : planMode;
+  const usingRawBalanceMode = activePlanMode === "raw";
   const usingRawBalanceFallback = simplifiedDebtsQuery.isError;
-  const settlementTransfers = usingRawBalanceFallback ? fallbackTransfers : simplifiedTransfers;
+  const settlementTransfers = usingRawBalanceMode ? fallbackTransfers : simplifiedTransfers;
+  const planModeItems = useMemo(
+    () =>
+      [
+        {
+          disabled: simplifiedDebtsQuery.isError,
+          label: t("settle.plan.mode.simplified"),
+          value: "simplified"
+        },
+        {
+          label: t("settle.plan.mode.raw"),
+          value: "raw"
+        }
+      ] as const,
+    [simplifiedDebtsQuery.isError, t]
+  );
   const profileIds = useMemo(
     () =>
       Array.from(new Set(settlementTransfers.map((transfer) => transfer.counterpartyId))).sort(),
@@ -484,25 +503,51 @@ export default function SettleScreen() {
             variant={settlementNotice.variant}
           />
         ) : null}
+        <View testID="settle-plan-mode-tabs">
+          <Tabs
+            accessibilityLabel={t("settle.plan.mode.label")}
+            items={planModeItems}
+            onValueChange={setPlanMode}
+            value={activePlanMode}
+          />
+        </View>
         <View
           style={{
-            backgroundColor: usingRawBalanceFallback ? colors.tintWarning : colors.tintBrand,
+            backgroundColor: usingRawBalanceFallback
+              ? colors.tintWarning
+              : usingRawBalanceMode
+                ? colors.bgSubtle
+                : colors.tintBrand,
             borderRadius: radii.md,
             gap: spacing.xs,
             padding: spacing.md
           }}
         >
           <Text
-            style={{ color: usingRawBalanceFallback ? colors.warning : colors.brandPrimary }}
+            style={{
+              color: usingRawBalanceFallback
+                ? colors.warning
+                : usingRawBalanceMode
+                  ? colors.inkSecondary
+                  : colors.brandPrimary
+            }}
             variant="label"
           >
             {t(
-              usingRawBalanceFallback ? "settle.plan.fallback.title" : "settle.plan.optimized.title"
+              usingRawBalanceFallback
+                ? "settle.plan.fallback.title"
+                : usingRawBalanceMode
+                  ? "settle.plan.raw.title"
+                  : "settle.plan.optimized.title"
             )}
           </Text>
           <Text style={{ color: colors.inkSecondary }} variant="caption">
             {t(
-              usingRawBalanceFallback ? "settle.plan.fallback.body" : "settle.plan.optimized.body"
+              usingRawBalanceFallback
+                ? "settle.plan.fallback.body"
+                : usingRawBalanceMode
+                  ? "settle.plan.raw.body"
+                  : "settle.plan.optimized.body"
             )}
           </Text>
         </View>

@@ -1,6 +1,6 @@
 # Screenshot Plan
 
-Updated: 2026-07-02
+Updated: 2026-07-04
 
 Capture both Bengali and English where practical. Use real-looking seeded data with no personal phone numbers, raw OTPs, JWTs, service-role keys, or raw MFS numbers visible.
 
@@ -33,3 +33,23 @@ Capture both Bengali and English where practical. Use real-looking seeded data w
 - Show Baki's own khata metaphor and jade/gold identity.
 - Do not copy competitor layouts, wording, colors, icons, or illustrations.
 - If EAS/Maestro screenshot automation is unavailable, use this list as the manual capture checklist and document the build SHA used.
+
+## Screenshot Evidence Status
+
+No App Store-ready screenshot package is committed yet. Older local screenshots
+under `output/playwright/` are not release evidence because they are not tied to
+the current beta build SHA, locale matrix, or required App Store device sizes.
+
+| Screen | Bengali | English | iPhone 6.7 | iPhone 6.5 | iPhone 5.5/small | Android | Source path | Build SHA | Status |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Onboarding / OTP | Missing | Missing | Missing | Missing | Missing | Deferred | TBD | TBD | Blocked |
+| Home khata list | Missing | Missing | Missing | Missing | Missing | Deferred | TBD | TBD | Blocked |
+| Group detail | Missing | Missing | Missing | Missing | Missing | Deferred | TBD | TBD | Blocked |
+| Add expense | Missing | Missing | Missing | Missing | Missing | Deferred | TBD | TBD | Blocked |
+| Edit expense | Missing | Missing | Missing | Missing | Missing | Deferred | TBD | TBD | Blocked |
+| Balances | Missing | Missing | Missing | Missing | Missing | Deferred | TBD | TBD | Blocked |
+| Settle | Missing | Missing | Missing | Missing | Missing | Deferred | TBD | TBD | Blocked |
+| Activity | Missing | Missing | Missing | Missing | Missing | Deferred | TBD | TBD | Blocked |
+| Settings / Sync | Missing | Missing | Missing | Missing | Missing | Deferred | TBD | TBD | Blocked |
+| Export / Notifications | Missing | Missing | Missing | Missing | Missing | Deferred | TBD | TBD | Blocked |
+| Privacy / Support | Missing | Missing | Missing | Missing | Missing | Deferred | TBD | TBD | Blocked |
