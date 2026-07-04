@@ -8,7 +8,7 @@
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest --run --passWithNoTests",
+    "test": "vitest --run --passWithNoTests --no-file-parallelism",
     "migrate": "supabase db push --workdir ../..",
     "migrate:local": "supabase db reset --workdir ../..",
     "gen:types": "supabase gen types --lang=typescript --local --workdir ../.. > src/types.ts",

@@ -162,14 +162,14 @@ function runJsonAsAuthenticated<T>(userId: string, sql: string): T {
 }
 
 function expectSqlToRaise(run: () => void, expectedMessage: string) {
-  let raised = false;
+  let errorText = "no error raised";
   try {
     run();
   } catch (err) {
-    raised = String(err).includes(expectedMessage);
+    errorText = String(err);
   }
 
-  expect(raised).toBe(true);
+  expect(errorText).toContain(expectedMessage);
 }
 
 function createOutsiderFixture(): void {
@@ -275,6 +275,8 @@ function createDirectExpenseTargetSql(description: string, tableName: string): s
     insert into ${tableName} (id)
     select id
     from inserted_expense;
+
+    grant select on ${tableName} to authenticated;
   `;
 }
 

@@ -526,7 +526,13 @@ begin
     raise exception 'not_group_member' using errcode = '42501';
   end if;
 
-  if not public.current_user_can_write_group(target_expense.group_id) then
+  if not exists (
+    select 1
+    from public.groups
+    where id = target_expense.group_id
+      and archived_at is null
+      and deleted_at is null
+  ) then
     raise exception 'group_not_active' using errcode = '42501';
   end if;
 
@@ -787,7 +793,13 @@ begin
     raise exception 'not_group_member' using errcode = '42501';
   end if;
 
-  if not public.current_user_can_write_group(target_expense.group_id) then
+  if not exists (
+    select 1
+    from public.groups
+    where id = target_expense.group_id
+      and archived_at is null
+      and deleted_at is null
+  ) then
     raise exception 'group_not_active' using errcode = '42501';
   end if;
 
