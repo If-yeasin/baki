@@ -37,6 +37,9 @@ importers:
       "@baki/i18n":
         specifier: workspace:*
         version: link:../../packages/i18n
+      "@baki/monetization":
+        specifier: workspace:*
+        version: link:../../packages/monetization
       "@baki/payments":
         specifier: workspace:*
         version: link:../../packages/payments

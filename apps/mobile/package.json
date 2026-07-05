@@ -33,6 +33,7 @@
   },
   "dependencies": {
     "@baki/i18n": "workspace:*",
+    "@baki/monetization": "workspace:*",
     "@baki/payments": "workspace:*",
     "@baki/ui": "workspace:*",
     "@expo-google-fonts/hind-siliguri": "^0.4.1",

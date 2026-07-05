@@ -27,6 +27,8 @@ The first safe foundation lives in `packages/monetization`:
 This package intentionally does **not** enable purchases, entitlements, paywalls, wallet behavior, payment processing, settlement fees, or local entitlement grants.
 The English `title` / `description` values in the catalog are internal metadata only and are marked with `copyScope: "internal_metadata_not_ui_copy"`; mobile screens must use localized `packages/i18n` strings instead of rendering catalog metadata directly.
 
+The first mobile value preview is the Monthly Khata Report in `apps/mobile/app/group/[id]/report.tsx`, linked from group settings as a free beta preview and cataloged as `report.monthly_preview` / `free_beta`. It uses localized copy and redacted breadcrumb analytics only; it does not enable billing or block any existing beta/core flow. The later paid `report.monthly_close` remains reserved for full Khata Pro monthly close/export workflows.
+
 ## Guardrails
 
 1. Do not charge for basic group creation, expense recording, custom splits, balance viewing, settlement recording, basic activity, or basic offline queueing.
@@ -43,7 +45,7 @@ The English `title` / `description` values in the catalog are internal metadata 
 
 ### Stage 1 — complete safe foundations
 
-- Add mobile no-op analytics adapter using the event catalog.
+- Expand the mobile no-op analytics adapter using the event catalog.
 - Add read-only entitlement model and cache shape, defaulting to free core.
 - Add `FeatureGate` UI that can educate users but does not block current beta flows.
 - Add Bengali/English copy for plan education and billing-disabled states.

@@ -34,7 +34,7 @@ In Bangladesh, বাকি is the everyday word for outstanding balance. The co
 
 - **Bengali is the default language.** Every user-facing string ships in both `bn` and `en`. No hardcoded English in the UI tree.
 - **Offline-first is non-negotiable.** Users in Rangamati or a Comilla village on patchy 2G must be able to add expenses and see balances. WatermelonDB local, Supabase remote, sync on connectivity.
-- **bKash/Nagad first, card last.** Settlement UX assumes mobile financial services (MFS) are the default. Card/bank transfer is a fallback, not the headline.
+- **bKash/Nagad first, manual fallback last.** Settlement UX assumes mobile financial services (MFS) are the default. Cash/other manual outside-app records are the fallback; Baki does not process card or bank transfers.
 - **Trust the corner-shop metaphor.** Every screen should feel as obvious as a khata. If a screen needs a tooltip to be understood, redesign it.
 - **Type-safe end to end.** TypeScript strict, generated Supabase types, Zod at every boundary (forms, API responses, deep links).
 - **Test what would hurt to break.** Split math, balance simplification, MFS deep links, sync conflict resolution. Snapshot tests for UI, unit tests for logic, Maestro flows for the critical path.
@@ -44,13 +44,13 @@ In Bangladesh, বাকি is the everyday word for outstanding balance. The co
 
 This project uses Claude Code subagents defined in `.claude/agents/`. Each subagent owns a slice of the codebase. The orchestrator (the main Claude Code session) delegates by topic:
 
-| Subagent                 | Owns                                                       |
-| ------------------------ | ---------------------------------------------------------- |
-| `mobile-engineer`        | React Native / Expo app, screens, navigation, hooks        |
-| `backend-engineer`       | Supabase schema, migrations, RLS, edge functions           |
-| `payments-engineer`      | bKash, Nagad, Stripe integration, settlement flows         |
-| `design-system-engineer` | Theme tokens, NativeWind config, reusable components, i18n |
-| `release-engineer`       | EAS build/submit, App Store Connect, Play Console, CI      |
+| Subagent                 | Owns                                                                   |
+| ------------------------ | ---------------------------------------------------------------------- |
+| `mobile-engineer`        | React Native / Expo app, screens, navigation, hooks                    |
+| `backend-engineer`       | Supabase schema, migrations, RLS, edge functions                       |
+| `payments-engineer`      | bKash/Nagad MFS handoff, settlement UX, non-custodial payment boundary |
+| `design-system-engineer` | Theme tokens, NativeWind config, reusable components, i18n             |
+| `release-engineer`       | EAS build/submit, App Store Connect, Play Console, CI                  |
 
 When a task spans multiple domains, the orchestrator decomposes it and dispatches in sequence (backend schema → mobile UI → release plumbing).
 

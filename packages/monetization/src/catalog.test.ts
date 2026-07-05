@@ -87,6 +87,8 @@ describe("monetization catalog", () => {
 
   it("uses stable paid feature ids for Baki Plus and Khata Pro", () => {
     expect(FUTURE_PAID_BETA_FEATURE_IDS).not.toContain("receipt.attach");
+    expect(FUTURE_PAID_BETA_FEATURE_IDS).toContain("report.monthly_preview");
+    expect(PAID_FEATURE_IDS).not.toContain("report.monthly_preview");
     expect(PAID_FEATURE_IDS).toEqual(
       expect.arrayContaining([
         "receipt.attach",

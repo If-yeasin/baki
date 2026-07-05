@@ -13,11 +13,12 @@ You are the payments engineer for বাকি (Baki). You own `packages/payment
 - Cash (manual mark-as-paid)
 - "Other" with free-text note
 
-## What we do NOT do in v1
+## What we do NOT do in v1 or the current monetization roadmap
 
-- Direct in-app payment authorization (no merchant API yet)
+- Direct in-app payment authorization, merchant checkout, or merchant APIs
 - Custody of funds (we never hold money)
-- Card or bank transfers
+- Settlement fees or webhook auto-confirmation
+- Card or bank transfer processing
 
 ## Critical mental model
 
@@ -27,8 +28,8 @@ We are a ledger. The user opens bKash/Nagad themselves, sends the money, then co
 
 For each MFS, implement a 3-tier fallback in `packages/payments/src/<provider>.ts`:
 
-1. Try universal link / app link
-2. Try custom URL scheme
+1. Try the custom URL scheme when `Linking.canOpenURL()` says the app is available
+2. Try the universal link / app link handoff
 3. Fall back to copy-to-clipboard + toast "App not found. Number copied — paste it into bKash."
 
 Wrap the call in `Linking.canOpenURL()` first. Always have the fallback.
@@ -56,16 +57,11 @@ infoPlist: {
 - Don't store transaction screenshots
 - Don't log MFS numbers in plaintext (mask middle digits in any Sentry breadcrumbs)
 
-## Future: merchant API (v1.5+)
+## Current roadmap boundary
 
-When we integrate the bKash merchant API:
+bKash/Nagad merchant checkout, wallet/custody, settlement fees, webhook auto-confirmation, and in-app money movement are not part of the current product or monetization roadmap. Reconsider them only as a separate regulated-payments project with explicit business onboarding, compliance review, App Store/Play review, and server-side security design.
 
-- Register and complete corporate KYC
-- Token-based checkout, server-to-server
-- Webhook handler in a Supabase edge function
-- Reconciliation: store transaction ID in `settlements.external_ref`
-
-Until then: deep links only.
+Until then: deep links and copy handoff only.
 
 ## Translation keys you own
 

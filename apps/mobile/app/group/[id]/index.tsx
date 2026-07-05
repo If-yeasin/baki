@@ -5,6 +5,7 @@ import {
   Activity,
   ArrowLeft,
   ArrowRight,
+  BarChart3,
   CheckCircle2,
   Copy,
   Plus,
@@ -351,7 +352,7 @@ export default function GroupDetailScreen() {
               </View>
             ) : null}
 
-            <View style={{ paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
+            <View style={{ gap: spacing.sm, paddingHorizontal: spacing.lg, paddingTop: spacing.lg }}>
               <Pressable
                 accessibilityLabel={t("groups.detail.activity.title")}
                 accessibilityRole="button"
@@ -373,6 +374,34 @@ export default function GroupDetailScreen() {
                 <Text style={{ color: colors.inkPrimary, flex: 1 }} variant="bodyStrong">
                   {t("groups.detail.activity.title")}
                 </Text>
+                <ArrowRight color={colors.inkMuted} size={18} />
+              </Pressable>
+              <Pressable
+                accessibilityLabel={t("groups.settings.report.cta")}
+                accessibilityRole="button"
+                onPress={() => router.push(`/group/${groupId}/report` as Href)}
+                style={({ pressed }) => ({
+                  alignItems: "center",
+                  backgroundColor: pressed ? colors.bgSubtle : colors.bgSurface,
+                  borderColor: colors.borderSubtle,
+                  borderRadius: radii.md,
+                  borderWidth: 1,
+                  flexDirection: "row",
+                  gap: spacing.md,
+                  minHeight: 64,
+                  paddingHorizontal: spacing.md
+                })}
+                testID="group-monthly-report-cta"
+              >
+                <BarChart3 color={colors.brandPrimary} size={19} />
+                <View style={{ flex: 1, gap: spacing.xs, minWidth: 0 }}>
+                  <Text style={{ color: colors.inkPrimary }} variant="bodyStrong">
+                    {t("groups.settings.report.cta")}
+                  </Text>
+                  <Text style={{ color: colors.inkMuted }} variant="caption">
+                    {t("groups.settings.report.subtitle")}
+                  </Text>
+                </View>
                 <ArrowRight color={colors.inkMuted} size={18} />
               </Pressable>
             </View>

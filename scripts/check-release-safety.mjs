@@ -21,6 +21,25 @@ const checks = [
     message: "Use safer benchmark wording for product comparisons.",
     paths: ["AGENTS.md", "README.md", "TASKS.md", "apps", "docs", "e2e", "packages", "tasks"],
     pattern: /Splitwise[\s-]+style/i
+  },
+  {
+    message:
+      "Agent guidance must keep payments scoped to MFS handoff, not Stripe or merchant checkout.",
+    paths: ["AGENTS.md", "CLAUDE.md", ".claude/agents"],
+    pattern:
+      /payments-engineer[^\n]*Stripe|Future:\s*merchant API|When we integrate the bKash merchant API|Token-based checkout|Webhook handler in a Supabase edge function|settlements\.external_ref/i
+  },
+  {
+    message:
+      "Canonical payment architecture must not list deferred Stripe/custom checkout as payment tech.",
+    paths: ["docs/ARCHITECTURE.md"],
+    pattern: /Stripe\s*[—-]\s*v3\s+only|international users\s*\(deferred\)/i
+  },
+  {
+    message:
+      "Guidance must frame card/bank as manual outside-app records, not a payment-processing fallback.",
+    paths: ["AGENTS.md", "CLAUDE.md", ".claude/agents", "docs"],
+    pattern: /card\/bank transfer is a fallback|bank\/card transfer is a fallback/i
   }
 ];
 
@@ -36,7 +55,9 @@ function walk(path) {
   const basename = absolutePath.split("/").at(-1);
   if (basename && ignoredDirectories.has(basename)) return [];
 
-  return readdirSync(absolutePath).flatMap((entry) => walk(relative(repoRoot, join(absolutePath, entry))));
+  return readdirSync(absolutePath).flatMap((entry) =>
+    walk(relative(repoRoot, join(absolutePath, entry)))
+  );
 }
 
 const failures = [];

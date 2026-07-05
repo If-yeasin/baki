@@ -1,107 +1,172 @@
 # Overnight Manager Heartbeat
 
-- Timestamp: 2026-07-04 18:26:16 PDT (-0700) / 2026-07-05T01:26:16Z
-- Branch: `codex/beta-launch-production-readiness` (ahead of origin by 1 commit)
-- Status: GREEN — lightweight non-Docker checks passed after one small TDD privacy fix. Docker, Supabase local stack, emulators, Metro, and EAS builds were not started.
-- Current monetization-readiness objective: `.hermes/plans/` is not present, so objective is inferred from `docs/MONETIZATION_READINESS.md`: Stage 1 — complete safe foundations (mobile no-op analytics adapter, read-only entitlement/cache defaulting to free core, non-blocking `FeatureGate`, Bengali/English plan and billing-disabled copy).
+- Timestamp: 2026-07-05 04:28:52 PDT (-0700) / 2026-07-05T11:28:52Z
+- Branch: `codex/beta-launch-production-readiness` (ahead of `origin/codex/beta-launch-production-readiness` by 2 commits)
+- Status: GREEN — lightweight non-Docker checks passed. No release-blocking regression found. Docker, Supabase local stack, emulators, Metro, EAS builds, and other long-running services were not started.
+- Current monetization-readiness objective: `.hermes/plans/` is not present, so the objective is inferred from `docs/MONETIZATION_READINESS.md`: Stage 1 safe foundations — mobile no-op analytics adapter, read-only entitlement/cache shape defaulting to free core, non-blocking `FeatureGate`, and Bengali/English plan-education + billing-disabled copy.
+- Changes applied this run: updated this heartbeat only; no product code, tests, migrations, commits, pushes, history rewrites, or secret reads.
 
-## Git status and recent changes
+## Git status and changed files
 
-Initial status observed this run:
+Repo path verified as `/Volumes/IFMY/Baki - বাকি`. An explicit `workdir: /Volumes/IFMY/Baki - বাকি` terminal attempt was blocked by the Hermes path guard because the path contains Bengali characters; subsequent shell commands ran from the existing repo cwd.
+
+Pre-heartbeat-update status:
 
 ```text
-## codex/beta-launch-production-readiness...origin/codex/beta-launch-production-readiness [ahead 1]
+## codex/beta-launch-production-readiness...origin/codex/beta-launch-production-readiness [ahead 2]
+ M .claude/agents/payments-engineer.md
+ M .hermes/overnight/manager-heartbeat.md
+ M .hermes/overnight/security-watchdog.md
+ M AGENTS.md
+ M CLAUDE.md
  M docs/ARCHITECTURE.md
- M docs/BANGLADESH_CONTEXT.md
- M docs/MONETIZATION_READINESS.md
- M docs/PRD.md
- M docs/ROADMAP.md
- M packages/monetization/src/analytics-events.test.ts
- M packages/monetization/src/analytics-events.ts
- M packages/monetization/src/catalog.test.ts
- M packages/monetization/src/features.ts
- M packages/monetization/src/plans.ts
- M pnpm-lock.yaml
-?? .hermes/
+ M scripts/check-release-safety.mjs
 ```
 
-Final status after this run:
+No staged files were present. Changed tracked files:
 
 ```text
-## codex/beta-launch-production-readiness...origin/codex/beta-launch-production-readiness [ahead 1]
- M apps/mobile/src/lib/sentry.test.ts
- M apps/mobile/src/lib/sentry.ts
- M docs/ARCHITECTURE.md
- M docs/BANGLADESH_CONTEXT.md
- M docs/MONETIZATION_READINESS.md
- M docs/PRD.md
- M docs/ROADMAP.md
- M packages/monetization/src/analytics-events.test.ts
- M packages/monetization/src/analytics-events.ts
- M packages/monetization/src/catalog.test.ts
- M packages/monetization/src/features.ts
- M packages/monetization/src/plans.ts
- M pnpm-lock.yaml
-?? .hermes/
+M	.claude/agents/payments-engineer.md
+M	.hermes/overnight/manager-heartbeat.md
+M	.hermes/overnight/security-watchdog.md
+M	AGENTS.md
+M	CLAUDE.md
+M	docs/ARCHITECTURE.md
+M	scripts/check-release-safety.mjs
+```
+
+Pre-heartbeat-update diff stat reviewed:
+
+```text
+.claude/agents/payments-engineer.md    |  22 +-
+.hermes/overnight/manager-heartbeat.md | 217 ++++++-----
+.hermes/overnight/security-watchdog.md | 644 +++++++++++++++++++++++++++++++++
+AGENTS.md                              |  16 +-
+CLAUDE.md                              |   2 +-
+docs/ARCHITECTURE.md                   |   2 +-
+scripts/check-release-safety.mjs       |  23 +-
+7 files changed, 819 insertions(+), 107 deletions(-)
 ```
 
 Recent commits reviewed:
 
 ```text
+84173c6 fix: harden payment redaction and handoff guardrails
 5190f07 feat: prepare monetization and release readiness
 e352665 Stabilize DB readiness CI tests
 d7f71f1 Match generated Supabase type ordering
 be83ee2 Print stale Supabase type diffs
-eeb71b7 Prepare beta launch readiness hardening
 ```
 
-Diff reviewed:
+## Review summary
 
-- `docs/ARCHITECTURE.md`, `docs/BANGLADESH_CONTEXT.md`, `docs/PRD.md`, `docs/ROADMAP.md`: strengthen the ledger-only/non-custodial position and remove bKash merchant API from the current monetization roadmap.
-- `docs/MONETIZATION_READINESS.md`: clarifies package boundaries, payment-processing guardrails, analytics-sensitive aliases, and that catalog English copy is internal metadata only.
-- `packages/monetization/src/plans.ts`, `features.ts`: add internal `copyScope` metadata, keep free core ledger features free, keep current beta export/archive as `free_beta`, and move deferred `receipt.attach` to future `khata_pro` instead of beta-free.
-- `packages/monetization/src/analytics-events.ts` and tests: expand analytics redaction for payment-reference aliases and spaced/masked Bangladesh phone formats.
-- `packages/monetization/src/catalog.test.ts`: expands catalog guardrails for copy scope, free/beta/paid disjointness, free-core paywalls, and receipt-attachment placement.
-- `pnpm-lock.yaml`: adds the `packages/monetization` importer entry.
-- `apps/mobile/src/lib/sentry.ts` and `.test.ts`: added during this run to close a Sentry redaction gap found while reviewing the monetization analytics redaction change.
-
-## Fix applied during this run
-
-TDD privacy fix:
-
-1. Added failing Sentry tests for bKash/Nagad URL-style payment reference aliases (`reference`, `trxId`, `transactionId`, `orderId`) and spaced Bangladesh phone numbers.
-2. Confirmed the test failed before implementation (`pnpm --filter mobile test -- src/lib/sentry.test.ts` failed: 2 failed / 1 passed).
-3. Expanded `redactSensitiveSentryText` and recursive key redaction to cover the same payment-reference/MFS/receipt aliases and phone formats as monetization analytics.
-4. Re-ran the targeted test successfully.
+- `.hermes/plans/` is absent; `.hermes/` currently contains overnight reports only.
+- `docs/MONETIZATION_READINESS.md` confirms Stage 1 safe-foundation work is current and purchases, paywalls, wallet behavior, payment processing, settlement fees, and local entitlement grants remain out of scope.
+- Current product-impacting diffs are guidance, architecture wording, and release-safety guardrails. No schema/RLS migration, mobile UI surface, i18n catalog, or payment implementation file changed in the active diff.
+- `.claude/agents/payments-engineer.md`, `AGENTS.md`, and `CLAUDE.md` now frame payment ownership as bKash/Nagad MFS handoff, settlement UX, and non-custodial boundaries; they explicitly avoid Stripe/custom checkout, merchant APIs, custody, settlement fees, webhook auto-confirmation, and card/bank processing.
+- `docs/ARCHITECTURE.md` replaces stale deferred Stripe wording with future store-compliant mobile subscription billing guidance requiring App Store/Play IAP and server verification, separate from settlement handoff/payment processing.
+- `scripts/check-release-safety.mjs` now guards against mobile service-role usage, direct mobile writes to ledger lifecycle tables, unsafe product-comparison wording, stale Stripe/merchant payment guidance, stale `Stripe v3` architecture wording, and ambiguous card/bank-as-processing-fallback guidance.
+- Cross-check against `docs/BANGLADESH_CONTEXT.md` and `packages/payments/src/bkash.ts` found the changed bKash handoff order consistent with the implemented plan: custom scheme first, then web/universal handoff, then copy fallback.
+- No changed file introduced purchase enablement, local entitlement grants, wallet/custody, settlement fees, webhook auto-confirmation, service-role client usage, direct mobile ledger-table writes, hardcoded UI-copy deltas, or user-facing payment-processing claims.
 
 ## Verification commands and results
 
-| Command | Result |
-| --- | --- |
-| `pwd && git status --short --branch` | Exit 0; repo path `/Volumes/IFMY/Baki - বাকি`; branch `codex/beta-launch-production-readiness` ahead 1; initial changed files listed above. |
-| `git diff --name-status && git diff --cached --name-status && git status --short --untracked-files=all && git --no-pager log --oneline -8` | Exit 0; no staged files; untracked `.hermes/`; recent monetization/release-readiness commits reviewed. |
-| `pnpm --filter mobile test -- src/lib/sentry.test.ts` (after adding test only) | Exit 1 as expected for TDD; 2 failed / 1 passed because Sentry did not yet redact payment-reference aliases or spaced BD phone numbers. |
-| `pnpm --filter mobile test -- src/lib/sentry.test.ts` (after implementation) | Exit 0; 1 file passed, 3 tests passed. |
-| `pnpm --filter @baki/monetization test && pnpm --filter @baki/monetization typecheck && pnpm --filter @baki/monetization lint && pnpm --filter @baki/payments test && pnpm i18n:check && pnpm release:safety && git diff --check` | Exit 0; monetization 3 files / 17 tests passed; monetization typecheck/lint passed; payments 2 files / 15 tests passed; i18n parity 2 tests passed; release safety scan passed; `git diff --check` had no whitespace errors. |
-| `pnpm lint && pnpm typecheck` | Exit 0; turbo lint/typecheck passed for 6 tasks. Lint still reports one generated-file warning in `apps/mobile/.expo/types/router.d.ts` for an unused eslint-disable directive. |
-| `pnpm --filter mobile test -- src/lib/sentry.test.ts src/features/e2e/test-auth-guard.test.ts` | Exit 0; 2 files passed, 10 tests passed. |
-| `git status --short --branch && git diff --name-status && git diff --stat && git --no-pager log --oneline -5` | Exit 0; final tracked diff has 13 modified files, 148 insertions / 36 deletions, plus untracked `.hermes/`. |
-| `date '+%Y-%m-%d %H:%M:%S %Z (%z)' && date -u '+%Y-%m-%dT%H:%M:%SZ'` | Exit 0; heartbeat timestamp captured as `2026-07-04 18:26:16 PDT (-0700)` / `2026-07-05T01:26:16Z`. |
+- `date '+%Y-%m-%d %H:%M:%S %Z (%z)'` with explicit `workdir: /Volumes/IFMY/Baki - বাকি`
+  - Blocked by Hermes path guard because the workdir contains Bengali characters.
+- `git status -sb && printf '\n--- short ---\n' && git status --short && printf '\n--- unstaged/staged name-status ---\n' && git diff --name-status && git diff --cached --name-status && printf '\n--- diff stat ---\n' && git diff --stat && git diff --cached --stat && printf '\n--- recent commits ---\n' && git --no-pager log --oneline -5` with explicit `workdir: /Volumes/IFMY/Baki - বাকি`
+  - Blocked by Hermes path guard because the workdir contains Bengali characters.
+- `pwd && date '+%Y-%m-%d %H:%M:%S %Z (%z)'`
+  - Exit 0. Cwd `/Volumes/IFMY/Baki - বাকি`; timestamp `2026-07-05 04:26:55 PDT (-0700)`.
+- `git status -sb && printf '\n--- short ---\n' && git status --short && printf '\n--- unstaged/staged name-status ---\n' && git diff --name-status && git diff --cached --name-status && printf '\n--- diff stat ---\n' && git diff --stat && git diff --cached --stat && printf '\n--- recent commits ---\n' && git --no-pager log --oneline -5`
+  - Exit 0. Branch ahead by 2 commits; seven modified tracked files listed above; no staged files; recent commits listed above.
+- `search_files target=files path=.hermes/plans pattern=*`
+  - Path not found. Objective inferred from `docs/MONETIZATION_READINESS.md`.
+- `search_files target=files path=.hermes pattern=*`
+  - Found `.hermes/overnight/security-watchdog.md` and `.hermes/overnight/manager-heartbeat.md`; no plans directory.
+- `read_file docs/MONETIZATION_READINESS.md`
+  - Confirmed Stage 1 safe foundations and disabled billing/no-purchase/no-payment-processing boundary.
+- `git --no-pager diff -- .claude/agents/payments-engineer.md AGENTS.md CLAUDE.md docs/ARCHITECTURE.md scripts/check-release-safety.mjs`
+  - Exit 0. Reviewed active guidance, architecture, and safety-script diffs.
+- `git diff --check`
+  - Exit 0. No whitespace errors.
+- Composite lightweight check command:
 
-## Regression / blocker / security review
+  ```bash
+  set -u
+  run_cmd() {
+    printf '\n>>> %s\n' "$*"
+    "$@"
+    status=$?
+    printf '<<< exit %s: %s\n' "$status" "$*"
+    return "$status"
+  }
+  overall=0
+  run_cmd pnpm release:safety || overall=1
+  run_cmd pnpm lint || overall=1
+  run_cmd pnpm typecheck || overall=1
+  run_cmd pnpm i18n:check || overall=1
+  run_cmd pnpm --filter @baki/monetization test || overall=1
+  run_cmd pnpm --filter @baki/monetization typecheck || overall=1
+  run_cmd pnpm --filter @baki/monetization lint || overall=1
+  run_cmd pnpm --filter @baki/payments test || overall=1
+  run_cmd pnpm --filter @baki/payments typecheck || overall=1
+  run_cmd pnpm --filter @baki/payments lint || overall=1
+  run_cmd pnpm --filter mobile test -- src/lib/sentry.test.ts src/features/e2e/test-auth-guard.test.ts || overall=1
+  run_cmd pnpm exec prettier --check .claude/agents/payments-engineer.md AGENTS.md CLAUDE.md docs/ARCHITECTURE.md scripts/check-release-safety.mjs .hermes/overnight/security-watchdog.md .hermes/overnight/manager-heartbeat.md || overall=1
+  run_cmd git diff --check || overall=1
+  exit "$overall"
+  ```
 
-- No purchase enablement, entitlement grants, wallet custody, payment processing, settlement-fee behavior, or client-side paid entitlement source was introduced in the monetization diff.
-- Free core group creation/join, expense create/edit/delete, custom splits, balances, outside-app settlement recording, basic activity, and basic offline queue remain free-core/no-paywall in the catalog tests.
-- Deferred receipt attachment storage is no longer marked `free_beta`; this matches `docs/FEATURES.md`, which says receipt attachment is deferred until safe Storage policies, upload UI, and offline retry are implemented.
-- Analytics and Sentry redaction now both cover payment-reference aliases and spaced/masked Bangladesh phone formats; targeted tests verify the Sentry path and monetization tests verify analytics redaction/fail-closed behavior.
-- `pnpm release:safety` passed: no service-role key exposure, no mobile direct ledger-table writes, and no unsafe benchmark wording detected by the release safety scan.
-- No blocking regression found in changed code.
+  - Exit 0 overall.
+  - `pnpm release:safety`: passed; `Release safety scan passed.`
+  - `pnpm lint`: passed for 6 Turbo tasks; existing generated-file warning remains at `apps/mobile/.expo/types/router.d.ts` for an unused eslint-disable directive.
+  - `pnpm typecheck`: passed for 6 Turbo tasks.
+  - `pnpm i18n:check`: passed, 1 test file / 3 tests.
+  - `pnpm --filter @baki/monetization test`: passed, 3 test files / 17 tests.
+  - `pnpm --filter @baki/monetization typecheck`: passed.
+  - `pnpm --filter @baki/monetization lint`: passed.
+  - `pnpm --filter @baki/payments test`: passed, 2 test files / 15 tests.
+  - `pnpm --filter @baki/payments typecheck`: passed.
+  - `pnpm --filter @baki/payments lint`: passed.
+  - `pnpm --filter mobile test -- src/lib/sentry.test.ts src/features/e2e/test-auth-guard.test.ts`: passed, 2 test files / 10 tests.
+  - `pnpm exec prettier --check .claude/agents/payments-engineer.md AGENTS.md CLAUDE.md docs/ARCHITECTURE.md scripts/check-release-safety.mjs .hermes/overnight/security-watchdog.md .hermes/overnight/manager-heartbeat.md`: passed before this heartbeat rewrite; all matched files used Prettier style.
+  - `git diff --check`: passed.
 
-## Blockers and follow-up tasks
+- `search_files` for `service[_-]?role|SUPABASE_SERVICE_ROLE|serviceRole` under `apps/mobile`
+  - 0 matches.
+- `search_files` for entitlement bypass patterns (`grantsEntitlementLocally: true`, `isPremium = true`, `isPro = true`, `manual_ui_toggle`, `client_purchase_result`)
+  - 4 matches only in `packages/monetization/src/billing-boundary.ts` and `billing-boundary.test.ts`, where client/manual sources are typed and asserted not store-verified.
+- `search_files` for permissive RLS/service-role patterns under `packages/db`
+  - 0 matches.
+- `search_files` for stale payment-processing guidance (`card/bank transfer is a fallback`, `Stripe v3 only`, `international users (deferred)`, `Future: merchant API`, token checkout/webhook/`settlements.external_ref`)
+  - 1 match only inside the deny regex in `scripts/check-release-safety.mjs`; no active guidance/doc wording reintroduced it.
+- `search_files` for secret-looking literals in changed guidance/docs/script files
+  - No live key/JWT-like matches. Negative guardrail mentions remain in `AGENTS.md` and `scripts/check-release-safety.mjs`; overnight reports mention scan terms only.
+- `printf 'LOCAL_TIMESTAMP: '; date '+%Y-%m-%d %H:%M:%S %Z (%z)'; printf 'UTC_TIMESTAMP: '; date -u '+%Y-%m-%dT%H:%M:%SZ'; git status --short --branch; git diff --stat; git diff --name-status; git diff --cached --name-status; git --no-pager log --oneline -5`
+  - Exit 0. Timestamp `2026-07-05 04:28:52 PDT (-0700)` / `2026-07-05T11:28:52Z`; status/stat/name-status/recent commits recorded above.
+- Post-write heartbeat verification: `pnpm exec prettier --write .hermes/overnight/manager-heartbeat.md && pnpm exec prettier --check .hermes/overnight/manager-heartbeat.md && git diff --check && git status --short --branch && printf '\n--- heartbeat diff stat ---\n' && git diff --stat -- .hermes/overnight/manager-heartbeat.md`
+  - Exit 0. Heartbeat is Prettier-clean; `git diff --check` passed; branch still ahead by 2 with the same seven modified tracked files; final heartbeat diff stat is `1 file changed, 146 insertions(+), 81 deletions(-)`.
 
-No release-blocking issue found in this run. Follow-ups to schedule:
+## Regression, blocker, and security review
 
-1. Update active agent guidance (`.claude/agents/payments-engineer.md`, plus root `AGENTS.md`/`CLAUDE.md`) so it no longer describes Stripe ownership or a future merchant-API path that conflicts with `docs/MONETIZATION_READINESS.md`.
-2. Replace user-facing settlement copy that says “wallet” / “ওয়ালেট” with “bKash/Nagad app”, “MFS app”, or equivalent Bengali/English wording, then run `pnpm i18n:check`.
-3. Continue Stage 1 monetization readiness: add mobile no-op analytics adapter, read-only entitlement/cache shape defaulting to free core, non-blocking `FeatureGate`, and Bengali/English billing-disabled copy.
-4. Decide whether to exclude or regenerate `apps/mobile/.expo/types/router.d.ts` to remove the persistent generated-file lint warning.
+- No Docker/Supabase-dependent checks were run or started.
+- No staged files; branch remains ahead of origin by 2 commits.
+- Current uncommitted guidance, architecture, and release-safety changes strengthen the ledger-only/non-custodial payment boundary and are consistent with `docs/MONETIZATION_READINESS.md`.
+- Release safety passes and covers the newly important payment-boundary regressions.
+- Existing non-blocking lint warning persists in generated Expo router types: `apps/mobile/.expo/types/router.d.ts` has an unused eslint-disable directive.
+- Existing low-priority security follow-up remains: `supabase/functions/delete-account/index.ts` log redaction is narrower than mobile Sentry/analytics redaction, although current code does not log request headers/body.
+- Existing low-priority privacy follow-up remains: `apps/mobile/app/_layout.tsx` root error boundary writes raw caught errors to local console.
+- Existing local-context hygiene follow-up remains from the watchdog: ignored `baki-bootstrap/` contains stale historical payment guidance. It is not tracked, but future local AI sessions should avoid ingesting it as active context.
+- No release-blocking regression found.
+
+## Blockers and next actions
+
+No release blocker found in this run. Recommended next actions:
+
+1. Review and commit the current uncommitted guidance, release-safety, architecture payment-boundary, and overnight-report changes if they match product intent; do not push until reviewed.
+2. Continue Stage 1 monetization readiness: mobile no-op analytics adapter, read-only entitlement/cache shape defaulting to free core, non-blocking `FeatureGate`, Bengali/English plan-education and billing-disabled copy.
+3. Decide whether to exclude, regenerate, or lint-fix `apps/mobile/.expo/types/router.d.ts` to remove the persistent generated-file warning.
+4. Add a tested Deno-safe Edge Function redaction helper for `supabase/functions/delete-account/index.ts`, or update docs if that path intentionally stays local/minimal.
+5. Remove or scrub the production root error-boundary `console.error` in `apps/mobile/app/_layout.tsx` with a focused test.
+6. Remove or clearly archive/scrub ignored `baki-bootstrap/` if it is no longer needed, so future local agents do not pick up stale payment guidance.
+7. When Docker/Supabase is intentionally re-enabled in a later session, re-run RLS checks for entitlement/grant visibility before any billing-related schema work.

@@ -10,7 +10,7 @@ Subagent definitions live in `.claude/agents/`:
 
 - `mobile-engineer` — React Native / Expo
 - `backend-engineer` — Supabase schema, RLS, edge functions
-- `payments-engineer` — bKash / Nagad / Stripe
+- `payments-engineer` — bKash/Nagad MFS handoff, settlement UX, non-custodial payment boundary
 - `design-system-engineer` — theme, components, i18n
 - `release-engineer` — EAS, App Store, Play Console
 

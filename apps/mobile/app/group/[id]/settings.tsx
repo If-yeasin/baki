@@ -4,6 +4,7 @@ import * as Clipboard from "expo-clipboard";
 import { Stack, useLocalSearchParams, useRouter, type Href } from "expo-router";
 import {
   Archive,
+  BarChart3,
   CalendarDays,
   Copy,
   Crown,
@@ -322,6 +323,18 @@ export default function GroupSettingsScreen() {
             {renameGroup.isPending ? t("common.loading") : t("groups.settings.rename.cta")}
           </Button>
         </View>
+      </SettingsSection>
+
+      <SettingsSection title={t("groups.settings.section.pro")}>
+        <SettingsRow
+          icon={<BarChart3 color={colors.brandPrimary} size={19} />}
+          onPress={() => router.push(`/group/${groupId}/report` as Href)}
+          showDivider={false}
+          subtitle={t("groups.settings.report.subtitle")}
+          testID="group-settings-monthly-report"
+          title={t("groups.settings.report.cta")}
+          trailing={<SettingsStatusPill tone="brand">{t("reports.monthly.badge")}</SettingsStatusPill>}
+        />
       </SettingsSection>
 
       <SettingsSection title={t("groups.create.template.label")}>

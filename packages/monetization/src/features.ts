@@ -22,6 +22,7 @@ export type MonetizationFeatureId =
   | "recurring_bills.manage"
   | "categories.custom"
   | "history.unlimited"
+  | "report.monthly_preview"
   | "report.monthly_close"
   | "export.group_pdf"
   | "export.group_excel"
@@ -56,7 +57,11 @@ export const FREE_CORE_FEATURE_IDS = [
   "offline.basic_queue"
 ] as const satisfies readonly MonetizationFeatureId[];
 
-export const FUTURE_PAID_BETA_FEATURE_IDS = ["export.basic_csv", "group.archive"] as const satisfies readonly MonetizationFeatureId[];
+export const FUTURE_PAID_BETA_FEATURE_IDS = [
+  "export.basic_csv",
+  "group.archive",
+  "report.monthly_preview"
+] as const satisfies readonly MonetizationFeatureId[];
 
 export const PAID_FEATURE_IDS = [
   "receipt.attach",
@@ -211,6 +216,13 @@ const FEATURE_DEFINITION_ENTRIES = [
     title: "Unlimited history",
     description: "Keep deeper searchable history and archives for power users.",
     paywall: "baki_plus"
+  },
+  {
+    key: "report.monthly_preview",
+    planKey: "khata_pro_group",
+    title: "Monthly khata report preview",
+    description: "Current free beta preview of monthly khata report value before any Khata Pro paywall.",
+    paywall: "free_beta"
   },
   {
     key: "report.monthly_close",

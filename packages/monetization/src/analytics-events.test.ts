@@ -77,6 +77,18 @@ describe("analytics event catalog", () => {
     });
   });
 
+  it("redacts embedded payment reference strings under neutral keys", () => {
+    expect(
+      redactAnalyticsPayload({
+        message: "external_ref=BKASH-123 trxId:TXN-456 orderId ORDER-789",
+        status: "safe"
+      })
+    ).toEqual({
+      message: "[redacted-reference] [redacted-reference] [redacted-reference]",
+      status: "safe"
+    });
+  });
+
   it("fails closed for sensitive payloads when explicitly asserted", () => {
     expect(() =>
       assertSafeAnalyticsPayload({ phone: "+880****3456" })

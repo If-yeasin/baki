@@ -30,7 +30,7 @@
 
 - **bKash** — deep-link/copy handoff only; merchant checkout and in-app money movement are out of scope for the current product and monetization roadmap
 - **Nagad** — deep link / USSD copy
-- **Stripe** — v3 only, for international users (deferred)
+- **Mobile subscription billing** — not implemented; any future paid entitlements must use App Store/Play-compliant IAP with server verification and stay separate from settlement handoff/payment processing
 
 ### Build & release
 

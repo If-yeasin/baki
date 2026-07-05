@@ -26,6 +26,8 @@ const sensitiveKeyPattern =
 const phonePattern =
   /\+?8801\d{9}\b|\b01\d{9}\b|\+?880[\s-]*1(?:[\s-]*\d){9}\b|\b01(?:[\s-]*\d){9}\b|\+?880\*+\d{4}\b|\b01\*+\d{4}\b/g;
 const jwtPattern = /\b(?:Bearer\s+)?eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g;
+const embeddedPaymentReferencePattern =
+  /\b(?:external_?ref|payment_?ref|reference|trx_?id|transaction_?id|order_?id)\b\s*(?:[:=]|\s)\s*[A-Za-z0-9_-]+/gi;
 
 export const analyticsEventNameSchema = {
   safeParse(value: unknown): { success: true; data: AnalyticsEventName } | { success: false } {
@@ -70,7 +72,10 @@ function redactUnknown(value: unknown, key = "", depth = 0): unknown {
   if (sensitiveKeyPattern.test(key)) return "[redacted]";
 
   if (typeof value === "string") {
-    return value.replace(phonePattern, "[redacted-phone]").replace(jwtPattern, "[redacted-jwt]");
+    return value
+      .replace(phonePattern, "[redacted-phone]")
+      .replace(jwtPattern, "[redacted-jwt]")
+      .replace(embeddedPaymentReferencePattern, "[redacted-reference]");
   }
 
   if (Array.isArray(value)) {
@@ -93,14 +98,19 @@ function findUnsafePayloadPath(value: unknown, key = "payload", depth = 0): stri
   if (depth > 8) return null;
 
   if (sensitiveKeyPattern.test(key)) return key;
-  if (typeof value === "string" && (phonePattern.test(value) || jwtPattern.test(value))) {
+  if (
+    typeof value === "string" &&
+    (phonePattern.test(value) || jwtPattern.test(value) || embeddedPaymentReferencePattern.test(value))
+  ) {
     phonePattern.lastIndex = 0;
     jwtPattern.lastIndex = 0;
+    embeddedPaymentReferencePattern.lastIndex = 0;
     return key;
   }
 
   phonePattern.lastIndex = 0;
   jwtPattern.lastIndex = 0;
+  embeddedPaymentReferencePattern.lastIndex = 0;
 
   if (Array.isArray(value)) {
     for (let index = 0; index < value.length; index += 1) {
