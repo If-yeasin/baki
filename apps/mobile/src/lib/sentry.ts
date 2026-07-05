@@ -11,14 +11,18 @@ type Breadcrumb = {
   message?: string;
 };
 
-const sensitiveKeyPattern = /(authorization|bearer|jwt|otp|token|phone|bkash|nagad|external_?ref)/i;
+const sensitiveKeyPattern =
+  /(authorization|bearer|jwt|otp|token|phone|bkash|nagad|mfs|external_?ref|payment_?ref|reference|trx_?id|transaction_?id|order_?id|receipt)/i;
+const bangladeshPhonePattern =
+  /\+?8801\d{9}\b|\b01\d{9}\b|\+?880[\s-]*1(?:[\s-]*\d){9}\b|\b01(?:[\s-]*\d){9}\b|\+?880\*+\d{4}\b|\b01\*+\d{4}\b/g;
+const sensitiveTextAssignmentPattern =
+  /\b(otp|token|external_ref|externalRef|payment_ref|paymentRef|reference|trxId|trx_id|transactionId|transaction_id|orderId|order_id|receipt|mfs)\s*[:=]\s*["']?[^"',&\s}]+/gi;
 
 export function redactSensitiveSentryText(value: string) {
   return value
-    .replace(/\+?8801\d{9}\b/g, "[redacted-phone]")
-    .replace(/\b01\d{9}\b/g, "[redacted-phone]")
+    .replace(bangladeshPhonePattern, "[redacted-phone]")
     .replace(/\b(?:Bearer\s+)?eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, "[redacted-jwt]")
-    .replace(/\b(otp|token|external_ref|externalRef)\s*[:=]\s*["']?[^"',\s}]+/gi, "$1=[redacted]")
+    .replace(sensitiveTextAssignmentPattern, "$1=[redacted]")
     .replace(/ExponentPushToken\[[^\]]+\]/g, "ExponentPushToken[redacted]");
 }
 

@@ -28,7 +28,7 @@
 
 ### Payments (packages/payments)
 
-- **bKash** — deep link first, merchant API in v1.5 (requires business onboarding)
+- **bKash** — deep-link/copy handoff only; merchant checkout and in-app money movement are out of scope for the current product and monetization roadmap
 - **Nagad** — deep link / USSD copy
 - **Stripe** — v3 only, for international users (deferred)
 

@@ -21,8 +21,10 @@ export type AnalyticsPayload = {
 };
 
 const analyticsEventNames = new Set<string>(ANALYTICS_EVENTS);
-const sensitiveKeyPattern = /(phone|bkash|nagad|mfs|token|otp|external_?ref|payment_?ref|receipt)/i;
-const phonePattern = /\+?8801\d{9}\b|\b01\d{9}\b/g;
+const sensitiveKeyPattern =
+  /(phone|bkash|nagad|mfs|token|otp|external_?ref|payment_?ref|receipt|reference|trx_?id|transaction_?id|order_?id)/i;
+const phonePattern =
+  /\+?8801\d{9}\b|\b01\d{9}\b|\+?880[\s-]*1(?:[\s-]*\d){9}\b|\b01(?:[\s-]*\d){9}\b|\+?880\*+\d{4}\b|\b01\*+\d{4}\b/g;
 const jwtPattern = /\b(?:Bearer\s+)?eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g;
 
 export const analyticsEventNameSchema = {

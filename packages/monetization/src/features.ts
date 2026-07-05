@@ -1,4 +1,4 @@
-import type { MonetizationPlanKey } from "./plans";
+import { INTERNAL_CATALOG_COPY_SCOPE, type CatalogCopyScope, type MonetizationPlanKey } from "./plans";
 
 export type PaywallMode = "none" | "free_beta" | "baki_plus" | "khata_pro" | "teams_later";
 
@@ -38,6 +38,8 @@ export type MonetizationFeature = {
   readonly planKey: MonetizationPlanKey;
   readonly title: string;
   readonly description: string;
+  /** Internal catalog metadata only. Mobile UI must render localized i18n strings instead. */
+  readonly copyScope: CatalogCopyScope;
   readonly paywall: PaywallMode;
 };
 
@@ -54,9 +56,10 @@ export const FREE_CORE_FEATURE_IDS = [
   "offline.basic_queue"
 ] as const satisfies readonly MonetizationFeatureId[];
 
-export const FUTURE_PAID_BETA_FEATURE_IDS = ["export.basic_csv", "group.archive", "receipt.attach"] as const satisfies readonly MonetizationFeatureId[];
+export const FUTURE_PAID_BETA_FEATURE_IDS = ["export.basic_csv", "group.archive"] as const satisfies readonly MonetizationFeatureId[];
 
 export const PAID_FEATURE_IDS = [
+  "receipt.attach",
   "receipt.scan",
   "search.advanced",
   "reports.personal",
@@ -75,7 +78,7 @@ export const PAID_FEATURE_IDS = [
   "teams.priority_support"
 ] as const satisfies readonly MonetizationFeatureId[];
 
-export const FEATURE_DEFINITIONS = [
+const FEATURE_DEFINITION_ENTRIES = [
   {
     key: "group.create",
     planKey: "free_core",
@@ -164,8 +167,8 @@ export const FEATURE_DEFINITIONS = [
     key: "receipt.attach",
     planKey: "khata_pro_group",
     title: "Receipt attachment storage",
-    description: "Attach receipt proof when safe storage policies and offline retry are ready.",
-    paywall: "free_beta"
+    description: "Future receipt proof storage after safe Storage policies, upload UI, and offline retry are ready.",
+    paywall: "khata_pro"
   },
   {
     key: "receipt.scan",
@@ -279,7 +282,12 @@ export const FEATURE_DEFINITIONS = [
     description: "Future support tier for business customers.",
     paywall: "teams_later"
   }
-] as const satisfies readonly MonetizationFeature[];
+] as const satisfies readonly Omit<MonetizationFeature, "copyScope">[];
+
+export const FEATURE_DEFINITIONS = FEATURE_DEFINITION_ENTRIES.map((feature) => ({
+  ...feature,
+  copyScope: INTERNAL_CATALOG_COPY_SCOPE
+})) satisfies readonly MonetizationFeature[];
 
 const featureKeys = new Set<MonetizationFeatureId>(FEATURE_DEFINITIONS.map((feature) => feature.key));
 const freeCoreFeatures = new Set<MonetizationFeatureId>(FREE_CORE_FEATURE_IDS);

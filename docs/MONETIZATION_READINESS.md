@@ -25,6 +25,7 @@ The first safe foundation lives in `packages/monetization`:
 - `src/billing-boundary.ts` defines typed billing products and a disabled billing client.
 
 This package intentionally does **not** enable purchases, entitlements, paywalls, wallet behavior, payment processing, settlement fees, or local entitlement grants.
+The English `title` / `description` values in the catalog are internal metadata only and are marked with `copyScope: "internal_metadata_not_ui_copy"`; mobile screens must use localized `packages/i18n` strings instead of rendering catalog metadata directly.
 
 ## Guardrails
 
@@ -32,10 +33,11 @@ This package intentionally does **not** enable purchases, entitlements, paywalls
 2. Do not put consumer digital subscriptions through Stripe or a custom mobile checkout inside the iOS/Android apps.
 3. Do not grant paid entitlements from a client-side purchase result. Future purchases must be verified server-side first.
 4. Do not add real money movement to `packages/payments`; it remains only for bKash/Nagad settlement handoff.
-5. Do not log phone numbers, bKash/Nagad numbers, OTPs, tokens, payment references, or raw receipt content in analytics.
-6. If a feature is already available in beta, mark it `free_beta` before any future paywall experiment rather than silently removing it.
-7. Keep Bengali and English copy in parity for every user-facing monetization surface.
-8. Offline behavior must fail open for free core functionality and avoid blocking beta users because entitlement state is unknown offline.
+5. Do not add bKash/Nagad merchant APIs, wallet/custody, settlement fees, webhook auto-confirmation, or in-app money movement to the monetization roadmap without a separate regulated-payments decision.
+6. Do not log phone numbers, bKash/Nagad numbers, OTPs, tokens, payment references (`reference`, `external_ref`, `trxId`, `transactionId`, `orderId`, etc.), or raw receipt content in analytics.
+7. If a feature is already available in beta, mark it `free_beta` before any future paywall experiment rather than silently removing it. Deferred features, such as receipt attachment storage, must not be marked `free_beta` until they actually ship.
+8. Keep Bengali and English copy in parity for every user-facing monetization surface.
+9. Offline behavior must fail open for free core functionality and avoid blocking beta users because entitlement state is unknown offline.
 
 ## Next implementation stages
 

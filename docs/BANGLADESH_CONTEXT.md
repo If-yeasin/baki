@@ -46,8 +46,8 @@
 **Deep link (send money):**
 Investigate and lock the exact scheme — schemes have changed historically. As of last documented integration, the iOS scheme is `bkashopen://` and Android uses an intent. The integration in `packages/payments/src/bkash.ts` should:
 
-1. Try the universal link first
-2. Fall back to the custom scheme
+1. Try the custom scheme first when the app can open it reliably
+2. Fall back to the web/universal-link handoff
 3. Fall back to copy-the-number-to-clipboard with a toast: "bKash app not found, number copied"
 
 **Prefill data possible:**
@@ -58,12 +58,8 @@ Investigate and lock the exact scheme — schemes have changed historically. As 
 
 **Critical:** the user must always confirm in the bKash app — we never authorize or settle on their behalf. Our app only marks the local ledger as settled after user confirmation.
 
-**Merchant API (v1.5+):**
-Requires bKash merchant onboarding (corporate registration, TIN, trade license, BIN). Out of scope for v1. When in scope:
-
-- Tokenized checkout for in-app settlement
-- Webhook to auto-confirm settlements
-- Reconciliation via `external_ref` in `settlements` table
+**Merchant API:**
+Not part of the current product or monetization roadmap. Baki should not add bKash/Nagad merchant checkout, wallet/custody, settlement fees, webhook auto-confirmation, or in-app money movement while the product is positioned as a ledger. Reconsider only as a separate regulated-payments project with explicit business onboarding, compliance review, App Store/Play review, and server-side security design.
 
 ### Nagad
 

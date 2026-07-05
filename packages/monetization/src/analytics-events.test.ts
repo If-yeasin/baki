@@ -48,7 +48,7 @@ describe("analytics event catalog", () => {
       redactAnalyticsPayload({
         nested: {
           token: "secret-token",
-          values: ["call +8801700123456", { nagadNumber: "01700123456" }]
+          values: ["call +880****3456", { nagadNumber: "01700123456" }]
         }
       })
     ).toEqual({
@@ -59,9 +59,31 @@ describe("analytics event catalog", () => {
     });
   });
 
+  it("redacts payment reference aliases and spaced Bangladeshi phone numbers", () => {
+    expect(
+      redactAnalyticsPayload({
+        reference: "bkash-ref-123",
+        trxId: "TXN-123",
+        transactionId: "NAGAD-456",
+        orderId: "ORDER-789",
+        message: "payer +880 1700 123456 and backup 01700-123456"
+      })
+    ).toEqual({
+      reference: "[redacted]",
+      trxId: "[redacted]",
+      transactionId: "[redacted]",
+      orderId: "[redacted]",
+      message: "payer [redacted-phone] and backup [redacted-phone]"
+    });
+  });
+
   it("fails closed for sensitive payloads when explicitly asserted", () => {
     expect(() =>
-      assertSafeAnalyticsPayload({ phone: "+8801700123456" })
+      assertSafeAnalyticsPayload({ phone: "+880****3456" })
     ).toThrow(/unsafe_analytics_payload/);
+
+    expect(() =>
+      assertSafeAnalyticsPayload({ transactionId: "TXN-123" })
+    ).toThrow(/unsafe_analytics_payload:transactionId/);
   });
 });

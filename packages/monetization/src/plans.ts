@@ -5,16 +5,21 @@ export type MonetizationPlanKey =
   | "teams_later";
 
 export type BillingScope = "none" | "user" | "group" | "workspace";
+export type CatalogCopyScope = "internal_metadata_not_ui_copy";
+
+export const INTERNAL_CATALOG_COPY_SCOPE = "internal_metadata_not_ui_copy" satisfies CatalogCopyScope;
 
 export type MonetizationPlan = {
   readonly key: MonetizationPlanKey;
   readonly title: string;
   readonly description: string;
+  /** Internal catalog metadata only. Mobile UI must render localized i18n strings instead. */
+  readonly copyScope: CatalogCopyScope;
   readonly billingScope: BillingScope;
   readonly launchStage: "available" | "future_paid" | "later";
 };
 
-export const MONETIZATION_PLANS = [
+const PLAN_DEFINITIONS = [
   {
     key: "free_core",
     title: "Baki Free",
@@ -43,7 +48,12 @@ export const MONETIZATION_PLANS = [
     billingScope: "workspace",
     launchStage: "later"
   }
-] as const satisfies readonly MonetizationPlan[];
+] as const satisfies readonly Omit<MonetizationPlan, "copyScope">[];
+
+export const MONETIZATION_PLANS = PLAN_DEFINITIONS.map((plan) => ({
+  ...plan,
+  copyScope: INTERNAL_CATALOG_COPY_SCOPE
+})) satisfies readonly MonetizationPlan[];
 
 const planKeys = new Set<MonetizationPlanKey>(MONETIZATION_PLANS.map((plan) => plan.key));
 

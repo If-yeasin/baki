@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   FEATURE_DEFINITIONS,
   FREE_CORE_FEATURE_IDS,
+  FUTURE_PAID_BETA_FEATURE_IDS,
   MONETIZATION_PLANS,
   PAID_FEATURE_IDS,
   getFeatureDefinition,
@@ -12,6 +13,7 @@ import {
   monetizationFeatureSchema,
   monetizationPlanSchema
 } from "./index";
+import type { MonetizationFeatureId } from "./index";
 
 describe("monetization catalog", () => {
   it("keeps every feature attached to a known plan", () => {
@@ -24,12 +26,24 @@ describe("monetization catalog", () => {
     }
   });
 
+  it("marks catalog names as internal metadata, not mobile UI copy", () => {
+    for (const plan of MONETIZATION_PLANS) {
+      expect(plan.copyScope).toBe("internal_metadata_not_ui_copy");
+    }
+
+    for (const feature of FEATURE_DEFINITIONS) {
+      expect(feature.copyScope).toBe("internal_metadata_not_ui_copy");
+    }
+  });
+
   it("keeps the viral core ledger free", () => {
     expect(FREE_CORE_FEATURE_IDS).toEqual(
       expect.arrayContaining([
         "group.create",
         "group.join",
         "expense.create",
+        "expense.edit",
+        "expense.delete",
         "expense.split.custom",
         "balance.view",
         "settlement.record_outside_app",
@@ -40,13 +54,42 @@ describe("monetization catalog", () => {
 
     for (const featureId of FREE_CORE_FEATURE_IDS) {
       expect(isFreeCoreFeature(featureId)).toBe(true);
-      expect(getFeatureDefinition(featureId).planKey).toBe("free_core");
+      const feature = getFeatureDefinition(featureId);
+      expect(feature.planKey).toBe("free_core");
+      expect(feature.paywall).toBe("none");
+    }
+  });
+
+  it("keeps free, beta, and paid feature lists disjoint with matching paywalls", () => {
+    const freeCore = new Set<MonetizationFeatureId>(FREE_CORE_FEATURE_IDS);
+    const futurePaidBeta = new Set<MonetizationFeatureId>(FUTURE_PAID_BETA_FEATURE_IDS);
+    const paid = new Set<MonetizationFeatureId>(PAID_FEATURE_IDS);
+
+    for (const featureId of FREE_CORE_FEATURE_IDS) {
+      expect(futurePaidBeta.has(featureId)).toBe(false);
+      expect(paid.has(featureId)).toBe(false);
+      expect(getFeatureDefinition(featureId).paywall).toBe("none");
+    }
+
+    for (const featureId of FUTURE_PAID_BETA_FEATURE_IDS) {
+      expect(freeCore.has(featureId)).toBe(false);
+      expect(paid.has(featureId)).toBe(false);
+      expect(getFeatureDefinition(featureId).paywall).toBe("free_beta");
+    }
+
+    for (const featureId of PAID_FEATURE_IDS) {
+      expect(freeCore.has(featureId)).toBe(false);
+      expect(futurePaidBeta.has(featureId)).toBe(false);
+      expect(getFeatureDefinition(featureId).paywall).not.toBe("none");
+      expect(getFeatureDefinition(featureId).paywall).not.toBe("free_beta");
     }
   });
 
   it("uses stable paid feature ids for Baki Plus and Khata Pro", () => {
+    expect(FUTURE_PAID_BETA_FEATURE_IDS).not.toContain("receipt.attach");
     expect(PAID_FEATURE_IDS).toEqual(
       expect.arrayContaining([
+        "receipt.attach",
         "receipt.scan",
         "search.advanced",
         "reports.personal",

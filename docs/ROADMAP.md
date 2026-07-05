@@ -21,7 +21,7 @@
 ### Later
 
 - Monetization readiness follows `docs/MONETIZATION_READINESS.md`: keep the free core viral loop open, prepare Baki Plus / Khata Pro / Teams foundations, and avoid payment processing or settlement fees.
-- Receipt OCR, recurring expenses, bKash merchant API, web app, admin dashboard, multi-currency, friends without groups, group photo uploads, and expense comments.
+- Receipt OCR, recurring expenses, web app, admin dashboard, multi-currency, friends without groups, group photo uploads, and expense comments. bKash/Nagad merchant APIs, wallet/custody, settlement fees, and in-app money movement are not on the monetization roadmap and require a separate regulated-payments decision before reconsideration.
 
 ## Phases
 
@@ -92,7 +92,6 @@ Codex executes the bootstrap prompt; project scaffolds, dependencies install, Su
 
 - Receipt OCR (Google ML Kit / Vision)
 - Recurring expenses
-- bKash merchant API (requires business onboarding)
 - Web app (Next.js, shares `packages/db` and `packages/i18n`)
 - Admin dashboard (`apps/admin`) for support
 - Multi-currency for users with international groups

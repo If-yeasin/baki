@@ -39,7 +39,7 @@ Personas:
 - Multi-currency (v2)
 - Web app (v2)
 - Friends without groups (v2)
-- In-app bKash merchant API (v1.5 — start with deep links)
+- In-app bKash/Nagad merchant APIs, wallet/custody, settlement fees, or any money movement (not part of the monetization roadmap; reconsider only as a separate regulated-payments project)
 - Bank transfers / cards (v3)
 
 ## 5. Success metrics (first 90 days post-launch)
