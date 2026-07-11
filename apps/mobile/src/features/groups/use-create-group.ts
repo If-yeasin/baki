@@ -41,24 +41,40 @@ export function buildCreateGroupRpcPayload(input: CreateGroupInput) {
 export async function createGroupWithOfflineQueue(
   input: CreateGroupInput
 ): Promise<CreateGroupResult> {
+  const {
+    data: { session },
+    error: sessionError
+  } = await supabase.auth.getSession();
+
+  if (sessionError) {
+    throw sessionError;
+  }
+  if (!session?.user) {
+    throw new Error("auth.error.session_failed");
+  }
+  const ownerUserId = session.user.id;
+
   const payload = buildCreateGroupRpcPayload(input);
   const { data: groupId, error } = await supabase.rpc("create_group", payload);
 
   if (error) {
     const errorDetails = getQueuedMutationErrorDetails(error);
     const permanent = isPermanentQueuedMutationError(error);
-    const queuedMutation = enqueueMutation({
-      payload,
-      type: "group.create",
-      ...(permanent
-        ? {
-            failedAt: new Date().toISOString(),
-            lastErrorCode: errorDetails.code,
-            lastErrorMessage: errorDetails.message,
-            status: "failed" as const
-          }
-        : {})
-    });
+    const queuedMutation = enqueueMutation(
+      {
+        payload,
+        type: "group.create",
+        ...(permanent
+          ? {
+              failedAt: new Date().toISOString(),
+              lastErrorCode: errorDetails.code,
+              lastErrorMessage: errorDetails.message,
+              status: "failed" as const
+            }
+          : {})
+      },
+      ownerUserId
+    );
     Sentry.captureException(error, { tags: { feature: "groups.create" } });
 
     if (!permanent) {

@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   enqueueMutation: vi.fn(),
   eq: vi.fn(),
   from: vi.fn(),
+  getSession: vi.fn(),
   getQueuedMutationErrorDetails: vi.fn(),
   isPermanentQueuedMutationError: vi.fn(),
   rpc: vi.fn(),
@@ -26,6 +27,9 @@ vi.mock("@/lib/sentry", () => ({
 
 vi.mock("@/lib/supabase", () => ({
   supabase: {
+    auth: {
+      getSession: mocks.getSession
+    },
     from: mocks.from,
     rpc: mocks.rpc
   }
@@ -70,6 +74,7 @@ describe("createGroupWithOfflineQueue", () => {
     mocks.enqueueMutation.mockReset();
     mocks.eq.mockReset();
     mocks.from.mockReset();
+    mocks.getSession.mockReset();
     mocks.getQueuedMutationErrorDetails.mockReset();
     mocks.isPermanentQueuedMutationError.mockReset();
     mocks.rpc.mockReset();
@@ -80,6 +85,10 @@ describe("createGroupWithOfflineQueue", () => {
     mocks.select.mockReturnValue({ eq: mocks.eq });
     mocks.eq.mockReturnValue({ single: mocks.single });
     mocks.single.mockResolvedValue({ data: groupRow, error: null });
+    mocks.getSession.mockResolvedValue({
+      data: { session: { user: { id: "user-1" } } },
+      error: null
+    });
     mocks.getQueuedMutationErrorDetails.mockReturnValue({
       code: undefined,
       message: "Network request failed"
@@ -127,14 +136,17 @@ describe("createGroupWithOfflineQueue", () => {
       status: "queued"
     });
 
-    expect(mocks.enqueueMutation).toHaveBeenCalledWith({
-      payload: {
-        p_client_mutation_id: expect.stringMatching(/^group:/),
-        p_name: "Sajek trip",
-        p_template: "trip"
+    expect(mocks.enqueueMutation).toHaveBeenCalledWith(
+      {
+        payload: {
+          p_client_mutation_id: expect.stringMatching(/^group:/),
+          p_name: "Sajek trip",
+          p_template: "trip"
+        },
+        type: "group.create"
       },
-      type: "group.create"
-    });
+      "user-1"
+    );
     expect(mocks.captureException).toHaveBeenCalledWith(error, {
       tags: { feature: "groups.create" }
     });
@@ -151,17 +163,20 @@ describe("createGroupWithOfflineQueue", () => {
 
     await expect(createGroupWithOfflineQueue({ name: "", template: "trip" })).rejects.toBe(error);
 
-    expect(mocks.enqueueMutation).toHaveBeenCalledWith({
-      failedAt: expect.any(String),
-      lastErrorCode: "23514",
-      lastErrorMessage: "invalid_group_name",
-      payload: {
-        p_client_mutation_id: expect.stringMatching(/^group:/),
-        p_name: "",
-        p_template: "trip"
+    expect(mocks.enqueueMutation).toHaveBeenCalledWith(
+      {
+        failedAt: expect.any(String),
+        lastErrorCode: "23514",
+        lastErrorMessage: "invalid_group_name",
+        payload: {
+          p_client_mutation_id: expect.stringMatching(/^group:/),
+          p_name: "",
+          p_template: "trip"
+        },
+        status: "failed",
+        type: "group.create"
       },
-      status: "failed",
-      type: "group.create"
-    });
+      "user-1"
+    );
   });
 });

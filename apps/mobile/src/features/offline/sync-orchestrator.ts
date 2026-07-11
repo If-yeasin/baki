@@ -5,6 +5,7 @@ import {
   subscribeToQueuedMutations,
   type ProcessQueuedMutationsResult
 } from "./mutation-queue";
+import { getPersistedUserId } from "../auth/session-storage";
 
 export type QueuedMutationSyncSnapshot = {
   attempted: number;
@@ -39,14 +40,34 @@ let lastErrorCode: string | undefined;
 let lastErrorMessage: string | undefined;
 let lastSyncAt: string | undefined;
 let isSyncing = false;
-let activeRun: Promise<QueuedMutationSyncSnapshot> | null = null;
+let activeRun: {
+  ownerUserId: string;
+  promise: Promise<QueuedMutationSyncSnapshot>;
+} | null = null;
+let cachedSnapshot: QueuedMutationSyncSnapshot | null = null;
+let snapshotOwnerUserId = getPersistedUserId();
 
 const syncListeners = new Set<() => void>();
+const snapshotFields: { [Key in keyof QueuedMutationSyncSnapshot]-?: true } = {
+  attempted: true,
+  failed: true,
+  failedCount: true,
+  isSyncing: true,
+  lastErrorCode: true,
+  lastErrorMessage: true,
+  lastSyncAt: true,
+  pendingCount: true,
+  retried: true,
+  skipped: true,
+  succeeded: true,
+  totalCount: true
+};
+const snapshotKeys = Object.keys(snapshotFields) as (keyof QueuedMutationSyncSnapshot)[];
 
 export function getSyncSnapshot(): QueuedMutationSyncSnapshot {
+  alignSyncStateToCurrentOwner();
   const stats = getQueueStats();
-
-  return {
+  const snapshot = {
     ...latestResult,
     failedCount: stats.failedCount,
     isSyncing,
@@ -56,6 +77,13 @@ export function getSyncSnapshot(): QueuedMutationSyncSnapshot {
     pendingCount: stats.pendingCount,
     totalCount: stats.totalCount
   };
+
+  if (cachedSnapshot && areSnapshotsEqual(cachedSnapshot, snapshot)) {
+    return cachedSnapshot;
+  }
+
+  cachedSnapshot = snapshot;
+  return snapshot;
 }
 
 export function subscribeToSyncState(listener: () => void) {
@@ -71,10 +99,25 @@ export function subscribeToSyncState(listener: () => void) {
 export function runQueuedMutationSync(
   options: QueuedMutationSyncOptions = {}
 ): Promise<QueuedMutationSyncSnapshot> {
-  if (activeRun) {
-    return activeRun;
+  const ownerUserId = getPersistedUserId();
+  if (!ownerUserId) {
+    return Promise.resolve(getSyncSnapshot());
   }
 
+  if (activeRun) {
+    if (activeRun.ownerUserId === ownerUserId) {
+      return activeRun.promise;
+    }
+
+    return activeRun.promise.then(() => {
+      if (getPersistedUserId() !== ownerUserId) {
+        return getSyncSnapshot();
+      }
+      return runQueuedMutationSync(options);
+    });
+  }
+
+  alignSyncStateToCurrentOwner();
   const run = (async () => {
     if (options.retryFailed) {
       retryFailedQueuedMutations();
@@ -86,12 +129,17 @@ export function runQueuedMutationSync(
     notifySyncListeners();
 
     try {
-      latestResult = await processQueuedMutations();
-      lastSyncAt = new Date().toISOString();
+      const result = await processQueuedMutations();
+      if (getPersistedUserId() === ownerUserId) {
+        latestResult = result;
+        lastSyncAt = new Date().toISOString();
+      }
     } catch (error) {
-      const details = getSyncErrorDetails(error);
-      lastErrorCode = details.code;
-      lastErrorMessage = details.message;
+      if (getPersistedUserId() === ownerUserId) {
+        const details = getSyncErrorDetails(error);
+        lastErrorCode = details.code;
+        lastErrorMessage = details.message;
+      }
     } finally {
       isSyncing = false;
       notifySyncListeners();
@@ -100,9 +148,9 @@ export function runQueuedMutationSync(
     return getSyncSnapshot();
   })();
 
-  activeRun = run;
+  activeRun = { ownerUserId, promise: run };
   void run.finally(() => {
-    if (activeRun === run) {
+    if (activeRun?.promise === run) {
       activeRun = null;
     }
   });
@@ -110,10 +158,32 @@ export function runQueuedMutationSync(
   return run;
 }
 
+function alignSyncStateToCurrentOwner() {
+  const ownerUserId = getPersistedUserId();
+  if (ownerUserId === snapshotOwnerUserId) {
+    return;
+  }
+
+  snapshotOwnerUserId = ownerUserId;
+  latestResult = emptyResult;
+  lastErrorCode = undefined;
+  lastErrorMessage = undefined;
+  lastSyncAt = undefined;
+  isSyncing = false;
+  cachedSnapshot = null;
+}
+
 function notifySyncListeners() {
   for (const listener of syncListeners) {
     listener();
   }
+}
+
+function areSnapshotsEqual(
+  previous: QueuedMutationSyncSnapshot,
+  next: QueuedMutationSyncSnapshot
+) {
+  return snapshotKeys.every((key) => Object.is(previous[key], next[key]));
 }
 
 function getSyncErrorDetails(error: unknown): {

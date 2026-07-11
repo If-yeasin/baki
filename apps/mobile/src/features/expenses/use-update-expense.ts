@@ -85,12 +85,14 @@ async function requireAuthenticatedSession() {
   if (!session?.user) {
     throw new Error("auth.error.session_failed");
   }
+
+  return session.user.id;
 }
 
 export async function updateExpenseWithOfflineQueue(
   input: UpdateExpenseInput
 ): Promise<ExpenseMutationResult> {
-  await requireAuthenticatedSession();
+  const ownerUserId = await requireAuthenticatedSession();
 
   const rpcPayload = buildUpdateExpenseRpcPayload(input);
   const shares = rpcPayload.p_shares as Record<string, number>;
@@ -103,6 +105,7 @@ export async function updateExpenseWithOfflineQueue(
     });
     const queued = enqueueMoneyMutationFromRpcError({
       error,
+      ownerUserId,
       payload: rpcPayload,
       type: "expense.update"
     });
@@ -150,7 +153,7 @@ export async function updateExpenseWithOfflineQueue(
 export async function deleteExpenseWithOfflineQueue(
   input: DeleteExpenseInput
 ): Promise<ExpenseMutationResult> {
-  await requireAuthenticatedSession();
+  const ownerUserId = await requireAuthenticatedSession();
 
   const rpcPayload = buildDeleteExpenseRpcPayload(input);
   const { data: expenseId, error } = await supabase.rpc("delete_expense", rpcPayload);
@@ -161,6 +164,7 @@ export async function deleteExpenseWithOfflineQueue(
     });
     const queued = enqueueMoneyMutationFromRpcError({
       error,
+      ownerUserId,
       payload: rpcPayload,
       type: "expense.delete"
     });

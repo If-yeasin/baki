@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   captureException: vi.fn(),
   enqueueMoneyMutationFromRpcError: vi.fn(),
+  getSession: vi.fn(),
   rpc: vi.fn()
 }));
 
@@ -42,6 +43,9 @@ vi.mock("@/lib/sentry", () => ({
 
 vi.mock("@/lib/supabase", () => ({
   supabase: {
+    auth: {
+      getSession: mocks.getSession
+    },
     rpc: mocks.rpc
   }
 }));
@@ -89,7 +93,12 @@ describe("createSettlementWithOfflineQueue", () => {
   beforeEach(() => {
     mocks.captureException.mockReset();
     mocks.enqueueMoneyMutationFromRpcError.mockReset();
+    mocks.getSession.mockReset();
     mocks.rpc.mockReset();
+    mocks.getSession.mockResolvedValue({
+      data: { session: { user: { id: "tanvir" } } },
+      error: null
+    });
   });
 
   it("returns queued success when a temporary RPC failure is queued", async () => {
@@ -116,6 +125,7 @@ describe("createSettlementWithOfflineQueue", () => {
     });
     expect(mocks.enqueueMoneyMutationFromRpcError).toHaveBeenCalledWith({
       error,
+      ownerUserId: "tanvir",
       payload: expect.objectContaining({
         p_client_mutation_id: "settlement:test-id"
       }),
@@ -138,6 +148,7 @@ describe("createSettlementWithOfflineQueue", () => {
 
     expect(mocks.enqueueMoneyMutationFromRpcError).toHaveBeenCalledWith({
       error,
+      ownerUserId: "tanvir",
       payload: expect.objectContaining({
         p_client_mutation_id: "settlement:test-id"
       }),

@@ -80,15 +80,64 @@ const groupPayload = {
 describe("processQueuedMutations", () => {
   beforeEach(() => {
     mocks.values.clear();
+    mocks.values.set("auth.userId.v1", "user-a");
     mocks.rpc.mockReset();
   });
 
+  it("does not expose or replay another user's queued mutations", async () => {
+    enqueueMutation({ payload: settlementPayload, type: "settlement.create" }, "user-a");
+
+    mocks.values.set("auth.userId.v1", "user-b");
+    mocks.rpc.mockResolvedValue({ data: "settlement-id", error: null });
+
+    expect(listQueuedMutations()).toEqual([]);
+    expect(await processQueuedMutations()).toEqual({
+      attempted: 0,
+      failed: 0,
+      retried: 0,
+      skipped: 0,
+      succeeded: 0
+    });
+    expect(mocks.rpc).not.toHaveBeenCalled();
+
+    mocks.values.set("auth.userId.v1", "user-a");
+    expect(listQueuedMutations()).toHaveLength(1);
+  });
+
+  it("pins a failed RPC mutation to the user who initiated it", () => {
+    mocks.values.set("auth.userId.v1", "user-b");
+
+    enqueueMutation({ payload: settlementPayload, type: "settlement.create" }, "user-a");
+
+    expect(listQueuedMutations()).toEqual([]);
+    mocks.values.set("auth.userId.v1", "user-a");
+    expect(listQueuedMutations()).toHaveLength(1);
+  });
+
+  it("quarantines the unowned legacy queue instead of adopting it", () => {
+    const legacyQueue = JSON.stringify([
+      {
+        createdAt: "2026-07-10T00:00:00.000Z",
+        id: "legacy-settlement",
+        payload: settlementPayload,
+        retryCount: 0,
+        status: "pending",
+        type: "settlement.create"
+      }
+    ]);
+    mocks.values.set("offline.mutationQueue.v1", legacyQueue);
+
+    expect(listQueuedMutations()).toEqual([]);
+    expect(mocks.values.has("offline.mutationQueue.v1")).toBe(false);
+    expect(mocks.values.get("offline.mutationQueue.quarantine.v1")).toBe(legacyQueue);
+  });
+
   it("replays queued ledger and group writes through RPC and removes successes", async () => {
-    enqueueMutation({ payload: groupPayload, type: "group.create" });
-    enqueueMutation({ payload: expensePayload, type: "expense.create" });
-    enqueueMutation({ payload: updateExpensePayload, type: "expense.update" });
-    enqueueMutation({ payload: deleteExpensePayload, type: "expense.delete" });
-    enqueueMutation({ payload: settlementPayload, type: "settlement.create" });
+    enqueueMutation({ payload: groupPayload, type: "group.create" }, "user-a");
+    enqueueMutation({ payload: expensePayload, type: "expense.create" }, "user-a");
+    enqueueMutation({ payload: updateExpensePayload, type: "expense.update" }, "user-a");
+    enqueueMutation({ payload: deleteExpensePayload, type: "expense.delete" }, "user-a");
+    enqueueMutation({ payload: settlementPayload, type: "settlement.create" }, "user-a");
 
     mocks.rpc
       .mockResolvedValueOnce({ data: "group-id", error: null })
@@ -116,7 +165,7 @@ describe("processQueuedMutations", () => {
   });
 
   it("increments retry count and keeps pending state for temporary failures", async () => {
-    enqueueMutation({ payload: expensePayload, type: "expense.create" });
+    enqueueMutation({ payload: expensePayload, type: "expense.create" }, "user-a");
 
     mocks.rpc.mockResolvedValueOnce({
       data: null,
@@ -135,7 +184,7 @@ describe("processQueuedMutations", () => {
   });
 
   it("marks permanent validation failures and skips them on later replays", async () => {
-    enqueueMutation({ payload: settlementPayload, type: "settlement.create" });
+    enqueueMutation({ payload: settlementPayload, type: "settlement.create" }, "user-a");
 
     mocks.rpc.mockResolvedValueOnce({
       data: null,
@@ -177,12 +226,14 @@ describe("processQueuedMutations", () => {
 describe("enqueueMoneyMutationFromRpcError", () => {
   beforeEach(() => {
     mocks.values.clear();
+    mocks.values.set("auth.userId.v1", "user-a");
     mocks.rpc.mockReset();
   });
 
   it("queues temporary money-write failures as pending success", () => {
     const result = enqueueMoneyMutationFromRpcError({
       error: new Error("Network request failed"),
+      ownerUserId: "user-a",
       payload: updateExpensePayload,
       type: "expense.update"
     });
@@ -204,6 +255,7 @@ describe("enqueueMoneyMutationFromRpcError", () => {
   it("keeps permanent money-write failures visible as failed", () => {
     const result = enqueueMoneyMutationFromRpcError({
       error: { code: "42501", message: "not_group_member" },
+      ownerUserId: "user-a",
       payload: settlementPayload,
       type: "settlement.create"
     });

@@ -1,26 +1,19 @@
 import { useEffect, useState } from "react";
 
-import { storage } from "@/lib/mmkv";
 import { Sentry } from "@/lib/sentry";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 
-const USER_ID_KEY = "auth.userId.v1";
+import {
+  createSessionLookupGuard,
+  getPersistedUserId,
+  persistUserId
+} from "./session-storage";
+
+export { getPersistedUserId, persistUserId } from "./session-storage";
 
 // When the Expo Go preview ships without `.env.local`, Supabase URL/key are
 // empty strings. In that case we must not call `supabase.auth.*` because the
 // auth gate should fall through to /(auth)/phone without waiting on network.
-export function persistUserId(userId: string | null) {
-  if (userId) {
-    storage.set(USER_ID_KEY, userId);
-  } else {
-    storage.delete(USER_ID_KEY);
-  }
-}
-
-export function getPersistedUserId(): string | null {
-  return storage.getString(USER_ID_KEY) ?? null;
-}
-
 export type SessionState = {
   isLoading: boolean;
   userId: string | null;
@@ -46,17 +39,19 @@ export function useSession(): SessionState {
     }
 
     let mounted = true;
+    const lookupGuard = createSessionLookupGuard();
+    const lookupEpoch = lookupGuard.capture();
 
     void (async () => {
       try {
         const { data } = await supabase.auth.getUser();
-        if (!mounted) return;
+        if (!mounted || !lookupGuard.isCurrent(lookupEpoch)) return;
 
         const nextId = data.user?.id ?? null;
         persistUserId(nextId);
         setState({ isLoading: false, userId: nextId });
       } catch (error) {
-        if (!mounted) return;
+        if (!mounted || !lookupGuard.isCurrent(lookupEpoch)) return;
         Sentry.captureException(error, { tags: { feature: "auth.session" } });
         persistUserId(null);
         setState({ isLoading: false, userId: null });
@@ -65,6 +60,7 @@ export function useSession(): SessionState {
 
     const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
+      lookupGuard.invalidate();
       const nextId = session?.user?.id ?? null;
       persistUserId(nextId);
       setState({ isLoading: false, userId: nextId });

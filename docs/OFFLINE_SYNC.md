@@ -21,6 +21,12 @@ Money-writing replay must continue to use RPCs only. Do not add direct client in
 
 `create_group`, `create_expense`, `edit_expense`, `delete_expense`, and `create_settlement` accept `p_client_mutation_id`. The mobile app generates a client mutation id before calling the RPC and stores the same id in the queue payload if the call fails. Replaying the same payload returns the original group/ledger row instead of creating a duplicate.
 
+## Account Isolation
+
+Queued mutations are stored under an authenticated-user-specific MMKV key. A mutation is bound to the authenticated user who initiated its RPC, even if the account changes before the RPC failure is returned. A user can only list, retry, dismiss, or replay the queue associated with the currently persisted Supabase user id. Sync result/error metadata also resets when that user id changes.
+
+The legacy `offline.mutationQueue.v1` key had no owner identity and is moved to an inactive quarantine record rather than migrated into any user's active queue. Adopting that data after an account switch could replay another user's financial mutations. The quarantine is never replayed, remains available only for deliberate support/recovery, and is retained until app storage is cleared or an explicit recovery/cleanup migration removes it. During replay, the processor checks the authenticated owner before and after each RPC; if the account changes during an in-flight request, it stops before starting another mutation and leaves the previous owner's item available for an idempotent retry under that owner.
+
 ## Failure Handling
 
 Temporary failures stay `pending` and increment `retryCount`. Examples: network failures, 408, and 429.
@@ -48,6 +54,7 @@ The orchestrator keeps an in-memory lock so concurrent triggers share one run in
 - `profile.update` is reserved but not replayed yet. It needs a dedicated typed repair path before being enabled.
 - Conflict resolution is remote-wins after successful fetch. Conflicts that fail RPC validation remain visible as failed sync items.
 - Expo Go uses in-memory storage and cannot validate the full WatermelonDB offline path; use a Dev Client for trusted-tester QA.
+- Expo web deliberately disables WatermelonDB through `database.web.ts`; web export/runtime is network-first and does not provide the native offline ledger cache.
 
 ## Automated Release Gate
 
@@ -55,7 +62,7 @@ The current release gate is automated-first. Manual real-device offline replay Q
 was not performed by project-owner decision. The required gate relies on CI plus
 local automated tests that cover temporary queued-success behavior, permanent
 failed-item visibility, RPC-only queue replay, idempotent expense/settlement
-retry, sync indicator state, Settings -> Sync data presentation, and
+retry, cross-account queue isolation, sync indicator state, Settings -> Sync data presentation, and
 simplified-debt fallback logic.
 
 Preview E2E auth is now available for dev/preview builds through

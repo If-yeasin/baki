@@ -115,6 +115,7 @@ describe("createExpenseWithOfflineQueue", () => {
     });
     expect(mocks.enqueueMoneyMutationFromRpcError).toHaveBeenCalledWith({
       error,
+      ownerUserId: "tanvir",
       payload: expect.objectContaining({
         p_client_mutation_id: "expense:test-id"
       }),
@@ -137,6 +138,7 @@ describe("createExpenseWithOfflineQueue", () => {
 
     expect(mocks.enqueueMoneyMutationFromRpcError).toHaveBeenCalledWith({
       error,
+      ownerUserId: "tanvir",
       payload: expect.objectContaining({
         p_client_mutation_id: "expense:test-id"
       }),

@@ -3,6 +3,8 @@ import { supabase } from "@/lib/supabase";
 
 import type { Database } from "@baki/db";
 
+import { getPersistedUserId } from "../auth/session-storage";
+
 type CreateExpensePayload = Database["public"]["Functions"]["create_expense"]["Args"];
 type CreateGroupPayload = Database["public"]["Functions"]["create_group"]["Args"];
 type CreateSettlementPayload = Database["public"]["Functions"]["create_settlement"]["Args"];
@@ -52,7 +54,9 @@ export type ProcessQueuedMutationsResult = {
   succeeded: number;
 };
 
-const queueKey = "offline.mutationQueue.v1";
+const queueKeyPrefix = "offline.mutationQueue.v2";
+const unownedLegacyQueueKey = "offline.mutationQueue.v1";
+const unownedLegacyQueueQuarantineKey = "offline.mutationQueue.quarantine.v1";
 const queueListeners = new Set<() => void>();
 const permanentErrorCodes = new Set([
   "22023",
@@ -67,8 +71,33 @@ const permanentErrorCodes = new Set([
   "empty_result"
 ]);
 
-function readQueue(): QueuedMutation[] {
-  const raw = storage.getString(queueKey);
+function queueKeyFor(ownerUserId: string): string {
+  return `${queueKeyPrefix}.${ownerUserId}`;
+}
+
+function quarantineUnownedLegacyQueue() {
+  const legacyQueue = storage.getString(unownedLegacyQueueKey);
+  if (!legacyQueue) {
+    return;
+  }
+
+  if (!storage.getString(unownedLegacyQueueQuarantineKey)) {
+    storage.set(unownedLegacyQueueQuarantineKey, legacyQueue);
+  }
+  storage.delete(unownedLegacyQueueKey);
+}
+
+function readQueue(ownerUserId = getPersistedUserId()): QueuedMutation[] {
+  // V1 had no account owner, so adopting it could replay another user's
+  // financial mutations after an account switch. Preserve it only as an
+  // inactive quarantine record for support/recovery; never replay it.
+  quarantineUnownedLegacyQueue();
+
+  if (!ownerUserId) {
+    return [];
+  }
+
+  const raw = storage.getString(queueKeyFor(ownerUserId));
 
   if (!raw) {
     return [];
@@ -82,8 +111,12 @@ function readQueue(): QueuedMutation[] {
   }
 }
 
-function writeQueue(queue: QueuedMutation[]) {
-  storage.set(queueKey, JSON.stringify(queue));
+function writeQueue(queue: QueuedMutation[], ownerUserId = getPersistedUserId()) {
+  if (!ownerUserId) {
+    throw new Error("queued_mutation_owner_required");
+  }
+
+  storage.set(queueKeyFor(ownerUserId), JSON.stringify(queue));
   notifyQueueListeners();
 }
 
@@ -100,7 +133,10 @@ export function subscribeToQueuedMutations(listener: () => void) {
   };
 }
 
-export function enqueueMutation(input: Omit<QueuedMutation, "createdAt" | "id" | "retryCount">) {
+export function enqueueMutation(
+  input: Omit<QueuedMutation, "createdAt" | "id" | "retryCount">,
+  ownerUserId: string
+) {
   const mutation: QueuedMutation = {
     ...input,
     createdAt: new Date().toISOString(),
@@ -109,7 +145,7 @@ export function enqueueMutation(input: Omit<QueuedMutation, "createdAt" | "id" |
     status: input.status ?? "pending"
   };
 
-  writeQueue([...readQueue(), mutation]);
+  writeQueue([...readQueue(ownerUserId), mutation], ownerUserId);
   return mutation;
 }
 
@@ -128,15 +164,22 @@ export function getQueueStats(): QueueStats {
   };
 }
 
-export function removeQueuedMutation(id: string) {
-  writeQueue(readQueue().filter((mutation) => mutation.id !== id));
+export function removeQueuedMutation(id: string, ownerUserId = getPersistedUserId()) {
+  writeQueue(
+    readQueue(ownerUserId).filter((mutation) => mutation.id !== id),
+    ownerUserId
+  );
 }
 
-export function markQueuedMutationRetried(id: string, error?: unknown) {
+export function markQueuedMutationRetried(
+  id: string,
+  error?: unknown,
+  ownerUserId = getPersistedUserId()
+) {
   const errorDetails = getQueuedMutationErrorDetails(error);
 
   writeQueue(
-    readQueue().map((mutation) =>
+    readQueue(ownerUserId).map((mutation) =>
       mutation.id === id
         ? {
             ...mutation,
@@ -148,15 +191,20 @@ export function markQueuedMutationRetried(id: string, error?: unknown) {
             status: "pending"
           }
         : mutation
-    )
+    ),
+    ownerUserId
   );
 }
 
-export function markQueuedMutationFailed(id: string, error?: unknown) {
+export function markQueuedMutationFailed(
+  id: string,
+  error?: unknown,
+  ownerUserId = getPersistedUserId()
+) {
   const errorDetails = getQueuedMutationErrorDetails(error);
 
   writeQueue(
-    readQueue().map((mutation) =>
+    readQueue(ownerUserId).map((mutation) =>
       mutation.id === id
         ? {
             ...mutation,
@@ -166,7 +214,8 @@ export function markQueuedMutationFailed(id: string, error?: unknown) {
             status: "failed"
           }
         : mutation
-    )
+    ),
+    ownerUserId
   );
 }
 
@@ -212,27 +261,32 @@ export function isPermanentQueuedMutationError(error: unknown) {
 
 export function enqueueMoneyMutationFromRpcError({
   error,
+  ownerUserId,
   payload,
   type
 }: {
   error: unknown;
+  ownerUserId: string;
   payload: Record<string, unknown>;
   type: MoneyQueuedMutationType;
 }): { kind: "permanent"; queuedMutationId: string } | { kind: "queued"; queuedMutationId: string } {
   const errorDetails = getQueuedMutationErrorDetails(error);
   const isPermanent = isPermanentQueuedMutationError(error);
-  const mutation = enqueueMutation({
-    payload,
-    type,
-    ...(isPermanent
-      ? {
-          failedAt: new Date().toISOString(),
-          lastErrorCode: errorDetails.code,
-          lastErrorMessage: errorDetails.message,
-          status: "failed" as const
-        }
-      : {})
-  });
+  const mutation = enqueueMutation(
+    {
+      payload,
+      type,
+      ...(isPermanent
+        ? {
+            failedAt: new Date().toISOString(),
+            lastErrorCode: errorDetails.code,
+            lastErrorMessage: errorDetails.message,
+            status: "failed" as const
+          }
+        : {})
+    },
+    ownerUserId
+  );
 
   return {
     kind: isPermanent ? "permanent" : "queued",
@@ -249,7 +303,18 @@ export async function processQueuedMutations(): Promise<ProcessQueuedMutationsRe
     succeeded: 0
   };
 
-  for (const mutation of readQueue()) {
+  const ownerUserId = getPersistedUserId();
+  if (!ownerUserId) {
+    return result;
+  }
+
+  const queuedMutations = readQueue(ownerUserId);
+  for (const [index, mutation] of queuedMutations.entries()) {
+    if (getPersistedUserId() !== ownerUserId) {
+      result.skipped += queuedMutations.length - index;
+      break;
+    }
+
     if (mutation.status === "failed") {
       result.skipped += 1;
       continue;
@@ -282,27 +347,36 @@ export async function processQueuedMutations(): Promise<ProcessQueuedMutationsRe
                 )
               : await supabase.rpc("create_group", mutation.payload as CreateGroupPayload);
 
+    if (getPersistedUserId() !== ownerUserId) {
+      result.skipped += queuedMutations.length - index - 1;
+      break;
+    }
+
     if (response.error) {
       if (isPermanentQueuedMutationError(response.error)) {
-        markQueuedMutationFailed(mutation.id, response.error);
+        markQueuedMutationFailed(mutation.id, response.error, ownerUserId);
         result.failed += 1;
       } else {
-        markQueuedMutationRetried(mutation.id, response.error);
+        markQueuedMutationRetried(mutation.id, response.error, ownerUserId);
         result.retried += 1;
       }
       continue;
     }
 
     if (!response.data) {
-      markQueuedMutationFailed(mutation.id, {
-        code: "empty_result",
-        message: `${mutation.type}.empty_result`
-      });
+      markQueuedMutationFailed(
+        mutation.id,
+        {
+          code: "empty_result",
+          message: `${mutation.type}.empty_result`
+        },
+        ownerUserId
+      );
       result.failed += 1;
       continue;
     }
 
-    removeQueuedMutation(mutation.id);
+    removeQueuedMutation(mutation.id, ownerUserId);
     result.succeeded += 1;
   }
 

@@ -51,6 +51,19 @@ export function buildCreateSettlementRpcPayload(input: CreateSettlementInput) {
 export async function createSettlementWithOfflineQueue(
   input: CreateSettlementInput
 ): Promise<CreateSettlementResult> {
+  const {
+    data: { session },
+    error: sessionError
+  } = await supabase.auth.getSession();
+
+  if (sessionError) {
+    throw sessionError;
+  }
+  if (!session?.user) {
+    throw new Error("auth.error.session_failed");
+  }
+  const ownerUserId = session.user.id;
+
   const rpcPayload = buildCreateSettlementRpcPayload(input);
 
   const { data: settlementId, error } = await supabase.rpc("create_settlement", rpcPayload);
@@ -61,6 +74,7 @@ export async function createSettlementWithOfflineQueue(
     });
     const queued = enqueueMoneyMutationFromRpcError({
       error,
+      ownerUserId,
       payload: rpcPayload,
       type: "settlement.create"
     });

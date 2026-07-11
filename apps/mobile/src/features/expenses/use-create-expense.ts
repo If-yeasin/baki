@@ -103,6 +103,7 @@ export async function createExpenseWithOfflineQueue(
   if (!session?.user) {
     throw new Error("auth.error.session_failed");
   }
+  const ownerUserId = session.user.id;
 
   const rpcPayload = buildCreateExpenseRpcPayload(input);
 
@@ -114,6 +115,7 @@ export async function createExpenseWithOfflineQueue(
     });
     const queued = enqueueMoneyMutationFromRpcError({
       error,
+      ownerUserId,
       payload: rpcPayload,
       type: "expense.create"
     });
